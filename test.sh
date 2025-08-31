@@ -60,6 +60,10 @@ echo Test reading from redirected stdin, writing to redirected stdout...
 ./moor <cmd/moor/moor.go >"${RESULT}"
 diff -u cmd/moor/moor.go "${RESULT}"
 
+echo Test reading from redirected stdin, writing to redirected stdout, with a - file name...
+./moor - <cmd/moor/moor.go >"${RESULT}"
+diff -u cmd/moor/moor.go "${RESULT}"
+
 echo Test redirecting a file by name into file by redirecting stdout...
 ./moor cmd/moor/moor.go >"${RESULT}"
 diff -u cmd/moor/moor.go "${RESULT}"

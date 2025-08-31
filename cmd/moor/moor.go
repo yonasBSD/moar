@@ -428,7 +428,15 @@ func pagerFromArgs(
 		TimestampFormat: time.StampMicro,
 	})
 
-	if len(flagSet.Args()) > 1 && !stdoutIsRedirected {
+	flagSetArgs := flagSet.Args()
+	if stdinIsRedirected && len(flagSetArgs) == 1 && flagSetArgs[0] == "-" {
+		// "-" is special, if we're getting data from stdin we should just ignore it
+		//
+		// Ref: https://github.com/walles/moor/issues/162
+		flagSetArgs = []string{}
+	}
+
+	if len(flagSetArgs) > 1 && !stdoutIsRedirected {
 		fmt.Fprintln(os.Stderr, "ERROR: Expected exactly one filename, or data piped from stdin")
 		fmt.Fprintln(os.Stderr)
 		printCommandline(os.Stderr)
@@ -437,7 +445,8 @@ func pagerFromArgs(
 		os.Exit(1)
 	}
 
-	for _, inputFilename := range flagSet.Args() {
+	// Check that any input files can be opened
+	for _, inputFilename := range flagSetArgs {
 		// Need to check before newScreen() below, otherwise the screen
 		// will be cleared before we print the "No such file" error.
 		err := reader.TryOpen(inputFilename)
@@ -446,8 +455,8 @@ func pagerFromArgs(
 		}
 	}
 
-	if len(flagSet.Args()) == 0 && !stdinIsRedirected {
-		fmt.Fprintln(os.Stderr, "ERROR: Filename or input pipe required")
+	if len(flagSetArgs) == 0 && !stdinIsRedirected {
+		fmt.Fprintln(os.Stderr, "ERROR: Filename or input pipe required (\"moor file.txt\")")
 		fmt.Fprintln(os.Stderr)
 		printCommandline(os.Stderr)
 		fmt.Fprintln(os.Stderr, "For help, run: \x1b[1mmoor --help\x1b[m")
@@ -455,7 +464,7 @@ func pagerFromArgs(
 	}
 
 	if stdoutIsRedirected {
-		err := pumpToStdout(flagSet.Args()...)
+		err := pumpToStdout(flagSetArgs...)
 		if err != nil {
 			return nil, nil, chroma.Style{}, nil, logsRequested, err
 		}
@@ -469,7 +478,7 @@ func pagerFromArgs(
 		panic("Invariant broken: stdout is not a terminal")
 	}
 
-	if len(flagSet.Args()) > 1 {
+	if len(flagSetArgs) > 1 {
 		fmt.Fprintln(os.Stderr, "ERROR: Expected exactly one filename, or data piped from stdin")
 		fmt.Fprintln(os.Stderr)
 		printCommandline(os.Stderr)
@@ -498,10 +507,10 @@ func pagerFromArgs(
 		}
 	} else {
 		// Display the input file contents
-		if len(flagSet.Args()) != 1 {
+		if len(flagSetArgs) != 1 {
 			panic("Invariant broken: Expected exactly one filename")
 		}
-		readerImpl, err = reader.NewFromFilename(flagSet.Args()[0], formatter, reader.ReaderOptions{Lexer: *lexer, ShouldFormat: shouldFormat})
+		readerImpl, err = reader.NewFromFilename(flagSetArgs[0], formatter, reader.ReaderOptions{Lexer: *lexer, ShouldFormat: shouldFormat})
 		if err != nil {
 			return nil, nil, chroma.Style{}, nil, logsRequested, err
 		}
