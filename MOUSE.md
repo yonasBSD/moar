@@ -1,5 +1,9 @@
 # Mouse Scrolling vs Selecting and Copying
 
+NOTE: `moor` now adapts to your terminal's capabilities in a lot of cases (look
+for `terminalHasArrowKeysEmulation()`). But if mouse scrolling and / or copying
+doesn't work, read on!
+
 `moor` supports two mouse modes (using the `--mousemode` parameter):
 
 - `scroll` makes `moor` process mouse events from your terminal, thus enabling mouse scrolling work,
@@ -34,18 +38,10 @@ If your favorite terminal is missing, feel free to add it.
 
 | Terminal | Solution |
 | -------- | -------- |
-| Alacritty | [Use <kbd>Shift</kbd>](https://github.com/alacritty/alacritty/blob/a10fb8adc0857633be428d673ab8d36d2a90193a/extra/man/alacritty.5.scd#mouse) when selecting with mouse.<br>*Cred to @chrisgrieser for this tip.* |
 | Contour | [Use <kbd>Shift</kbd>](https://github.com/contour-terminal/contour/blob/cf434eaae4b428228413039624231ad0a4e6839b/docs/configuration/advanced/mouse.md) when selecting with mouse.<br>*Cred to @postsolar for this tip.* |
 | Foot | [Use <kbd>Shift</kbd>](https://codeberg.org/dnkl/foot/wiki#i-can-t-use-the-mouse-to-select-text) when selecting with mouse.<br>*Cred to @postsolar for this tip.* |
-| Hyper | On macOS: Set `macOptionSelectionMode: 'force'` in your config file, then hold the Option Key <kbd>⌥</kbd> when selecting with mouse. |
 | iTerm | Go to `Preferences / Profiles / Default / Terminal / ` and uncheck "Report mouse clicks & drags". |
 | Terminal on macOS | On a laptop: Hold down the <kbd>fn</kbd> key when selecting with mouse. |
-| kitty | [Use <kbd>Shift</kbd>](https://sw.kovidgoyal.net/kitty/overview/#mouse-features) or <kbd>Fn</kbd> when selecting with mouse.<br>*Cred to @PrayagS for this tip.* |
-| Konsole | [Use <kbd>Shift</kbd>](https://github.com/KDE/konsole/blob/ffc48bfdadfb93fea09dcc9181b73738a4544a08/doc/manual/index.docbook#L242) when selecting with mouse.<br>*Cred to @cig0 for this tip.* |
-| Terminator | Use <kbd>Shift</kbd> key when selecting with mouse.<br>*Cred to @felix-seifert for this tip.* |
-| Tilix | Use <kbd>Shift</kbd> key when selecting with mouse.<br>*Cred to @Macr0Nerd for this tip.* |
-| Warp | Go to `Preferences / Settings / Features / Terminal / ` and uncheck "Enable Mouse Reporting". |
-| Windows | Use <kbd>Shift</kbd> key when selecting with mouse.<br>*Cred to @89z for this tip.* |
 
 # `less`' screen initialization sequence
 

@@ -278,9 +278,6 @@ func (screen *UnixScreen) onWindowResized() {
 //
 // See also: https://github.com/walles/moor/issues/53
 func terminalHasArrowKeysEmulation() bool {
-	// Untested:
-	// * The Windows terminal
-
 	// Better off with mouse tracking:
 	// * iTerm2 (macOS)
 	// * Terminal.app (macOS)
@@ -369,6 +366,13 @@ func terminalHasArrowKeysEmulation() bool {
 	// Ghostty 1.0.1, tested on macOS 15.1.1, Jan 12th, 2025
 	if os.Getenv("TERM_PROGRAM") == "ghostty" {
 		log.Info("Ghostty terminal detected, assuming arrow keys emulation active")
+		return true
+	}
+
+	// Windows Terminal, tested here:
+	// https://github.com/walles/moor/issues/53#issuecomment-3276404279
+	if os.Getenv("WT_SESSION") != "" {
+		log.Info("Windows Terminal detected, assuming arrow keys emulation active")
 		return true
 	}
 
