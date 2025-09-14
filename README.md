@@ -90,13 +90,11 @@ More info [here](https://ports.macports.org/port/moor/).
 
 ## Using [Gentoo](https://gentoo.org/)
 
-:warning: [Installs legacy `moar` binary.](https://bugs.gentoo.org/961601)
-
 ```sh
-emerge --ask --verbose sys-apps/moar
+emerge --ask --verbose sys-apps/moor
 ```
 
-More info [here](https://packages.gentoo.org/packages/sys-apps/moar).
+More info [here](https://packages.gentoo.org/packages/sys-apps/moor).
 
 ## Using [Arch Linux](https://archlinux.org/)
 
