@@ -35,7 +35,7 @@ func (line *Line) HighlightedTokens(plainTextStyle twin.Style, standoutStyle *tw
 	if standoutStyle != nil {
 		searchHitStyle = *standoutStyle
 	} else {
-		searchHitStyle = plainTextStyle.WithAttr(twin.AttrReverse).WithBackground(twin.ColorDefault).WithForeground(twin.ColorDefault)
+		searchHitStyle = plainTextStyle.WithAttr(twin.AttrReverse)
 	}
 
 	var lineHighlightBackground *twin.Color
