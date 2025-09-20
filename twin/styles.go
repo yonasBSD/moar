@@ -125,6 +125,14 @@ func (style Style) HyperlinkURL() *string {
 	return style.hyperlinkURL
 }
 
+func (style Style) Foreground() Color {
+	return style.fg
+}
+
+func (style Style) Background() Color {
+	return style.bg
+}
+
 func (style Style) WithoutAttr(attr AttrMask) Style {
 	return Style{
 		fg:             style.fg,
