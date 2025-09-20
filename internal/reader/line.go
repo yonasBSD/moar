@@ -51,7 +51,8 @@ func (line *Line) HighlightedTokens(plainTextStyle twin.Style, standoutStyle *tw
 		}
 
 		if plainBg != twin.ColorDefault && hitBg != twin.ColorDefault {
-			// We have two real colors. Mix them!
+			// We have two real colors. Mix them! I got to "0.2" by testing some
+			// numbers. 0.2 is visible but not too strong.
 			mixed := plainBg.Mix(hitBg, 0.2)
 			lineHighlightBackground = &mixed
 		}

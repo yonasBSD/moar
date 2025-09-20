@@ -271,6 +271,9 @@ func (color Color) Distance(other Color) float64 {
 
 // With weight 0.0 you'll get only color. With weight 1.0 you'll get only other.
 func (color Color) Mix(other Color, weight float64) Color {
+	if color.ColorCount() == ColorCountDefault || other.ColorCount() == ColorCountDefault {
+		panic(fmt.Errorf("mixing to or from default color not supported, %s <-> %s", color.String(), other.String()))
+	}
 	if weight < 0.0 || weight > 1.0 {
 		panic(fmt.Errorf("weight must be 0.0-1.0, got %f", weight))
 	}
