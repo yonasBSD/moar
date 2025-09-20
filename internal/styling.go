@@ -104,6 +104,7 @@ func consumeLessTermcapEnvs(chromaStyle *chroma.Style, chromaFormatter *chroma.F
 	if envValue != "" {
 		style, err := TermcapToStyle(envValue)
 		if err == nil {
+			log.Trace("Standout style set from LESS_TERMCAP_so: ", style)
 			standoutStyle = &style
 		} else {
 			log.Info("Ignoring invalid LESS_TERMCAP_so: ", strings.ReplaceAll(envValue, "\x1b", "ESC"), ": ", err)
@@ -118,6 +119,7 @@ func styleUI(chromaStyle *chroma.Style, chromaFormatter *chroma.Formatter, statu
 
 	headingStyle := twinStyleFromChroma(chromaStyle, chromaFormatter, chroma.GenericHeading, true)
 	if headingStyle != nil {
+		log.Trace("Heading style set from Chroma: ", *headingStyle)
 		textstyles.ManPageHeading = *headingStyle
 	}
 
@@ -126,6 +128,7 @@ func styleUI(chromaStyle *chroma.Style, chromaFormatter *chroma.Formatter, statu
 		// NOTE: We used to dim line numbers here, but Johan found them too hard
 		// to read. If line numbers should look some other way for some Chroma
 		// style, go fix that in Chroma!
+		log.Trace("Line numbers style set from Chroma: ", *chromaLineNumbers)
 		lineNumbersStyle = *chromaLineNumbers
 	}
 
@@ -134,11 +137,13 @@ func styleUI(chromaStyle *chroma.Style, chromaFormatter *chroma.Formatter, statu
 	} else {
 		plainText := twinStyleFromChroma(chromaStyle, chromaFormatter, chroma.None, false)
 		if plainText != nil {
+			log.Trace("Plain text style set from Chroma: ", *plainText)
 			plainTextStyle = *plainText
 		}
 	}
 
 	if standoutStyle != nil {
+		log.Trace("Status bar style set from standout style: ", *standoutStyle)
 		statusbarStyle = *standoutStyle
 	} else if statusbarOption == STATUSBAR_STYLE_INVERSE {
 		statusbarStyle = plainTextStyle.WithAttr(twin.AttrReverse)
