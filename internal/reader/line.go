@@ -75,9 +75,15 @@ func (line *Line) HighlightedTokens(plainTextStyle twin.Style, standoutStyle *tw
 		})
 	}
 
+	trailer := fromString.Trailer
+	if !matchRanges.Empty() && lineHighlightBackground != nil {
+		// Highlight to the end of the line
+		trailer = plainTextStyle.WithBackground(*lineHighlightBackground)
+	}
+
 	return textstyles.StyledRunesWithTrailer{
 		StyledRunes: returnRunes,
-		Trailer:     fromString.Trailer,
+		Trailer:     trailer,
 	}
 }
 
