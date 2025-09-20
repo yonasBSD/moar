@@ -3,6 +3,7 @@ package main
 import (
 	"testing"
 
+	"github.com/walles/moor/v2/internal/linemetadata"
 	"github.com/walles/moor/v2/twin"
 	"gotest.tools/v3/assert"
 )
@@ -30,4 +31,23 @@ func TestPageOneInputFile(t *testing.T) {
 	assert.Assert(t, pager != nil)
 	assert.Assert(t, screen != nil)
 	assert.Assert(t, formatter != nil)
+}
+
+func TestGetTargetLine(t *testing.T) {
+	index, remaining := getTargetLine([]string{})
+	assert.Assert(t, index == nil)
+	assert.DeepEqual(t, remaining, []string{})
+
+	index, remaining = getTargetLine([]string{"+"})
+	assert.Assert(t, index == nil)
+	assert.DeepEqual(t, remaining, []string{"+"})
+
+	// Ref: https://github.com/walles/moor/issues/316
+	index, remaining = getTargetLine([]string{"+0"})
+	assert.Assert(t, index == nil)
+	assert.DeepEqual(t, remaining, []string{})
+
+	index, remaining = getTargetLine([]string{"+1"})
+	assert.Equal(t, *index, linemetadata.IndexFromOneBased(1))
+	assert.DeepEqual(t, remaining, []string{})
 }

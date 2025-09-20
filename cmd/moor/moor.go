@@ -230,7 +230,7 @@ func getTargetLine(args []string) (*linemetadata.Index, []string) {
 			// Let's pretend this is a file name
 			continue
 		}
-		if lineNumber < 1 {
+		if lineNumber < 0 {
 			// Pretend this is a file name
 			continue
 		}
@@ -241,6 +241,12 @@ func getTargetLine(args []string) (*linemetadata.Index, []string) {
 		remainingArgs := make([]string, 0)
 		remainingArgs = append(remainingArgs, args[:i]...)
 		remainingArgs = append(remainingArgs, args[i+1:]...)
+
+		if lineNumber == 0 {
+			// Ignore +0 because that's what less does:
+			// https://github.com/walles/moor/issues/316
+			return nil, remainingArgs
+		}
 
 		returnMe := linemetadata.IndexFromOneBased(int(lineNumber))
 		return &returnMe, remainingArgs
