@@ -268,3 +268,30 @@ func (color Color) Distance(other Color) float64 {
 	maxDistance := 764.8333151739665
 	return baseColor.Distance(otherColor) / maxDistance
 }
+
+// With weight 0.0 you'll get only color. With weight 1.0 you'll get only other.
+func (color Color) Mix(other Color, weight float64) Color {
+	if weight < 0.0 || weight > 1.0 {
+		panic(fmt.Errorf("weight must be 0.0-1.0, got %f", weight))
+	}
+
+	c1_24 := color.to24Bit()
+	c2_24 := other.to24Bit()
+
+	c1_value := c1_24.colorValue()
+	c1_red := (c1_value & 0xff0000) >> 16
+	c1_green := (c1_value & 0xff00) >> 8
+	c1_blue := c1_value & 0xff
+
+	c2_value := c2_24.colorValue()
+	c2_red := (c2_value & 0xff0000) >> 16
+	c2_green := (c2_value & 0xff00) >> 8
+	c2_blue := c2_value & 0xff
+
+	// Mix the channels separately
+	mixed_red := uint8(math.Round(float64(c1_red)*weight + float64(c2_red)*(1-weight)))
+	mixed_green := uint8(math.Round(float64(c1_green)*weight + float64(c2_green)*(1-weight)))
+	mixed_blue := uint8(math.Round(float64(c1_blue)*weight + float64(c2_blue)*(1-weight)))
+
+	return NewColor24Bit(mixed_red, mixed_green, mixed_blue)
+}
