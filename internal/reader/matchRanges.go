@@ -71,3 +71,7 @@ func (mr *MatchRanges) InRange(index int) bool {
 
 	return false
 }
+
+func (mr *MatchRanges) Empty() bool {
+	return mr == nil || len(mr.Matches) == 0
+}

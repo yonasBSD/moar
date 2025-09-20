@@ -31,18 +31,42 @@ func (line *Line) HighlightedTokens(plainTextStyle twin.Style, standoutStyle *tw
 	plain := line.Plain(lineIndex)
 	matchRanges := getMatchRanges(&plain, search)
 
+	var searchHitStyle twin.Style
+	if standoutStyle != nil {
+		searchHitStyle = *standoutStyle
+	} else {
+		searchHitStyle = plainTextStyle.WithAttr(twin.AttrReverse).WithBackground(twin.ColorDefault).WithForeground(twin.ColorDefault)
+	}
+
+	var lineHighlightBackground *twin.Color
+	if !matchRanges.Empty() {
+		// Figure out a line background that lies between plainTextStyle and searchHitStyle
+		bg1 := plainTextStyle.Background()
+		if plainTextStyle.HasAttr(twin.AttrReverse) {
+			bg1 = plainTextStyle.Foreground()
+		}
+		bg2 := searchHitStyle.Background()
+		if searchHitStyle.HasAttr(twin.AttrReverse) {
+			bg2 = searchHitStyle.Foreground()
+		}
+
+		if bg1 != twin.ColorDefault && bg2 != twin.ColorDefault {
+			// We have two real colors. Mix them!
+			mixed := bg1.Mix(bg2, 0.5)
+			lineHighlightBackground = &mixed
+		}
+	}
+
 	fromString := textstyles.StyledRunesFromString(plainTextStyle, line.raw, lineIndex)
 	returnRunes := make([]twin.StyledRune, 0, len(fromString.StyledRunes))
 	for _, token := range fromString.StyledRunes {
 		style := token.Style
 		if matchRanges.InRange(len(returnRunes)) {
-			if standoutStyle != nil {
-				style = *standoutStyle
-			} else {
-				style = style.WithAttr(twin.AttrReverse)
-				style = style.WithBackground(twin.ColorDefault)
-				style = style.WithForeground(twin.ColorDefault)
-			}
+			// Highlight the search hit
+			style = searchHitStyle
+		} else if !matchRanges.Empty() && lineHighlightBackground != nil {
+			// Highlight lines that have search hits
+			style = style.WithBackground(*lineHighlightBackground)
 		}
 
 		returnRunes = append(returnRunes, twin.StyledRune{
