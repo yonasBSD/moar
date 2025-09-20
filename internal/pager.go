@@ -351,8 +351,8 @@ func (p *Pager) StartPaging(screen twin.Screen, chromaStyle *chroma.Style, chrom
 	}()
 
 	textstyles.UnprintableStyle = p.UnprintableStyle
-	consumeLessTermcapEnvs(chromaStyle, chromaFormatter)
-	styleUI(chromaStyle, chromaFormatter, p.StatusBarStyle, p.WithTerminalFg)
+	consumeLessTermcapEnvs(screen.TerminalBackground(), chromaStyle, chromaFormatter)
+	styleUI(screen.TerminalBackground(), chromaStyle, chromaFormatter, p.StatusBarStyle, p.WithTerminalFg)
 
 	p.screen = screen
 	p.mode = PagerModeViewing{pager: p}

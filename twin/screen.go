@@ -72,6 +72,9 @@ type Screen interface {
 	// Events() channel.
 	RequestTerminalBackgroundColor()
 
+	// Can be nil if not (yet?) detected
+	TerminalBackground() *Color
+
 	// This channel is what your main loop should be checking.
 	Events() chan Event
 }
@@ -86,7 +89,10 @@ type interruptableReader interface {
 type UnixScreen struct {
 	widthAccessFromSizeOnly  int // Access from Size() method only
 	heightAccessFromSizeOnly int // Access from Size() method only
-	cells                    [][]StyledRune
+
+	terminalBackground *Color
+
+	cells [][]StyledRune
 
 	// Note that the type here doesn't matter, we only want to know whether or
 	// not this channel has been signalled
@@ -449,6 +455,8 @@ func (screen *UnixScreen) mainLoop() {
 			bg, valid := parseTerminalBgColorResponse(incompleteResponse)
 			if valid {
 				if bg != nil {
+					screen.terminalBackground = bg
+
 					select {
 					case screen.events <- EventTerminalBackgroundDetected{Color: *bg}:
 						// Yay
@@ -635,6 +643,10 @@ func (screen *UnixScreen) RequestTerminalBackgroundColor() {
 	// Ref:
 	// https://stackoverflow.com/questions/2507337/how-to-determine-a-terminals-background-color
 	fmt.Println("\x1b]11;?\x07")
+}
+
+func (screen *UnixScreen) TerminalBackground() *Color {
+	return screen.terminalBackground
 }
 
 func parseTerminalBgColorResponse(responseBytes []byte) (*Color, bool) {
