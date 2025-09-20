@@ -289,9 +289,9 @@ func (color Color) Mix(other Color, weight float64) Color {
 	c2_blue := c2_value & 0xff
 
 	// Mix the channels separately
-	mixed_red := uint8(math.Round(float64(c1_red)*weight + float64(c2_red)*(1-weight)))
-	mixed_green := uint8(math.Round(float64(c1_green)*weight + float64(c2_green)*(1-weight)))
-	mixed_blue := uint8(math.Round(float64(c1_blue)*weight + float64(c2_blue)*(1-weight)))
+	mixed_red := uint8(math.Round(float64(c2_red)*weight + float64(c1_red)*(1-weight)))
+	mixed_green := uint8(math.Round(float64(c2_green)*weight + float64(c1_green)*(1-weight)))
+	mixed_blue := uint8(math.Round(float64(c2_blue)*weight + float64(c1_blue)*(1-weight)))
 
 	return NewColor24Bit(mixed_red, mixed_green, mixed_blue)
 }
