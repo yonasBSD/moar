@@ -41,18 +41,18 @@ func (line *Line) HighlightedTokens(plainTextStyle twin.Style, standoutStyle *tw
 	var lineHighlightBackground *twin.Color
 	if !matchRanges.Empty() {
 		// Figure out a line background that lies between plainTextStyle and searchHitStyle
-		bg1 := plainTextStyle.Background()
+		plainBg := plainTextStyle.Background()
 		if plainTextStyle.HasAttr(twin.AttrReverse) {
-			bg1 = plainTextStyle.Foreground()
+			plainBg = plainTextStyle.Foreground()
 		}
-		bg2 := searchHitStyle.Background()
+		hitBg := searchHitStyle.Background()
 		if searchHitStyle.HasAttr(twin.AttrReverse) {
-			bg2 = searchHitStyle.Foreground()
+			hitBg = searchHitStyle.Foreground()
 		}
 
-		if bg1 != twin.ColorDefault && bg2 != twin.ColorDefault {
+		if plainBg != twin.ColorDefault && hitBg != twin.ColorDefault {
 			// We have two real colors. Mix them!
-			mixed := bg1.Mix(bg2, 0.5)
+			mixed := plainBg.Mix(hitBg, 0.2)
 			lineHighlightBackground = &mixed
 		}
 	}
