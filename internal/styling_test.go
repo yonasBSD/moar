@@ -14,6 +14,7 @@ import (
 func TestTwinStyleFromChroma(t *testing.T) {
 	// Test that getting exact GenericHeading from base16-snazzy works
 	style := twinStyleFromChroma(
+		nil,
 		styles.Registry["base16-snazzy"],
 		&formatters.TTY16m,
 		chroma.GenericHeading,

@@ -42,7 +42,7 @@ func setStyle(updateMe *twin.Style, envVarName string, fallback *twin.Style) {
 // With exact set, only return a style if the Chroma formatter has an explicit
 // configuration for that style. Otherwise, we might return fallback styles, not
 // exactly matching what you requested.
-func twinStyleFromChroma(chromaStyle *chroma.Style, chromaFormatter *chroma.Formatter, chromaToken chroma.TokenType, exact bool) *twin.Style {
+func twinStyleFromChroma(terminalBackground *twin.Color, chromaStyle *chroma.Style, chromaFormatter *chroma.Formatter, chromaToken chroma.TokenType, exact bool) *twin.Style {
 	if chromaStyle == nil || chromaFormatter == nil {
 		return nil
 	}
@@ -64,11 +64,16 @@ func twinStyleFromChroma(chromaStyle *chroma.Style, chromaFormatter *chroma.Form
 	}
 
 	inexactStyle := cells[0].Style
+	if inexactStyle.Background() == twin.ColorDefault && terminalBackground != nil {
+		// Real colors can be mixed & matched, which we do in
+		// Line.HighlightedTokens(). So we prefer real colors when we have them.
+		inexactStyle = inexactStyle.WithBackground(*terminalBackground)
+	}
 	if !exact {
 		return &inexactStyle
 	}
 
-	unstyled := twinStyleFromChroma(chromaStyle, chromaFormatter, chroma.None, false)
+	unstyled := twinStyleFromChroma(terminalBackground, chromaStyle, chromaFormatter, chroma.None, false)
 	if unstyled == nil {
 		panic("Chroma formatter didn't return a style for chroma.None")
 	}
@@ -82,17 +87,17 @@ func twinStyleFromChroma(chromaStyle *chroma.Style, chromaFormatter *chroma.Form
 
 // consumeLessTermcapEnvs parses LESS_TERMCAP_xx environment variables and
 // adapts the moor output accordingly.
-func consumeLessTermcapEnvs(chromaStyle *chroma.Style, chromaFormatter *chroma.Formatter) {
+func consumeLessTermcapEnvs(terminalBackground *twin.Color, chromaStyle *chroma.Style, chromaFormatter *chroma.Formatter) {
 	// Requested here: https://github.com/walles/moor/issues/14
 
 	setStyle(
 		&textstyles.ManPageBold,
 		"LESS_TERMCAP_md",
-		twinStyleFromChroma(chromaStyle, chromaFormatter, chroma.GenericStrong, false),
+		twinStyleFromChroma(terminalBackground, chromaStyle, chromaFormatter, chroma.GenericStrong, false),
 	)
 	setStyle(&textstyles.ManPageUnderline,
 		"LESS_TERMCAP_us",
-		twinStyleFromChroma(chromaStyle, chromaFormatter, chroma.GenericUnderline, false),
+		twinStyleFromChroma(terminalBackground, chromaStyle, chromaFormatter, chroma.GenericUnderline, false),
 	)
 
 	// Since standoutStyle defaults to nil we can't just pass it to setStyle().
@@ -112,18 +117,18 @@ func consumeLessTermcapEnvs(chromaStyle *chroma.Style, chromaFormatter *chroma.F
 	}
 }
 
-func styleUI(chromaStyle *chroma.Style, chromaFormatter *chroma.Formatter, statusbarOption StatusBarOption, withTerminalFg bool) {
+func styleUI(terminalBackground *twin.Color, chromaStyle *chroma.Style, chromaFormatter *chroma.Formatter, statusbarOption StatusBarOption, withTerminalFg bool) {
 	if chromaStyle == nil || chromaFormatter == nil {
 		return
 	}
 
-	headingStyle := twinStyleFromChroma(chromaStyle, chromaFormatter, chroma.GenericHeading, true)
+	headingStyle := twinStyleFromChroma(terminalBackground, chromaStyle, chromaFormatter, chroma.GenericHeading, true)
 	if headingStyle != nil {
 		log.Trace("Heading style set from Chroma: ", *headingStyle)
 		textstyles.ManPageHeading = *headingStyle
 	}
 
-	chromaLineNumbers := twinStyleFromChroma(chromaStyle, chromaFormatter, chroma.LineNumbers, true)
+	chromaLineNumbers := twinStyleFromChroma(terminalBackground, chromaStyle, chromaFormatter, chroma.LineNumbers, true)
 	if chromaLineNumbers != nil {
 		// NOTE: We used to dim line numbers here, but Johan found them too hard
 		// to read. If line numbers should look some other way for some Chroma
@@ -135,7 +140,7 @@ func styleUI(chromaStyle *chroma.Style, chromaFormatter *chroma.Formatter, statu
 	if withTerminalFg {
 		plainTextStyle = twin.StyleDefault
 	} else {
-		plainText := twinStyleFromChroma(chromaStyle, chromaFormatter, chroma.None, false)
+		plainText := twinStyleFromChroma(terminalBackground, chromaStyle, chromaFormatter, chroma.None, false)
 		if plainText != nil {
 			log.Trace("Plain text style set from Chroma: ", *plainText)
 			plainTextStyle = *plainText
@@ -148,14 +153,14 @@ func styleUI(chromaStyle *chroma.Style, chromaFormatter *chroma.Formatter, statu
 	} else if statusbarOption == STATUSBAR_STYLE_INVERSE {
 		statusbarStyle = plainTextStyle.WithAttr(twin.AttrReverse)
 	} else if statusbarOption == STATUSBAR_STYLE_PLAIN {
-		plain := twinStyleFromChroma(chromaStyle, chromaFormatter, chroma.None, false)
+		plain := twinStyleFromChroma(terminalBackground, chromaStyle, chromaFormatter, chroma.None, false)
 		if plain != nil {
 			statusbarStyle = *plain
 		} else {
 			statusbarStyle = twin.StyleDefault
 		}
 	} else if statusbarOption == STATUSBAR_STYLE_BOLD {
-		bold := twinStyleFromChroma(chromaStyle, chromaFormatter, chroma.GenericStrong, true)
+		bold := twinStyleFromChroma(terminalBackground, chromaStyle, chromaFormatter, chroma.GenericStrong, true)
 		if bold != nil {
 			statusbarStyle = *bold
 		} else {
