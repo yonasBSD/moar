@@ -181,7 +181,7 @@ Available at https://github.com/walles/moor/.
 `)
 
 // NewPager creates a new Pager with default settings
-func NewPager(r *reader.ReaderImpl) *Pager {
+func NewPager(readers ...*reader.ReaderImpl) *Pager {
 	var name string
 	if r == nil || r.Name == nil || len(*r.Name) == 0 {
 		name = "Pager"
