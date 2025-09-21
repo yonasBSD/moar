@@ -445,7 +445,7 @@ func (p *Pager) StartPaging(screen twin.Screen, chromaStyle *chroma.Style, chrom
 			//
 			// Also, we only do this if we have exactly one reader, because
 			// that's what less does.
-			if len(p.readers) == 0 && p.QuitIfOneScreen && !p.isShowingHelp && p.readers[p.currentReader].Done.Load() && p.readers[p.currentReader].HighlightingDone.Load() {
+			if len(p.readers) == 1 && p.QuitIfOneScreen && !p.isShowingHelp && p.readers[p.currentReader].Done.Load() && p.readers[p.currentReader].HighlightingDone.Load() {
 				width, height := p.screen.Size()
 				if fitsOnOneScreen(p.readers[p.currentReader], width, height-p.DeInitFalseMargin) {
 					// Ref:
