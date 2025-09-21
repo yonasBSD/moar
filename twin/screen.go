@@ -658,19 +658,19 @@ func parseTerminalBgColorResponse(responseBytes []byte) (*Color, bool) {
 
 	response := string(responseBytes)
 	if !strings.HasPrefix(response, prefix) {
-		log.Info("Got unexpected prefix in bg color response from terminal: ", string(responseBytes))
+		log.Info("Got unexpected prefix in bg color response from terminal: <", humanizeLowASCII(string(responseBytes)), ">")
 		return nil, false // Invalid
 	}
 	response = strings.TrimPrefix(response, prefix)
 
 	isComplete := strings.HasSuffix(response, suffix1) || strings.HasSuffix(response, suffix2)
 	if !isComplete && (len(responseBytes) < len(sampleResponse1) || len(responseBytes) < len(sampleResponse2)) {
-		log.Debug("Terminal bg color response received so far: ", response)
+		log.Trace("Terminal bg color response received so far: <", humanizeLowASCII(response), ">")
 		return nil, true // Incomplete but valid
 	}
 
 	if !isComplete {
-		log.Info("Got unexpected suffix in bg color response from terminal: ", string(responseBytes))
+		log.Info("Got unexpected suffix in bg color response from terminal: <", humanizeLowASCII(string(responseBytes)), ">")
 		return nil, false // Invalid
 	}
 	response = strings.TrimSuffix(response, suffix1)
@@ -679,19 +679,19 @@ func parseTerminalBgColorResponse(responseBytes []byte) (*Color, bool) {
 	// response is now "RRRR/GGGG/BBBB"
 	red, err := strconv.ParseUint(response[0:4], 16, 16)
 	if err != nil {
-		log.Info("Failed parsing red in bg color response from terminal: ", string(responseBytes), ": ", err)
+		log.Info("Failed parsing red in bg color response from terminal: <", humanizeLowASCII(string(responseBytes)), ">: ", err)
 		return nil, false // Invalid
 	}
 
 	green, err := strconv.ParseUint(response[5:9], 16, 16)
 	if err != nil {
-		log.Info("Failed parsing green in bg color response from terminal: ", string(responseBytes), ": ", err)
+		log.Info("Failed parsing green in bg color response from terminal: <", humanizeLowASCII(string(responseBytes)), ">: ", err)
 		return nil, false // Invalid
 	}
 
 	blue, err := strconv.ParseUint(response[10:14], 16, 16)
 	if err != nil {
-		log.Info("Failed parsing blue in bg color response from terminal: ", string(responseBytes), ": ", err)
+		log.Info("Failed parsing blue in bg color response from terminal: <", humanizeLowASCII(string(responseBytes)), ">: ", err)
 		return nil, false // Invalid
 	}
 
