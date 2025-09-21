@@ -44,8 +44,12 @@ type eventMaybeDone struct{}
 
 // Pager is the main on-screen pager
 type Pager struct {
-	reader              *reader.ReaderImpl
-	filteringReader     FilteringReader
+	readers       []*reader.ReaderImpl
+	currentReader int
+
+	// A view of the current reader, possibly filtered
+	filteringReader FilteringReader
+
 	screen              twin.Screen
 	quit                bool
 	scrollPosition      scrollPosition
@@ -183,14 +187,15 @@ Available at https://github.com/walles/moor/.
 // NewPager creates a new Pager with default settings
 func NewPager(readers ...*reader.ReaderImpl) *Pager {
 	var name string
-	if r == nil || r.Name == nil || len(*r.Name) == 0 {
+	if len(readers) == 0 || len(*readers[0].Name) == 0 {
 		name = "Pager"
 	} else {
-		name = "Pager " + *r.Name
+		name = "Pager " + *readers[0].Name
 	}
 
 	pager := Pager{
-		reader:           r,
+		readers:          readers,
+		currentReader:    0,
 		quit:             false,
 		ShowLineNumbers:  true,
 		ShowStatusBar:    true,
@@ -203,7 +208,7 @@ func NewPager(readers ...*reader.ReaderImpl) *Pager {
 
 	pager.mode = PagerModeViewing{pager: &pager}
 	pager.filteringReader = FilteringReader{
-		BackingReader: r,
+		BackingReader: readers[0], // Always start with the first reader
 		FilterPattern: &pager.filterPattern,
 	}
 
@@ -323,7 +328,7 @@ func (p *Pager) setTargetLine(targetLine *linemetadata.Index) {
 	p.TargetLine = targetLine
 	if targetLine == nil {
 		// No target, just do your thing
-		p.reader.SetPauseAfterLines(reader.DEFAULT_PAUSE_AFTER_LINES)
+		p.readers[p.currentReader].SetPauseAfterLines(reader.DEFAULT_PAUSE_AFTER_LINES)
 		return
 	}
 
@@ -337,7 +342,7 @@ func (p *Pager) setTargetLine(targetLine *linemetadata.Index) {
 	if targetValue < reader.DEFAULT_PAUSE_AFTER_LINES {
 		targetValue = reader.DEFAULT_PAUSE_AFTER_LINES
 	}
-	p.reader.SetPauseAfterLines(targetValue)
+	p.readers[p.currentReader].SetPauseAfterLines(targetValue)
 }
 
 // StartPaging brings up the pager on screen
@@ -345,8 +350,8 @@ func (p *Pager) StartPaging(screen twin.Screen, chromaStyle *chroma.Style, chrom
 	log.Info("Pager starting")
 
 	defer func() {
-		if p.reader.Err != nil {
-			log.Warnf("Reader reported an error: %s", p.reader.Err.Error())
+		if p.readers[p.currentReader].Err != nil {
+			log.Warnf("Reader reported an error: %s", p.readers[p.currentReader].Err.Error())
 		}
 	}()
 
@@ -362,11 +367,15 @@ func (p *Pager) StartPaging(screen twin.Screen, chromaStyle *chroma.Style, chrom
 	p.setTargetLine(p.TargetLine)
 
 	go func() {
+		// FIXME: At what points should we start / stop checking some reader for
+		// whether more lines have become available? In relation to when we
+		// switch files? Maybe in Pager.firstFile() and friends?
+
 		defer func() {
 			PanicHandler("StartPaging()/moreLinesAvailable", recover(), debug.Stack())
 		}()
 
-		for range p.reader.MoreLinesAdded {
+		for range p.readers[p.currentReader].MoreLinesAdded {
 			// Notify the main loop about the new lines so it can show them
 			screen.Events() <- eventMoreLinesAvailable{}
 
@@ -381,6 +390,9 @@ func (p *Pager) StartPaging(screen twin.Screen, chromaStyle *chroma.Style, chrom
 	}()
 
 	go func() {
+		// FIXME: At what points should we start / stop the spinner in relation
+		// to when we switch files? Maybe in Pager.firstFile() and friends?
+
 		defer func() {
 			PanicHandler("StartPaging()/spinner", recover(), debug.Stack())
 		}()
@@ -388,7 +400,7 @@ func (p *Pager) StartPaging(screen twin.Screen, chromaStyle *chroma.Style, chrom
 		// Spin the spinner as long as contents is still loading
 		spinnerFrames := [...]string{"/.\\", "-o-", "\\O/", "| |"}
 		spinnerIndex := 0
-		for !p.reader.Done.Load() {
+		for !p.readers[p.currentReader].Done.Load() {
 			screen.Events() <- eventSpinnerUpdate{spinnerFrames[spinnerIndex]}
 			spinnerIndex++
 			if spinnerIndex >= len(spinnerFrames) {
@@ -403,11 +415,15 @@ func (p *Pager) StartPaging(screen twin.Screen, chromaStyle *chroma.Style, chrom
 	}()
 
 	go func() {
+		// FIXME: At what points should we start / stop checking for maybeDone
+		// events in relation to when we switch files? Maybe in
+		// Pager.firstFile() and friends?
+
 		defer func() {
 			PanicHandler("StartPaging()/maybeDone", recover(), debug.Stack())
 		}()
 
-		for range p.reader.MaybeDone {
+		for range p.readers[p.currentReader].MaybeDone {
 			screen.Events() <- eventMaybeDone{}
 		}
 	}()
@@ -424,11 +440,14 @@ func (p *Pager) StartPaging(screen twin.Screen, chromaStyle *chroma.Style, chrom
 			// Ref:
 			// https://github.com/gwsw/less/blob/ff8869aa0485f7188d942723c9fb50afb1892e62/command.c#L828-L831
 			//
-			// Note that we do the slow (atomic) checks only if the fast ones (no locking
-			// required) passed
-			if p.QuitIfOneScreen && !p.isShowingHelp && p.reader.Done.Load() && p.reader.HighlightingDone.Load() {
+			// Note that we do the slow (atomic) checks only if the fast ones
+			// (no locking required) passed.
+			//
+			// Also, we only do this if we have exactly one reader, because
+			// that's what less does.
+			if len(p.readers) == 0 && p.QuitIfOneScreen && !p.isShowingHelp && p.readers[p.currentReader].Done.Load() && p.readers[p.currentReader].HighlightingDone.Load() {
 				width, height := p.screen.Size()
-				if fitsOnOneScreen(p.reader, width, height-p.DeInitFalseMargin) {
+				if fitsOnOneScreen(p.readers[p.currentReader], width, height-p.DeInitFalseMargin) {
 					// Ref:
 					// https://github.com/walles/moor/issues/113#issuecomment-1368294132
 					p.ShowLineNumbers = false // Requires a redraw to take effect, see below
@@ -438,7 +457,7 @@ func (p *Pager) StartPaging(screen twin.Screen, chromaStyle *chroma.Style, chrom
 					// Without this the line numbers setting ^ won't take effect
 					p.redraw(spinner)
 
-					log.Info("Exiting because of --quit-if-one-screen, we fit on one screen and we're done")
+					log.Info("Exiting because of --quit-if-one-screen, everything fit on one screen and we're done")
 
 					break
 				}
