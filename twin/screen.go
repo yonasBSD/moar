@@ -658,7 +658,7 @@ func parseTerminalBgColorResponse(responseBytes []byte) (*Color, bool) {
 
 	response := string(responseBytes)
 	if !strings.HasPrefix(response, prefix) {
-		log.Debug("Got unexpected prefix in bg color response from terminal: ", string(responseBytes))
+		log.Info("Got unexpected prefix in bg color response from terminal: ", string(responseBytes))
 		return nil, false // Invalid
 	}
 	response = strings.TrimPrefix(response, prefix)
@@ -670,7 +670,7 @@ func parseTerminalBgColorResponse(responseBytes []byte) (*Color, bool) {
 	}
 
 	if !isComplete {
-		log.Debug("Got unexpected suffix in bg color response from terminal: ", string(responseBytes))
+		log.Info("Got unexpected suffix in bg color response from terminal: ", string(responseBytes))
 		return nil, false // Invalid
 	}
 	response = strings.TrimSuffix(response, suffix1)
@@ -679,19 +679,19 @@ func parseTerminalBgColorResponse(responseBytes []byte) (*Color, bool) {
 	// response is now "RRRR/GGGG/BBBB"
 	red, err := strconv.ParseUint(response[0:4], 16, 16)
 	if err != nil {
-		log.Debug("Failed parsing red in bg color response from terminal: ", string(responseBytes), ": ", err)
+		log.Info("Failed parsing red in bg color response from terminal: ", string(responseBytes), ": ", err)
 		return nil, false // Invalid
 	}
 
 	green, err := strconv.ParseUint(response[5:9], 16, 16)
 	if err != nil {
-		log.Debug("Failed parsing green in bg color response from terminal: ", string(responseBytes), ": ", err)
+		log.Info("Failed parsing green in bg color response from terminal: ", string(responseBytes), ": ", err)
 		return nil, false // Invalid
 	}
 
 	blue, err := strconv.ParseUint(response[10:14], 16, 16)
 	if err != nil {
-		log.Debug("Failed parsing blue in bg color response from terminal: ", string(responseBytes), ": ", err)
+		log.Info("Failed parsing blue in bg color response from terminal: ", string(responseBytes), ": ", err)
 		return nil, false // Invalid
 	}
 

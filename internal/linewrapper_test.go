@@ -12,7 +12,7 @@ import (
 
 func tokenize(input string) []twin.StyledRune {
 	line := reader.NewLine(input)
-	return line.HighlightedTokens(twin.StyleDefault, nil, nil, nil).StyledRunes
+	return line.HighlightedTokens(twin.StyleDefault, twin.StyleDefault, nil, nil, nil).StyledRunes
 }
 
 func rowsToString(cellLines [][]twin.StyledRune) string {
