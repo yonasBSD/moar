@@ -183,7 +183,7 @@ func (p *Pager) renderLines() ([]renderedLine, string) {
 // lineNumber and numberPrefixLength are required for knowing how much to
 // indent, and to (optionally) render the line number.
 func (p *Pager) renderLine(line *reader.NumberedLine, numberPrefixLength int) []renderedLine {
-	highlighted := line.HighlightedTokens(plainTextStyle, standoutStyle, p.searchPattern)
+	highlighted := line.HighlightedTokens(plainTextStyle, searchHitStyle, searchHitLineBackground, p.searchPattern)
 	var wrapped [][]twin.StyledRune
 	if p.WrapLongLines {
 		width, _ := p.screen.Size()

@@ -520,7 +520,7 @@ func fitsOnOneScreen(reader *reader.ReaderImpl, width int, height int) bool {
 
 	lines := reader.GetLines(linemetadata.Index{}, reader.GetLineCount())
 	for _, line := range lines.Lines {
-		rendered := line.HighlightedTokens(twin.StyleDefault, nil, nil).StyledRunes
+		rendered := line.HighlightedTokens(twin.StyleDefault, twin.StyleDefault, nil, nil).StyledRunes
 		if len(rendered) > width {
 			// This line is too long to fit on one screen line, no fit
 			return false
