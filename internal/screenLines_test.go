@@ -80,12 +80,12 @@ func TestEmpty(t *testing.T) {
 		screen: twin.NewFakeScreen(99, 10),
 
 		// No lines available
-		reader: reader.NewFromTextForTesting("test", ""),
+		readers: []*reader.ReaderImpl{reader.NewFromTextForTesting("test", "")},
 
 		scrollPosition: newScrollPosition("TestEmpty"),
 	}
 	pager.filteringReader = FilteringReader{
-		BackingReader: pager.reader,
+		BackingReader: pager.readers[pager.currentReader],
 		FilterPattern: &pager.filterPattern,
 	}
 
@@ -102,10 +102,10 @@ func TestSearchHighlight(t *testing.T) {
 		screen:        twin.NewFakeScreen(100, 10),
 		searchPattern: regexp.MustCompile("\""),
 	}
-	pager.filteringReader = FilteringReader{
-		BackingReader: pager.reader,
-		FilterPattern: &pager.filterPattern,
-	}
+	// FIXME: Try removing this line and see if the test still passes. The
+	// filtering reader was set up with empty values anyway, and I'm not sure
+	// whether it's needed at all.
+	pager.filteringReader = FilteringReader{}
 
 	numberedLine := reader.NumberedLine{
 		Line: &line,
@@ -138,13 +138,13 @@ func TestOverflowDown(t *testing.T) {
 		),
 
 		// Single line of input
-		reader: reader.NewFromTextForTesting("test", "hej"),
+		readers: []*reader.ReaderImpl{reader.NewFromTextForTesting("test", "hej")},
 
 		// This value can be anything and should be clipped, that's what we're testing
 		scrollPosition: *scrollPositionFromIndex("TestOverflowDown", linemetadata.IndexFromOneBased(42)),
 	}
 	pager.filteringReader = FilteringReader{
-		BackingReader: pager.reader,
+		BackingReader: pager.readers[pager.currentReader],
 		FilterPattern: &pager.filterPattern,
 	}
 
@@ -164,12 +164,12 @@ func TestOverflowUp(t *testing.T) {
 		),
 
 		// Single line of input
-		reader: reader.NewFromTextForTesting("test", "hej"),
+		readers: []*reader.ReaderImpl{reader.NewFromTextForTesting("test", "hej")},
 
 		// NOTE: scrollPosition intentionally not initialized
 	}
 	pager.filteringReader = FilteringReader{
-		BackingReader: pager.reader,
+		BackingReader: pager.readers[pager.currentReader],
 		FilterPattern: &pager.filterPattern,
 	}
 
@@ -234,11 +234,11 @@ func TestOneLineTerminal(t *testing.T) {
 		// Single line terminal window, this is what we're testing
 		screen: twin.NewFakeScreen(20, 1),
 
-		reader:        reader.NewFromTextForTesting("test", "hej"),
+		readers:       []*reader.ReaderImpl{reader.NewFromTextForTesting("test", "hej")},
 		ShowStatusBar: true,
 	}
 	pager.filteringReader = FilteringReader{
-		BackingReader: pager.reader,
+		BackingReader: pager.readers[pager.currentReader],
 		FilterPattern: &pager.filterPattern,
 	}
 
@@ -255,12 +255,12 @@ func TestShortenedInput(t *testing.T) {
 		screen: twin.NewFakeScreen(20, 10),
 
 		// 1000 lines of input, we will scroll to the bottom
-		reader: reader.NewFromTextForTesting("test", "first\n"+strings.Repeat("line\n", 1000)),
+		readers: []*reader.ReaderImpl{reader.NewFromTextForTesting("test", "first\n"+strings.Repeat("line\n", 1000))},
 
 		scrollPosition: newScrollPosition("TestShortenedInput"),
 	}
 	pager.filteringReader = FilteringReader{
-		BackingReader: pager.reader,
+		BackingReader: pager.readers[pager.currentReader],
 		FilterPattern: &pager.filterPattern,
 	}
 
@@ -293,11 +293,11 @@ func TestShortenedInputManyLines(t *testing.T) {
 
 	pager := Pager{
 		screen:         twin.NewFakeScreen(20, 10),
-		reader:         reader.NewFromTextForTesting("test", strings.Join(lines, "\n")),
+		readers:        []*reader.ReaderImpl{reader.NewFromTextForTesting("test", strings.Join(lines, "\n"))},
 		scrollPosition: newScrollPosition("TestShortenedInputManyLines"),
 	}
 	pager.filteringReader = FilteringReader{
-		BackingReader: pager.reader,
+		BackingReader: pager.readers[pager.currentReader],
 		FilterPattern: &pager.filterPattern,
 	}
 
