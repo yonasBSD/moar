@@ -134,10 +134,10 @@ func handleEditingRequest(p *Pager) {
 		return
 	}
 
-	canOpenFile := p.reader.FileName != nil
-	if p.reader.FileName != nil {
+	canOpenFile := p.readers[p.currentReader].FileName != nil
+	if p.readers[p.currentReader].FileName != nil {
 		// Verify that the file exists and is readable
-		err = reader.TryOpen(*p.reader.FileName)
+		err = reader.TryOpen(*p.readers[p.currentReader].FileName)
 		if err != nil {
 			canOpenFile = false
 			log.Info("File to edit is not readable: ", err)
@@ -146,14 +146,14 @@ func handleEditingRequest(p *Pager) {
 
 	var fileToEdit string
 	if canOpenFile {
-		fileToEdit = *p.reader.FileName
+		fileToEdit = *p.readers[p.currentReader].FileName
 	} else {
 		// NOTE: Let's not wait for the stream to finish, just dump whatever we
 		// have and open the editor on that. The user just asked for it, if they
 		// wanted to wait, they should have done that themselves.
 
 		// Create a temp file based on reader contents
-		fileToEdit, err = dumpToTempFile(p.reader)
+		fileToEdit, err = dumpToTempFile(p.readers[p.currentReader])
 		if err != nil {
 			log.Warn("Failed to create temp file to edit: ", err)
 			return
