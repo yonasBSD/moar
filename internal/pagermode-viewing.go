@@ -167,6 +167,10 @@ func (m PagerModeViewing) onRune(char rune) {
 		p.mode = &PagerModeGotoLine{pager: p}
 		p.setTargetLine(nil)
 
+	case ':':
+		p.mode = &PagerModeColonCommand{pager: p}
+		p.setTargetLine(nil)
+
 	// Should match the pagermode-not-found.go previous-search-hit bindings
 	case 'n':
 		p.scrollToNextSearchHit()
