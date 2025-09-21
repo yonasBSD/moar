@@ -13,11 +13,17 @@ const defaultDarkTheme = "native"
 
 // I decided on a light theme by doing this:
 //
-//	wc -l ../chroma/styles/*.xml|sort|cut -d/ -f4|grep xml|xargs -I XXX grep -Hi background ../chroma/styles/XXX
+//	rg -i 'Background.*bg:#ffffff' | rg -v '[^:]#[^0]' | sort | cut -d: -f1 | xargs rg --files-without-match '"LiteralString".*bg:' |  xargs wc -l | sort -r | grep -v tango
 //
-// Then I picked tango because it has a lot of lines, a bright background
-// and I like the looks of it.
-const defaultLightTheme = "tango"
+// Then I picked github because it has a bright background, a dark foreground
+// and it looks OK on a white terminal with an unmodified color palette.
+//
+// This used to be tango, which I mostly like, but it comes with underlined
+// whitespace which looks weird when we change the background color of lines
+// with search hits:
+//
+// https://github.com/alecthomas/chroma/blob/daa879b239442af21c3e62517a9da8f11d1c15b2/styles/tango.xml#L71
+const defaultLightTheme = "github"
 
 // Checks the terminal background color and returns either a dark or light theme
 func GetStyleForScreen(screen twin.Screen) chroma.Style {
