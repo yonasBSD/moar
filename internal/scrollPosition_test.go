@@ -17,9 +17,9 @@ const screenHeight = 60
 func testCanonicalize1000(t *testing.T, withStatusBar bool, currentStartLine linemetadata.Index, lastVisibleLine linemetadata.Index) {
 	pager := Pager{}
 	pager.screen = twin.NewFakeScreen(100, screenHeight)
-	pager.reader = reader.NewFromTextForTesting("test", strings.Repeat("a\n", 2000))
+	pager.readers = []*reader.ReaderImpl{reader.NewFromTextForTesting("test", strings.Repeat("a\n", 2000))}
 	pager.filteringReader = FilteringReader{
-		BackingReader: pager.reader,
+		BackingReader: pager.readers[pager.currentReader],
 		FilterPattern: &pager.filterPattern,
 	}
 	pager.ShowLineNumbers = true
@@ -73,9 +73,9 @@ func TestFastScrollAcross1000DoesNotPanic(t *testing.T) {
 	// Create 1492 lines of single-char content
 	pager := Pager{}
 	pager.screen = twin.NewFakeScreen(80, screenHeight)
-	pager.reader = reader.NewFromTextForTesting("test", strings.Repeat("x\n", 1492))
+	pager.readers = []*reader.ReaderImpl{reader.NewFromTextForTesting("test", strings.Repeat("x\n", 1492))}
 	pager.filteringReader = FilteringReader{
-		BackingReader: pager.reader,
+		BackingReader: pager.readers[pager.currentReader],
 		FilterPattern: &pager.filterPattern,
 	}
 	pager.ShowLineNumbers = true

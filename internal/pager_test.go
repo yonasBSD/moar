@@ -344,7 +344,7 @@ func TestFindFirstHitSimple(t *testing.T) {
 	pager := NewPager(reader)
 	pager.screen = twin.NewFakeScreen(40, 10)
 
-	assert.NilError(t, pager.reader.Wait())
+	assert.NilError(t, pager.readers[pager.currentReader].Wait())
 
 	pager.searchPattern = toPattern("AB")
 
@@ -358,7 +358,7 @@ func TestFindFirstHitAnsi(t *testing.T) {
 	pager := NewPager(reader)
 	pager.screen = twin.NewFakeScreen(40, 10)
 
-	assert.NilError(t, pager.reader.Wait())
+	assert.NilError(t, pager.readers[pager.currentReader].Wait())
 
 	pager.searchPattern = toPattern("AB")
 
@@ -372,7 +372,7 @@ func TestFindFirstHitNoMatch(t *testing.T) {
 	pager := NewPager(reader)
 	pager.screen = twin.NewFakeScreen(40, 10)
 
-	assert.NilError(t, pager.reader.Wait())
+	assert.NilError(t, pager.readers[pager.currentReader].Wait())
 
 	pager.searchPattern = toPattern("this pattern should not be found")
 
@@ -385,7 +385,7 @@ func TestFindFirstHitNoMatchBackwards(t *testing.T) {
 	pager := NewPager(reader)
 	pager.screen = twin.NewFakeScreen(40, 10)
 
-	assert.NilError(t, pager.reader.Wait())
+	assert.NilError(t, pager.readers[pager.currentReader].Wait())
 
 	pager.searchPattern = toPattern("this pattern should not be found")
 	theEnd := *linemetadata.IndexFromLength(reader.GetLineCount())
@@ -416,7 +416,7 @@ func TestScrollToBottomWrapNextToLastLine(t *testing.T) {
 	pager.ShowLineNumbers = false
 	pager.screen = screen
 
-	assert.NilError(t, pager.reader.Wait())
+	assert.NilError(t, pager.readers[pager.currentReader].Wait())
 
 	// This is what we're testing really
 	pager.scrollToEnd()
