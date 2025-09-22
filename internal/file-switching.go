@@ -22,3 +22,11 @@ func (p *Pager) firstFile() {
 	p.currentReader = 0
 	p.readerSwitched <- struct{}{}
 }
+
+FIXME: There are race conditions that need fixing. Also:
+
+- Kolla om less håller reda på nuvarande-radnummer per fil
+- Om vi har flera readers, visa i statusraden vilken som är aktiv ("[3/5]"?)
+- Uppdatera README?
+- Uppdatera --help
+- Uppdatera mansidan
