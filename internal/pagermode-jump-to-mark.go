@@ -24,18 +24,18 @@ func (m PagerModeJumpToMark) drawFooter(_ string, _ string) {
 
 func (m PagerModeJumpToMark) getMarkPrompt() string {
 	// Special case having zero, one or multiple marks
-	if len(m.pager.marks) == 0 {
+	if len(m.pager.bookmarks) == 0 {
 		return "No marks set, press 'm' to set one!"
 	}
 
-	if len(m.pager.marks) == 1 {
-		for key := range m.pager.marks {
+	if len(m.pager.bookmarks) == 1 {
+		for key := range m.pager.bookmarks {
 			return "Jump to your mark: " + string(key)
 		}
 	}
 
 	// Multiple marks, list them
-	marks := maps.Keys(m.pager.marks)
+	marks := maps.Keys(m.pager.bookmarks)
 	sort.Slice(marks, func(i, j int) bool {
 		return marks[i] < marks[j]
 	})
@@ -67,12 +67,12 @@ func (m PagerModeJumpToMark) onKey(key twin.KeyCode) {
 }
 
 func (m PagerModeJumpToMark) onRune(char rune) {
-	if len(m.pager.marks) == 0 && char == 'm' {
+	if len(m.pager.bookmarks) == 0 && char == 'm' {
 		m.pager.mode = PagerModeMark(m)
 		return
 	}
 
-	destination, ok := m.pager.marks[char]
+	destination, ok := m.pager.bookmarks[char]
 	if ok {
 		m.pager.scrollPosition = destination
 	}

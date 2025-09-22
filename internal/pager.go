@@ -108,7 +108,7 @@ type Pager struct {
 	// Bookmarks that you can come back to.
 	//
 	// Ref: https://github.com/walles/moor/issues/175
-	marks map[rune]scrollPosition
+	bookmarks map[rune]scrollPosition
 
 	AfterExit func() error
 }
@@ -356,7 +356,7 @@ func (p *Pager) StartPaging(screen twin.Screen, chromaStyle *chroma.Style, chrom
 
 	p.screen = screen
 	p.mode = PagerModeViewing{pager: p}
-	p.marks = make(map[rune]scrollPosition)
+	p.bookmarks = make(map[rune]scrollPosition)
 
 	// Make sure the reader knows how many lines we want
 	p.setTargetLine(p.TargetLine)
