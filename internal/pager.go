@@ -367,64 +367,49 @@ func (p *Pager) StartPaging(screen twin.Screen, chromaStyle *chroma.Style, chrom
 	p.setTargetLine(p.TargetLine)
 
 	go func() {
-		// FIXME: At what points should we start / stop checking some reader for
-		// whether more lines have become available? In relation to when we
-		// switch files? Maybe in Pager.firstFile() and friends?
-
 		defer func() {
-			PanicHandler("StartPaging()/moreLinesAvailable", recover(), debug.Stack())
+			PanicHandler("StartPaging()/goroutine", recover(), debug.Stack())
 		}()
 
-		for range p.readers[p.currentReader].MoreLinesAdded {
-			// Notify the main loop about the new lines so it can show them
-			screen.Events() <- eventMoreLinesAvailable{}
-
-			// Delay updates a bit so that we don't waste time refreshing
-			// the screen too often.
-			//
-			// Note that the delay is *after* reacting, this way single-line
-			// updates are reacted to immediately, and the first output line
-			// read will appear on screen without delay.
-			time.Sleep(200 * time.Millisecond)
-		}
-	}()
-
-	go func() {
-		// FIXME: At what points should we start / stop the spinner in relation
-		// to when we switch files? Maybe in Pager.firstFile() and friends?
-
-		defer func() {
-			PanicHandler("StartPaging()/spinner", recover(), debug.Stack())
-		}()
-
-		// Spin the spinner as long as contents is still loading
 		spinnerFrames := [...]string{"/.\\", "-o-", "\\O/", "| |"}
 		spinnerIndex := 0
-		for !p.readers[p.currentReader].Done.Load() {
-			screen.Events() <- eventSpinnerUpdate{spinnerFrames[spinnerIndex]}
-			spinnerIndex++
-			if spinnerIndex >= len(spinnerFrames) {
-				spinnerIndex = 0
+		spinnerTicker := time.NewTicker(200 * time.Millisecond)
+
+		// Support throttling of more-lines-available reads, see below
+		throttledMoreLines := p.readers[p.currentReader].MoreLinesAdded
+		var reenable <-chan time.Time
+
+		for {
+			select {
+			FIXME: Listen for reader-changed events
+
+			case <-throttledMoreLines:
+				screen.Events() <- eventMoreLinesAvailable{}
+
+				// Disable further receives for 200ms. This avoids flooding the
+				// event loop if a lot of lines are added in a short time.
+				throttledMoreLines = nil
+				reenable = time.After(200 * time.Millisecond)
+
+			case <-reenable:
+				// Re-enable channel
+				throttledMoreLines = p.readers[p.currentReader].MoreLinesAdded
+				reenable = nil
+
+			case <-spinnerTicker.C:
+				currentFrame := spinnerFrames[spinnerIndex]
+				if p.readers[p.currentReader].Done.Load() {
+					currentFrame = ""
+				}
+				spinnerIndex++
+				if spinnerIndex >= len(spinnerFrames) {
+					spinnerIndex = 0
+				}
+				screen.Events() <- eventSpinnerUpdate{currentFrame}
+
+			case <-p.readers[p.currentReader].MaybeDone:
+				screen.Events() <- eventMaybeDone{}
 			}
-
-			time.Sleep(200 * time.Millisecond)
-		}
-
-		// Empty our spinner, loading done!
-		screen.Events() <- eventSpinnerUpdate{""}
-	}()
-
-	go func() {
-		// FIXME: At what points should we start / stop checking for maybeDone
-		// events in relation to when we switch files? Maybe in
-		// Pager.firstFile() and friends?
-
-		defer func() {
-			PanicHandler("StartPaging()/maybeDone", recover(), debug.Stack())
-		}()
-
-		for range p.readers[p.currentReader].MaybeDone {
-			screen.Events() <- eventMaybeDone{}
 		}
 	}()
 
