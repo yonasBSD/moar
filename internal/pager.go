@@ -44,8 +44,9 @@ type eventMaybeDone struct{}
 
 // Pager is the main on-screen pager
 type Pager struct {
-	readers       []*reader.ReaderImpl
-	currentReader int
+	readers        []*reader.ReaderImpl
+	currentReader  int
+	readerSwitched chan struct{}
 
 	// A view of the current reader, possibly filtered
 	filteringReader FilteringReader
@@ -381,7 +382,15 @@ func (p *Pager) StartPaging(screen twin.Screen, chromaStyle *chroma.Style, chrom
 
 		for {
 			select {
-			FIXME: Listen for reader-changed events
+			case <-p.readerSwitched:
+				// A different reader is now active
+
+				// Tell the viewer to replace the view
+				screen.Events() <- eventMoreLinesAvailable{}
+
+				// Look in the right place for more lines
+				throttledMoreLines = p.readers[p.currentReader].MoreLinesAdded
+				reenable = nil
 
 			case <-throttledMoreLines:
 				screen.Events() <- eventMoreLinesAvailable{}
