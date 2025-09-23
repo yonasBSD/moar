@@ -407,10 +407,7 @@ func (p *Pager) StartPaging(screen twin.Screen, chromaStyle *chroma.Style, chrom
 
 				p.readerLock.Lock()
 				r = p.readers[p.currentReader]
-				p.filteringReader = FilteringReader{
-					BackingReader: r,
-					FilterPattern: &p.filterPattern,
-				}
+				p.filteringReader.SetBackingReader(r)
 				p.readerLock.Unlock()
 
 				// Look in the right place for more lines

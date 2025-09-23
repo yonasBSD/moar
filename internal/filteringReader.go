@@ -205,3 +205,21 @@ func (f *FilteringReader) createStatus(lastLine *linemetadata.Index) string {
 	return fmt.Sprintf("Filtered: %s%s %s  %d%%",
 		acceptedCountString, baseCountString, lineString, percent)
 }
+
+// SetBackingReader switches the underlying reader while holding the lock and
+// clears all cached state so that subsequent calls will rebuild using the new
+// reader.
+//
+// This avoids data races that would occur if the entire FilteringReader struct
+// (and its mutex) were reassigned concurrently.
+func (f *FilteringReader) SetBackingReader(r reader.Reader) {
+	f.lock.Lock()
+	defer f.lock.Unlock()
+
+	f.BackingReader = r
+
+	// Invalidate caches so they will be rebuilt lazily on next access.
+	f.filteredLinesCache = nil
+	f.unfilteredLineCountWhenCaching = -1
+	f.filterPatternWhenCaching = nil
+}
