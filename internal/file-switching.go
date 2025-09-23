@@ -1,32 +1,52 @@
 package internal
 
+import (
+	log "github.com/sirupsen/logrus"
+)
+
 func (p *Pager) previousFile() {
+	p.readerLock.Lock()
+	defer p.readerLock.Unlock()
+
 	newIndex := p.currentReader - 1
 	if newIndex < 0 {
 		newIndex = 0
 	}
 	p.currentReader = newIndex
-	p.readerSwitched <- struct{}{}
+	log.Tracef("Switched to previous file, index %d", p.currentReader)
+
+	select {
+	case p.readerSwitched <- struct{}{}:
+	default:
+	}
 }
 
 func (p *Pager) nextFile() {
+	p.readerLock.Lock()
+	defer p.readerLock.Unlock()
+
 	newIndex := p.currentReader + 1
 	if newIndex >= len(p.readers) {
 		newIndex = len(p.readers) - 1
 	}
 	p.currentReader = newIndex
-	p.readerSwitched <- struct{}{}
+	log.Tracef("Switched to next file, index %d", p.currentReader)
+
+	select {
+	case p.readerSwitched <- struct{}{}:
+	default:
+	}
 }
 
 func (p *Pager) firstFile() {
+	p.readerLock.Lock()
+	defer p.readerLock.Unlock()
+
 	p.currentReader = 0
-	p.readerSwitched <- struct{}{}
+	log.Tracef("Switched to first file, index %d", p.currentReader)
+
+	select {
+	case p.readerSwitched <- struct{}{}:
+	default:
+	}
 }
-
-FIXME: There are race conditions that need fixing. Also:
-
-- Kolla om less håller reda på nuvarande-radnummer per fil
-- Om vi har flera readers, visa i statusraden vilken som är aktiv ("[3/5]"?)
-- Uppdatera README?
-- Uppdatera --help
-- Uppdatera mansidan

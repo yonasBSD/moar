@@ -5,6 +5,7 @@ import (
 	"math"
 	"regexp"
 	"runtime/debug"
+	"sync"
 	"time"
 
 	"github.com/alecthomas/chroma/v2"
@@ -44,8 +45,10 @@ type eventMaybeDone struct{}
 
 // Pager is the main on-screen pager
 type Pager struct {
-	readers        []*reader.ReaderImpl
-	currentReader  int
+	readers       []*reader.ReaderImpl // Immutable since startup, no locking needed
+	currentReader int                  // Index into the readers slice
+	readerLock    sync.Mutex           // Protects currentReader
+
 	readerSwitched chan struct{}
 
 	// A view of the current reader, possibly filtered
@@ -197,6 +200,7 @@ func NewPager(readers ...*reader.ReaderImpl) *Pager {
 	pager := Pager{
 		readers:          readers,
 		currentReader:    0,
+		readerSwitched:   make(chan struct{}, 1),
 		quit:             false,
 		ShowLineNumbers:  true,
 		ShowStatusBar:    true,
@@ -325,11 +329,15 @@ func (p *Pager) handleScrolledDown() {
 // Except for setting TargetLine, this method also syncs with the reader so that
 // the reader knows how many lines it needs to fetch.
 func (p *Pager) setTargetLine(targetLine *linemetadata.Index) {
+	p.readerLock.Lock()
+	r := p.readers[p.currentReader]
+	p.readerLock.Unlock()
+
 	log.Trace("Pager: Setting target line to ", targetLine, "...")
 	p.TargetLine = targetLine
 	if targetLine == nil {
 		// No target, just do your thing
-		p.readers[p.currentReader].SetPauseAfterLines(reader.DEFAULT_PAUSE_AFTER_LINES)
+		r.SetPauseAfterLines(reader.DEFAULT_PAUSE_AFTER_LINES)
 		return
 	}
 
@@ -343,7 +351,7 @@ func (p *Pager) setTargetLine(targetLine *linemetadata.Index) {
 	if targetValue < reader.DEFAULT_PAUSE_AFTER_LINES {
 		targetValue = reader.DEFAULT_PAUSE_AFTER_LINES
 	}
-	p.readers[p.currentReader].SetPauseAfterLines(targetValue)
+	r.SetPauseAfterLines(targetValue)
 }
 
 // StartPaging brings up the pager on screen
@@ -351,8 +359,12 @@ func (p *Pager) StartPaging(screen twin.Screen, chromaStyle *chroma.Style, chrom
 	log.Info("Pager starting")
 
 	defer func() {
-		if p.readers[p.currentReader].Err != nil {
-			log.Warnf("Reader reported an error: %s", p.readers[p.currentReader].Err.Error())
+		p.readerLock.Lock()
+		r := p.readers[p.currentReader]
+		p.readerLock.Unlock()
+
+		if r.Err != nil {
+			log.Warnf("Reader reported an error: %s", r.Err.Error())
 		}
 	}()
 
@@ -377,10 +389,17 @@ func (p *Pager) StartPaging(screen twin.Screen, chromaStyle *chroma.Style, chrom
 		spinnerTicker := time.NewTicker(200 * time.Millisecond)
 
 		// Support throttling of more-lines-available reads, see below
+		p.readerLock.Lock()
 		throttledMoreLines := p.readers[p.currentReader].MoreLinesAdded
+		p.readerLock.Unlock()
+
 		var reenable <-chan time.Time
 
 		for {
+			p.readerLock.Lock()
+			r := p.readers[p.currentReader]
+			p.readerLock.Unlock()
+
 			select {
 			case <-p.readerSwitched:
 				// A different reader is now active
@@ -389,7 +408,7 @@ func (p *Pager) StartPaging(screen twin.Screen, chromaStyle *chroma.Style, chrom
 				screen.Events() <- eventMoreLinesAvailable{}
 
 				// Look in the right place for more lines
-				throttledMoreLines = p.readers[p.currentReader].MoreLinesAdded
+				throttledMoreLines = r.MoreLinesAdded
 				reenable = nil
 
 			case <-throttledMoreLines:
@@ -402,12 +421,12 @@ func (p *Pager) StartPaging(screen twin.Screen, chromaStyle *chroma.Style, chrom
 
 			case <-reenable:
 				// Re-enable channel
-				throttledMoreLines = p.readers[p.currentReader].MoreLinesAdded
+				throttledMoreLines = r.MoreLinesAdded
 				reenable = nil
 
 			case <-spinnerTicker.C:
 				currentFrame := spinnerFrames[spinnerIndex]
-				if p.readers[p.currentReader].Done.Load() {
+				if r.Done.Load() {
 					currentFrame = ""
 				}
 				spinnerIndex++
@@ -416,7 +435,7 @@ func (p *Pager) StartPaging(screen twin.Screen, chromaStyle *chroma.Style, chrom
 				}
 				screen.Events() <- eventSpinnerUpdate{currentFrame}
 
-			case <-p.readers[p.currentReader].MaybeDone:
+			case <-r.MaybeDone:
 				screen.Events() <- eventMaybeDone{}
 			}
 		}
@@ -431,6 +450,10 @@ func (p *Pager) StartPaging(screen twin.Screen, chromaStyle *chroma.Style, chrom
 			// Nothing more to process for now, redraw the screen
 			p.redraw(spinner)
 
+			p.readerLock.Lock()
+			r := p.readers[p.currentReader]
+			p.readerLock.Unlock()
+
 			// Ref:
 			// https://github.com/gwsw/less/blob/ff8869aa0485f7188d942723c9fb50afb1892e62/command.c#L828-L831
 			//
@@ -439,9 +462,9 @@ func (p *Pager) StartPaging(screen twin.Screen, chromaStyle *chroma.Style, chrom
 			//
 			// Also, we only do this if we have exactly one reader, because
 			// that's what less does.
-			if len(p.readers) == 1 && p.QuitIfOneScreen && !p.isShowingHelp && p.readers[p.currentReader].Done.Load() && p.readers[p.currentReader].HighlightingDone.Load() {
+			if len(p.readers) == 1 && p.QuitIfOneScreen && !p.isShowingHelp && r.Done.Load() && r.HighlightingDone.Load() {
 				width, height := p.screen.Size()
-				if fitsOnOneScreen(p.readers[p.currentReader], width, height-p.DeInitFalseMargin) {
+				if fitsOnOneScreen(r, width, height-p.DeInitFalseMargin) {
 					// Ref:
 					// https://github.com/walles/moor/issues/113#issuecomment-1368294132
 					p.ShowLineNumbers = false // Requires a redraw to take effect, see below
