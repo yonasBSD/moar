@@ -403,13 +403,22 @@ func (p *Pager) StartPaging(screen twin.Screen, chromaStyle *chroma.Style, chrom
 			select {
 			case <-p.readerSwitched:
 				// A different reader is now active
+				p.filterPattern = nil
 
-				// Tell the viewer to replace the view
-				screen.Events() <- eventMoreLinesAvailable{}
+				p.readerLock.Lock()
+				r = p.readers[p.currentReader]
+				p.filteringReader = FilteringReader{
+					BackingReader: r,
+					FilterPattern: &p.filterPattern,
+				}
+				p.readerLock.Unlock()
 
 				// Look in the right place for more lines
 				throttledMoreLines = r.MoreLinesAdded
 				reenable = nil
+
+				// Tell the viewer to replace the view
+				screen.Events() <- eventMoreLinesAvailable{}
 
 			case <-throttledMoreLines:
 				screen.Events() <- eventMoreLinesAvailable{}
