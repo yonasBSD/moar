@@ -1,11 +1,8 @@
 package internal
 
 import (
-	"time"
-
 	"github.com/alecthomas/chroma/v2"
 	"github.com/alecthomas/chroma/v2/styles"
-	log "github.com/sirupsen/logrus"
 	"github.com/walles/moor/v2/twin"
 )
 
@@ -27,37 +24,17 @@ const defaultLightTheme = "github"
 
 // Checks the terminal background color and returns either a dark or light theme
 func GetStyleForScreen(screen twin.Screen) chroma.Style {
-	var style = *styles.Get(defaultDarkTheme)
-
-	t0 := time.Now()
-	screen.RequestTerminalBackgroundColor()
-	select {
-	case event := <-screen.Events():
-		// Event received, let's see if it's the one we want
-		switch ev := event.(type) {
-
-		case twin.EventTerminalBackgroundDetected:
-			log.Debug("Terminal background color detected as ", ev.Color, " after ", time.Since(t0))
-
-			distanceToBlack := ev.Color.Distance(twin.NewColor24Bit(0, 0, 0))
-			distanceToWhite := ev.Color.Distance(twin.NewColor24Bit(255, 255, 255))
-			if distanceToBlack < distanceToWhite {
-				style = *styles.Get(defaultDarkTheme)
-			} else {
-				style = *styles.Get(defaultLightTheme)
-			}
-
-		default:
-			log.Debugf("Expected terminal background color event but got %#v after %s, putting back and giving up", ev, time.Since(t0))
-			screen.Events() <- event
-		}
-
-	// The worst number I have measured was around 15ms, in GNOME Terminal
-	// running inside of VirtualBox. 3x that should be enough for everyone
-	// (TM).
-	case <-time.After(50 * time.Millisecond):
-		log.Debug("Terminal background color still not detected after ", time.Since(t0), ", giving up")
+	bgColor := screen.TerminalBackground()
+	if bgColor == nil {
+		// Fall back to dark theme if we can't detect the background color
+		return *styles.Get(defaultDarkTheme)
 	}
 
-	return style
+	distanceToBlack := bgColor.Distance(twin.NewColor24Bit(0, 0, 0))
+	distanceToWhite := bgColor.Distance(twin.NewColor24Bit(255, 255, 255))
+	if distanceToBlack < distanceToWhite {
+		return *styles.Get(defaultDarkTheme)
+	} else {
+		return *styles.Get(defaultLightTheme)
+	}
 }

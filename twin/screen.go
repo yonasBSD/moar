@@ -8,6 +8,8 @@ import (
 	"runtime/debug"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 	"unicode/utf8"
 
 	log "github.com/sirupsen/logrus"
@@ -64,14 +66,6 @@ type Screen interface {
 	// If the position is outside of the screen, the cursor will be hidden.
 	ShowCursorAt(column int, row int)
 
-	// RequestTerminalBackgroundColor() asks the terminal to report its
-	// background color.
-	//
-	// If your terminal supports background color queries and it responds, the
-	// result will be reported as an EventTerminalBackgroundDetected on the
-	// Events() channel.
-	RequestTerminalBackgroundColor()
-
 	// Can be nil if not (yet?) detected
 	TerminalBackground() *Color
 
@@ -90,7 +84,9 @@ type UnixScreen struct {
 	widthAccessFromSizeOnly  int // Access from Size() method only
 	heightAccessFromSizeOnly int // Access from Size() method only
 
-	terminalBackground *Color
+	terminalBackground      *Color
+	terminalBackgroundQuery *time.Time // When we asked for the terminal background color
+	terminalBackgroundLock  sync.Mutex
 
 	cells [][]StyledRune
 
@@ -194,6 +190,17 @@ func NewScreenWithMouseModeAndColorCount(mouseMode MouseMode, terminalColorCount
 
 		screen.mainLoop()
 	}()
+
+	// Request terminal background color. The response will be handled in
+	// screen.mainLoop() that we just started ^.
+	//
+	// Ref:
+	// https://stackoverflow.com/questions/2507337/how-to-determine-a-terminals-background-color
+	fmt.Println("\x1b]11;?\x07")
+	screen.terminalBackgroundLock.Lock()
+	defer screen.terminalBackgroundLock.Unlock()
+	now := time.Now()
+	screen.terminalBackgroundQuery = &now
 
 	return &screen, nil
 }
@@ -455,16 +462,11 @@ func (screen *UnixScreen) mainLoop() {
 			bg, valid := parseTerminalBgColorResponse(incompleteResponse)
 			if valid {
 				if bg != nil {
+					screen.terminalBackgroundLock.Lock()
 					screen.terminalBackground = bg
+					log.Debug("Terminal background color detected as ", bg, " after ", time.Since(*screen.terminalBackgroundQuery))
+					screen.terminalBackgroundLock.Unlock()
 
-					select {
-					case screen.events <- EventTerminalBackgroundDetected{Color: *bg}:
-						// Yay
-					default:
-						// If this happens, consider increasing the channel size in
-						// NewScreen()
-						log.Debugf("Unable to post terminal background color detected event")
-					}
 					expectingTerminalBackgroundColor = false
 					incompleteResponse = nil
 				}
@@ -639,13 +641,48 @@ func (screen *UnixScreen) Size() (width int, height int) {
 	return screen.widthAccessFromSizeOnly, screen.heightAccessFromSizeOnly
 }
 
-func (screen *UnixScreen) RequestTerminalBackgroundColor() {
-	// Ref:
-	// https://stackoverflow.com/questions/2507337/how-to-determine-a-terminals-background-color
-	fmt.Println("\x1b]11;?\x07")
-}
-
+// The first time you call this, there may be a delay of up to 50ms while we
+// wait for the terminal to respond to our background color query. After that,
+// it will be instant.
+//
+// Returns the terminal background color if known, nil otherwise.
 func (screen *UnixScreen) TerminalBackground() *Color {
+	const maxWait = 50 * time.Millisecond
+
+	// Is it already known?
+	screen.terminalBackgroundLock.Lock()
+	if screen.terminalBackground != nil || time.Since(*screen.terminalBackgroundQuery) > maxWait {
+		// Either we know the color or we gave up waiting for it. Return it!
+		background := screen.terminalBackground
+		screen.terminalBackgroundLock.Unlock()
+		return background
+	}
+	screen.terminalBackgroundLock.Unlock()
+
+	// Wait at most 50ms in total for the background to be detected
+	screen.terminalBackgroundLock.Lock()
+	start := screen.terminalBackgroundQuery
+	screen.terminalBackgroundLock.Unlock()
+
+	for time.Since(*start) < maxWait {
+		screen.terminalBackgroundLock.Lock()
+		if screen.terminalBackground != nil {
+			// There it is!
+			background := screen.terminalBackground
+			screen.terminalBackgroundLock.Unlock()
+			return background
+		}
+
+		// Unlock so the other goroutine can set it
+		screen.terminalBackgroundLock.Unlock()
+
+		// It's not more urgent than this
+		time.Sleep(5 * time.Millisecond)
+	}
+
+	// The wait is over, return whatever we have
+	screen.terminalBackgroundLock.Lock()
+	defer screen.terminalBackgroundLock.Unlock()
 	return screen.terminalBackground
 }
 
@@ -675,6 +712,11 @@ func parseTerminalBgColorResponse(responseBytes []byte) (*Color, bool) {
 	}
 	response = strings.TrimSuffix(response, suffix1)
 	response = strings.TrimSuffix(response, suffix2)
+
+	if len(response) != 14 {
+		log.Info("Got unexpected length bg color response from terminal: <", humanizeLowASCII(string(responseBytes)), ">")
+		return nil, false // Invalid
+	}
 
 	// response is now "RRRR/GGGG/BBBB"
 	red, err := strconv.ParseUint(response[0:4], 16, 16)
