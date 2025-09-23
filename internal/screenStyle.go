@@ -8,19 +8,14 @@ import (
 
 const defaultDarkTheme = "native"
 
-// I decided on a light theme by doing this:
+// I decided on a light theme by doing this, looking for black text on white,
+// and no background colors on strings (they look like error markers):
 //
-//	rg -i 'Background.*bg:#ffffff' | rg -v '[^:]#[^0]' | sort | cut -d: -f1 | xargs rg --files-without-match '"LiteralString".*bg:' |  xargs wc -l | sort -r | grep -v tango
+//	rg -i 'Background.*bg:#ffffff' | rg -v '[^:]#[^0]' | sort | cut -d: -f1 | xargs rg --files-without-match '"LiteralString".*bg:' |  xargs wc -l | sort -r
 //
-// Then I picked github because it has a bright background, a dark foreground
-// and it looks OK on a white terminal with an unmodified color palette.
-//
-// This used to be tango, which I mostly like, but it comes with underlined
-// whitespace which looks weird when we change the background color of lines
-// with search hits:
-//
-// https://github.com/alecthomas/chroma/blob/daa879b239442af21c3e62517a9da8f11d1c15b2/styles/tango.xml#L71
-const defaultLightTheme = "github"
+// Then I picked tango because it has a bright background, a dark foreground and
+// it looks OK on a white terminal with an unmodified color palette.
+const defaultLightTheme = "tango"
 
 // Checks the terminal background color and returns either a dark or light theme
 func GetStyleForScreen(screen twin.Screen) chroma.Style {
