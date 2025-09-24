@@ -194,8 +194,12 @@ Available at https://github.com/walles/moor/.
 
 // NewPager creates a new Pager with default settings
 func NewPager(readers ...*reader.ReaderImpl) *Pager {
+	if len(readers) == 0 {
+		panic("NewPager() needs at least one reader")
+	}
+
 	var name string
-	if len(readers) == 0 || readers[0] == nil || readers[0].Name == nil || len(*readers[0].Name) == 0 {
+	if readers[0] == nil || readers[0].Name == nil || len(*readers[0].Name) == 0 {
 		name = "Pager"
 	} else {
 		name = "Pager " + *readers[0].Name
