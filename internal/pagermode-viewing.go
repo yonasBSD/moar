@@ -1,6 +1,8 @@
 package internal
 
 import (
+	"fmt"
+
 	log "github.com/sirupsen/logrus"
 	"github.com/walles/moor/v2/twin"
 )
@@ -10,16 +12,26 @@ type PagerModeViewing struct {
 }
 
 func (m PagerModeViewing) drawFooter(statusText string, spinner string) {
-	helpText := "Press 'ESC' / 'q' to exit, '/' to search, '&' to filter, 'h' for help"
+	prefix := ""
+	colonHelp := ""
+	m.pager.readerLock.Lock()
+	if len(m.pager.readers) > 1 {
+		prefix = fmt.Sprintf("[%d/%d] ", m.pager.currentReader+1, len(m.pager.readers))
+		colonHelp = "':' to switch, "
+	}
+	m.pager.readerLock.Unlock()
+	helpText := "Press 'ESC' / 'q' to exit, " + colonHelp + "'/' to search, '&' to filter, 'h' for help"
+
 	if m.pager.isShowingHelp {
 		helpText = "Press 'ESC' / 'q' to exit help, '/' to search"
+		prefix = ""
 	}
 
 	if m.pager.ShowStatusBar {
 		if len(spinner) > 0 {
 			spinner = "  " + spinner
 		}
-		m.pager.setFooter(statusText + spinner + "  " + helpText)
+		m.pager.setFooter(prefix + statusText + spinner + "  " + helpText)
 	}
 }
 
@@ -165,6 +177,10 @@ func (m PagerModeViewing) onRune(char rune) {
 
 	case 'g':
 		p.mode = &PagerModeGotoLine{pager: p}
+		p.setTargetLine(nil)
+
+	case ':':
+		p.mode = &PagerModeColonCommand{pager: p}
 		p.setTargetLine(nil)
 
 	// Should match the pagermode-not-found.go previous-search-hit bindings

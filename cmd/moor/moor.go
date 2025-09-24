@@ -442,15 +442,6 @@ func pagerFromArgs(
 		flagSetArgs = []string{}
 	}
 
-	if len(flagSetArgs) > 1 && !stdoutIsRedirected {
-		fmt.Fprintln(os.Stderr, "ERROR: Expected exactly one filename, or data piped from stdin")
-		fmt.Fprintln(os.Stderr)
-		printCommandline(os.Stderr)
-		fmt.Fprintln(os.Stderr, "For help, run: \x1b[1mmoor --help\x1b[m")
-
-		os.Exit(1)
-	}
-
 	// Check that any input files can be opened
 	for _, inputFilename := range flagSetArgs {
 		// Need to check before newScreen() below, otherwise the screen
@@ -462,7 +453,7 @@ func pagerFromArgs(
 	}
 
 	if len(flagSetArgs) == 0 && !stdinIsRedirected {
-		fmt.Fprintln(os.Stderr, "ERROR: Filename or input pipe required (\"moor file.txt\")")
+		fmt.Fprintln(os.Stderr, "ERROR: Filename(s) or input pipe required (\"moor file.txt\")")
 		fmt.Fprintln(os.Stderr)
 		printCommandline(os.Stderr)
 		fmt.Fprintln(os.Stderr, "For help, run: \x1b[1mmoor --help\x1b[m")
@@ -484,15 +475,6 @@ func pagerFromArgs(
 		panic("Invariant broken: stdout is not a terminal")
 	}
 
-	if len(flagSetArgs) > 1 {
-		fmt.Fprintln(os.Stderr, "ERROR: Expected exactly one filename, or data piped from stdin")
-		fmt.Fprintln(os.Stderr)
-		printCommandline(os.Stderr)
-		fmt.Fprintln(os.Stderr, "For help, run: \x1b[1mmoor --help\x1b[m")
-
-		os.Exit(1)
-	}
-
 	formatter := formatters.TTY256
 	switch *terminalColorsCount {
 	case twin.ColorCount8:
@@ -503,28 +485,30 @@ func pagerFromArgs(
 		formatter = formatters.TTY16m
 	}
 
-	var readerImpl *reader.ReaderImpl
+	var readerImpls []*reader.ReaderImpl
 	shouldFormat := *reFormat
 	if stdinIsRedirected {
 		// Display input pipe contents
-		readerImpl, err = reader.NewFromStream("", os.Stdin, formatter, reader.ReaderOptions{Lexer: *lexer, ShouldFormat: shouldFormat})
+		readerImpl, err := reader.NewFromStream("", os.Stdin, formatter, reader.ReaderOptions{Lexer: *lexer, ShouldFormat: shouldFormat})
+
+		// If the user is doing "sudo something | moor" we can't show the UI until
+		// we start getting data, otherwise we'll mess up sudo's password prompt.
+		readerImpl.AwaitFirstByte()
+
 		if err != nil {
 			return nil, nil, chroma.Style{}, nil, logsRequested, err
 		}
+		readerImpls = append(readerImpls, readerImpl)
 	} else {
-		// Display the input file contents
-		if len(flagSetArgs) != 1 {
-			panic("Invariant broken: Expected exactly one filename")
-		}
-		readerImpl, err = reader.NewFromFilename(flagSetArgs[0], formatter, reader.ReaderOptions{Lexer: *lexer, ShouldFormat: shouldFormat})
-		if err != nil {
-			return nil, nil, chroma.Style{}, nil, logsRequested, err
+		// Display the input file(s) contents
+		for _, inputFilename := range flagSetArgs {
+			readerImpl, err := reader.NewFromFilename(inputFilename, formatter, reader.ReaderOptions{Lexer: *lexer, ShouldFormat: shouldFormat})
+			if err != nil {
+				return nil, nil, chroma.Style{}, nil, logsRequested, err
+			}
+			readerImpls = append(readerImpls, readerImpl)
 		}
 	}
-
-	// If the user is doing "sudo something | moor" we can't show the UI until
-	// we start getting data, otherwise we'll mess up sudo's password prompt.
-	readerImpl.AwaitFirstByte()
 
 	// We got the first byte, this means sudo is done (if it was used) and we
 	// can set up the UI.
@@ -533,7 +517,9 @@ func pagerFromArgs(
 		// Ref: https://github.com/walles/moor/issues/149
 		log.Info("Failed to set up screen for paging, pumping to stdout instead: ", err)
 
-		readerImpl.PumpToStdout()
+		for _, readerImpl := range readerImpls {
+			readerImpl.PumpToStdout()
+		}
 
 		return nil, nil, chroma.Style{}, nil, logsRequested, nil
 	}
@@ -545,9 +531,11 @@ func pagerFromArgs(
 		style = **styleOption
 	}
 	log.Debug("Using style <", style.Name, ">")
-	readerImpl.SetStyleForHighlighting(style)
+	for _, readerImpl := range readerImpls {
+		readerImpl.SetStyleForHighlighting(style)
+	}
 
-	pager := internal.NewPager(readerImpl)
+	pager := internal.NewPager(readerImpls...)
 	pager.WrapLongLines = *wrap
 	pager.ShowLineNumbers = !*noLineNumbers
 	pager.ShowStatusBar = !*noStatusBar

@@ -1,6 +1,6 @@
 module github.com/walles/moor/v2
 
-go 1.22
+go 1.23
 
 toolchain go1.24.4
 

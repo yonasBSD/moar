@@ -4,7 +4,7 @@ moor \- the nice pager
 .SH SYNOPSIS
 .B moor
 [options]
-.IR file
+.IR file \&.\|.\|.
 .br
 .B "moor \-\-help"
 .br
@@ -18,11 +18,15 @@ is a pager much like
 More information and screenshots: https://github.com/walles/moor#readme
 .PP
 Inside of \fBmoor\fR, press
-.B ?
+.B h
 to access the built-in help.
 .PP
 Input is expected to be (optionally compressed) UTF-8 text.
 Invalid / unprintable characters are by default rendered as '?'.
+.PP
+If you have opened multiple files, press
+.B :
+to switch between them.
 .SH OPTIONS
 Multiple-choice options all have the default value listed first.
 .PP

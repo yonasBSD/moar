@@ -129,13 +129,14 @@ func printUsage(flagSet *flag.FlagSet, colors twin.ColorCount) {
 	// FIXME: Log if any printouts fail?
 
 	fmt.Println(heading("Usage", colors))
-	fmt.Println("  moor [options] <file>")
+	fmt.Println("  moor [options] <file>...")
 	fmt.Println("  ... | moor")
 	fmt.Println("  moor < file")
 	fmt.Println()
 	fmt.Println("Shows file contents. Compressed files will be transparently decompressed.")
 	fmt.Println("Input is expected to be (possibly compressed) UTF-8 encoded text. Invalid /")
-	fmt.Println("non-printable characters are by default rendered as '?'.")
+	fmt.Println("non-printable characters are by default rendered as '?'. Press : inside of")
+	fmt.Println("moor to switch between files.")
 	fmt.Println()
 	fmt.Println("More information + source code:")
 	fmt.Println("  <https://github.com/walles/moor#readme>")

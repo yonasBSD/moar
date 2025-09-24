@@ -5,6 +5,7 @@ import (
 	"math"
 	"regexp"
 	"runtime/debug"
+	"sync"
 	"time"
 
 	"github.com/alecthomas/chroma/v2"
@@ -44,8 +45,15 @@ type eventMaybeDone struct{}
 
 // Pager is the main on-screen pager
 type Pager struct {
-	reader              *reader.ReaderImpl
-	filteringReader     FilteringReader
+	readers       []*reader.ReaderImpl // Immutable since startup, no locking needed
+	currentReader int                  // Index into the readers slice
+	readerLock    sync.Mutex           // Protects currentReader
+
+	readerSwitched chan struct{}
+
+	// A view of the current reader, possibly filtered
+	filteringReader FilteringReader
+
 	screen              twin.Screen
 	quit                bool
 	scrollPosition      scrollPosition
@@ -147,6 +155,10 @@ Moving around
 * Half page 'u'p / 'd'own, or CTRL-u / CTRL-d
 * RETURN moves down one line
 
+Switching files (if you opened multiple files)
+----------------------------------------------
+* Press ':' to enter file switching mode
+
 Filtering
 ---------
 Type '&' to start filtering, then type your filter expression.
@@ -181,16 +193,22 @@ Available at https://github.com/walles/moor/.
 `)
 
 // NewPager creates a new Pager with default settings
-func NewPager(r *reader.ReaderImpl) *Pager {
+func NewPager(readers ...*reader.ReaderImpl) *Pager {
+	if len(readers) == 0 {
+		panic("NewPager() needs at least one reader")
+	}
+
 	var name string
-	if r == nil || r.Name == nil || len(*r.Name) == 0 {
+	if readers[0] == nil || readers[0].Name == nil || len(*readers[0].Name) == 0 {
 		name = "Pager"
 	} else {
-		name = "Pager " + *r.Name
+		name = "Pager " + *readers[0].Name
 	}
 
 	pager := Pager{
-		reader:           r,
+		readers:          readers,
+		currentReader:    0,
+		readerSwitched:   make(chan struct{}, 1),
 		quit:             false,
 		ShowLineNumbers:  true,
 		ShowStatusBar:    true,
@@ -203,7 +221,7 @@ func NewPager(r *reader.ReaderImpl) *Pager {
 
 	pager.mode = PagerModeViewing{pager: &pager}
 	pager.filteringReader = FilteringReader{
-		BackingReader: r,
+		BackingReader: readers[0], // Always start with the first reader
 		FilterPattern: &pager.filterPattern,
 	}
 
@@ -319,11 +337,15 @@ func (p *Pager) handleScrolledDown() {
 // Except for setting TargetLine, this method also syncs with the reader so that
 // the reader knows how many lines it needs to fetch.
 func (p *Pager) setTargetLine(targetLine *linemetadata.Index) {
+	p.readerLock.Lock()
+	r := p.readers[p.currentReader]
+	p.readerLock.Unlock()
+
 	log.Trace("Pager: Setting target line to ", targetLine, "...")
 	p.TargetLine = targetLine
 	if targetLine == nil {
 		// No target, just do your thing
-		p.reader.SetPauseAfterLines(reader.DEFAULT_PAUSE_AFTER_LINES)
+		r.SetPauseAfterLines(reader.DEFAULT_PAUSE_AFTER_LINES)
 		return
 	}
 
@@ -337,7 +359,7 @@ func (p *Pager) setTargetLine(targetLine *linemetadata.Index) {
 	if targetValue < reader.DEFAULT_PAUSE_AFTER_LINES {
 		targetValue = reader.DEFAULT_PAUSE_AFTER_LINES
 	}
-	p.reader.SetPauseAfterLines(targetValue)
+	r.SetPauseAfterLines(targetValue)
 }
 
 // StartPaging brings up the pager on screen
@@ -345,8 +367,12 @@ func (p *Pager) StartPaging(screen twin.Screen, chromaStyle *chroma.Style, chrom
 	log.Info("Pager starting")
 
 	defer func() {
-		if p.reader.Err != nil {
-			log.Warnf("Reader reported an error: %s", p.reader.Err.Error())
+		p.readerLock.Lock()
+		r := p.readers[p.currentReader]
+		p.readerLock.Unlock()
+
+		if r.Err != nil {
+			log.Warnf("Reader reported an error: %s", r.Err.Error())
 		}
 	}()
 
@@ -363,52 +389,69 @@ func (p *Pager) StartPaging(screen twin.Screen, chromaStyle *chroma.Style, chrom
 
 	go func() {
 		defer func() {
-			PanicHandler("StartPaging()/moreLinesAvailable", recover(), debug.Stack())
+			PanicHandler("StartPaging()/goroutine", recover(), debug.Stack())
 		}()
 
-		for range p.reader.MoreLinesAdded {
-			// Notify the main loop about the new lines so it can show them
-			screen.Events() <- eventMoreLinesAvailable{}
-
-			// Delay updates a bit so that we don't waste time refreshing
-			// the screen too often.
-			//
-			// Note that the delay is *after* reacting, this way single-line
-			// updates are reacted to immediately, and the first output line
-			// read will appear on screen without delay.
-			time.Sleep(200 * time.Millisecond)
-		}
-	}()
-
-	go func() {
-		defer func() {
-			PanicHandler("StartPaging()/spinner", recover(), debug.Stack())
-		}()
-
-		// Spin the spinner as long as contents is still loading
 		spinnerFrames := [...]string{"/.\\", "-o-", "\\O/", "| |"}
 		spinnerIndex := 0
-		for !p.reader.Done.Load() {
-			screen.Events() <- eventSpinnerUpdate{spinnerFrames[spinnerIndex]}
-			spinnerIndex++
-			if spinnerIndex >= len(spinnerFrames) {
-				spinnerIndex = 0
+		spinnerTicker := time.NewTicker(200 * time.Millisecond)
+
+		// Support throttling of more-lines-available reads, see below
+		p.readerLock.Lock()
+		throttledMoreLines := p.readers[p.currentReader].MoreLinesAdded
+		p.readerLock.Unlock()
+
+		var reenable <-chan time.Time
+
+		for {
+			p.readerLock.Lock()
+			r := p.readers[p.currentReader]
+			p.readerLock.Unlock()
+
+			select {
+			case <-p.readerSwitched:
+				// A different reader is now active
+				p.filterPattern = nil
+
+				p.readerLock.Lock()
+				r = p.readers[p.currentReader]
+				p.filteringReader.SetBackingReader(r)
+				p.readerLock.Unlock()
+
+				// Look in the right place for more lines
+				throttledMoreLines = r.MoreLinesAdded
+				reenable = nil
+
+				// Tell the viewer to replace the view
+				screen.Events() <- eventMoreLinesAvailable{}
+
+			case <-throttledMoreLines:
+				screen.Events() <- eventMoreLinesAvailable{}
+
+				// Disable further receives for 200ms. This avoids flooding the
+				// event loop if a lot of lines are added in a short time.
+				throttledMoreLines = nil
+				reenable = time.After(200 * time.Millisecond)
+
+			case <-reenable:
+				// Re-enable channel
+				throttledMoreLines = r.MoreLinesAdded
+				reenable = nil
+
+			case <-spinnerTicker.C:
+				currentFrame := spinnerFrames[spinnerIndex]
+				if r.Done.Load() {
+					currentFrame = ""
+				}
+				spinnerIndex++
+				if spinnerIndex >= len(spinnerFrames) {
+					spinnerIndex = 0
+				}
+				screen.Events() <- eventSpinnerUpdate{currentFrame}
+
+			case <-r.MaybeDone:
+				screen.Events() <- eventMaybeDone{}
 			}
-
-			time.Sleep(200 * time.Millisecond)
-		}
-
-		// Empty our spinner, loading done!
-		screen.Events() <- eventSpinnerUpdate{""}
-	}()
-
-	go func() {
-		defer func() {
-			PanicHandler("StartPaging()/maybeDone", recover(), debug.Stack())
-		}()
-
-		for range p.reader.MaybeDone {
-			screen.Events() <- eventMaybeDone{}
 		}
 	}()
 
@@ -421,14 +464,21 @@ func (p *Pager) StartPaging(screen twin.Screen, chromaStyle *chroma.Style, chrom
 			// Nothing more to process for now, redraw the screen
 			p.redraw(spinner)
 
+			p.readerLock.Lock()
+			r := p.readers[p.currentReader]
+			p.readerLock.Unlock()
+
 			// Ref:
 			// https://github.com/gwsw/less/blob/ff8869aa0485f7188d942723c9fb50afb1892e62/command.c#L828-L831
 			//
-			// Note that we do the slow (atomic) checks only if the fast ones (no locking
-			// required) passed
-			if p.QuitIfOneScreen && !p.isShowingHelp && p.reader.Done.Load() && p.reader.HighlightingDone.Load() {
+			// Note that we do the slow (atomic) checks only if the fast ones
+			// (no locking required) passed.
+			//
+			// Also, we only do this if we have exactly one reader, because
+			// that's what less does.
+			if len(p.readers) == 1 && p.QuitIfOneScreen && !p.isShowingHelp && r.Done.Load() && r.HighlightingDone.Load() {
 				width, height := p.screen.Size()
-				if fitsOnOneScreen(p.reader, width, height-p.DeInitFalseMargin) {
+				if fitsOnOneScreen(r, width, height-p.DeInitFalseMargin) {
 					// Ref:
 					// https://github.com/walles/moor/issues/113#issuecomment-1368294132
 					p.ShowLineNumbers = false // Requires a redraw to take effect, see below
@@ -438,7 +488,7 @@ func (p *Pager) StartPaging(screen twin.Screen, chromaStyle *chroma.Style, chrom
 					// Without this the line numbers setting ^ won't take effect
 					p.redraw(spinner)
 
-					log.Info("Exiting because of --quit-if-one-screen, we fit on one screen and we're done")
+					log.Info("Exiting because of --quit-if-one-screen, everything fit on one screen and we're done")
 
 					break
 				}
