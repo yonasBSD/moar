@@ -155,6 +155,10 @@ Moving around
 * Half page 'u'p / 'd'own, or CTRL-u / CTRL-d
 * RETURN moves down one line
 
+Switching files (if you opened multiple files)
+----------------------------------------------
+* Press ':' to enter file switching mode
+
 Filtering
 ---------
 Type '&' to start filtering, then type your filter expression.
