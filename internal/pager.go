@@ -258,13 +258,42 @@ func (p *Pager) getLineNumberPrefixLength(lineNumber linemetadata.Number) int {
 	return length
 }
 
-// Draw the footer string at the bottom using the status bar style
-func (p *Pager) setFooter(footer string) {
+// Draw the footer string at the bottom using the status bar style.
+//
+// Single quoted parts of the help text will be bolded.
+//
+// footer example value: "file.txt: 123 lines  0%"
+// help example value: "Press 'h' for help, 'q' to quit"
+func (p *Pager) setFooter(footer string, help string) {
 	width, height := p.screen.Size()
 
 	pos := 0
-	for _, token := range footer {
+
+	// File name and percentage, no keyboard shortcut highlighting
+	for _, token := range footer + "  " {
 		pos += p.screen.SetCell(pos, height-1, twin.NewStyledRune(token, statusbarStyle))
+	}
+
+	// Help text, highlight keyboard shortcuts
+	highlightAttr := twin.AttrBold
+	if statusbarStyle.HasAttr(highlightAttr) {
+		highlightAttr = twin.AttrUnderline
+	}
+	if statusbarStyle.HasAttr(highlightAttr) {
+		highlightAttr = twin.AttrReverse
+	}
+	style := statusbarStyle
+	for _, token := range help {
+		if token == '\'' {
+			// Highlight things within single quotes
+			if style == statusbarStyle {
+				style = statusbarStyle.WithAttr(highlightAttr)
+			} else {
+				style = statusbarStyle
+			}
+			continue
+		}
+		pos += p.screen.SetCell(pos, height-1, twin.NewStyledRune(token, style))
 	}
 
 	for pos < width {

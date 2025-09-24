@@ -31,7 +31,7 @@ func (m PagerModeViewing) drawFooter(statusText string, spinner string) {
 		if len(spinner) > 0 {
 			spinner = "  " + spinner
 		}
-		m.pager.setFooter(prefix + statusText + spinner + "  " + helpText)
+		m.pager.setFooter(prefix+statusText+spinner, helpText)
 	}
 }
 
