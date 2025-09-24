@@ -39,6 +39,11 @@ func (m *PagerModeColonCommand) onKey(key twin.KeyCode) {
 func (m *PagerModeColonCommand) onRune(char rune) {
 	p := m.pager
 
+	if char == 'q' {
+		// Back to viewing mode, just like ESC
+		p.mode = PagerModeViewing{pager: p}
+	}
+
 	if char == 'p' {
 		p.mode = PagerModeViewing{pager: p}
 		p.previousFile()
