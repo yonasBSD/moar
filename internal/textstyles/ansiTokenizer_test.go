@@ -264,7 +264,7 @@ func TestHyperlink_escBackslash(t *testing.T) {
 
 	tokens := StyledRunesFromString(twin.StyleDefault, "a\x1b]8;;"+url+"\x1b\\bc\x1b]8;;\x1b\\d", nil).StyledRunes
 
-	assert.DeepEqual(t, tokens, []twin.StyledRune{
+	assert.DeepEqual(t, tokens, []RuneWithMetadata{
 		{Rune: 'a', Style: twin.StyleDefault},
 		{Rune: 'b', Style: twin.StyleDefault.WithHyperlink(&url)},
 		{Rune: 'c', Style: twin.StyleDefault.WithHyperlink(&url)},
@@ -280,7 +280,7 @@ func TestHyperlink_bell(t *testing.T) {
 
 	tokens := StyledRunesFromString(twin.StyleDefault, "a\x1b]8;;"+url+"\x07bc\x1b]8;;\x07d", nil).StyledRunes
 
-	assert.DeepEqual(t, tokens, []twin.StyledRune{
+	assert.DeepEqual(t, tokens, []RuneWithMetadata{
 		{Rune: 'a', Style: twin.StyleDefault},
 		{Rune: 'b', Style: twin.StyleDefault.WithHyperlink(&url)},
 		{Rune: 'c', Style: twin.StyleDefault.WithHyperlink(&url)},
@@ -300,7 +300,7 @@ func TestHyperlink_nonTerminatingEsc(t *testing.T) {
 			// good enough.
 			continue
 		}
-		assert.Equal(t, tokens[i], twin.StyledRune{Rune: rune(complete[i]), Style: twin.StyleDefault},
+		assert.Equal(t, tokens[i], RuneWithMetadata{Rune: rune(complete[i]), Style: twin.StyleDefault},
 			"i=%d, c=%s, tokens=%v", i, string(complete[i]), tokens)
 	}
 }
@@ -319,7 +319,7 @@ func TestHyperlink_incomplete(t *testing.T) {
 					// that's good enough.
 					continue
 				}
-				assert.Equal(t, tokens[i], twin.StyledRune{Rune: rune(complete[i]), Style: twin.StyleDefault})
+				assert.Equal(t, tokens[i], RuneWithMetadata{Rune: rune(complete[i]), Style: twin.StyleDefault})
 			}
 		})
 	}
