@@ -33,7 +33,7 @@ var TabSize = 8
 const BACKSPACE = '\b'
 
 type StyledRunesWithTrailer struct {
-	StyledRunes []twin.StyledRune
+	StyledRunes []RuneWithMetadata
 	Trailer     twin.Style
 }
 

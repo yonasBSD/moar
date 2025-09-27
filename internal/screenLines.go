@@ -18,7 +18,7 @@ type renderedLine struct {
 	// will have a wrapIndex of 1.
 	wrapIndex int
 
-	cells []twin.StyledRune
+	cells []textstyles.RuneWithMetadata
 
 	// Used for rendering clear-to-end-of-line control sequences:
 	// https://en.wikipedia.org/wiki/ANSI_escape_code#EL

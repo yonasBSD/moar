@@ -154,7 +154,7 @@ func parseScrollHint(scrollHint string) (twin.StyledRune, error) {
 	hintAsLine := reader.NewLine(scrollHint)
 	parsedTokens := hintAsLine.HighlightedTokens(twin.StyleDefault, twin.StyleDefault, nil, nil, nil).StyledRunes
 	if len(parsedTokens) == 1 {
-		return parsedTokens[0], nil
+		return parsedTokens[0].ToStyledRune(), nil
 	}
 
 	return twin.StyledRune{}, fmt.Errorf("Expected exactly one (optionally highlighted) character. For example: 'ESC[2m…'")
