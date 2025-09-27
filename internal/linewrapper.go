@@ -93,7 +93,7 @@ func wrapLine(width int, line textstyles.RuneWithMetadataSlice) []textstyles.Run
 
 	screenCellCount := getScreenCellCount(line)
 	if screenCellCount == 0 {
-		return []textstyles.RuneWithMetadataSlice{}
+		return []textstyles.RuneWithMetadataSlice{{}}
 	}
 
 	wrapped := make([]textstyles.RuneWithMetadataSlice, 0, len(line)/width)
