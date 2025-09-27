@@ -257,10 +257,7 @@ func (p *Pager) decorateLine(lineNumberToShow *linemetadata.Number, numberPrefix
 
 	// Prepend a space if we had to cut a rune in half at the start
 	if cutOffRuneToTheLeft {
-		newLine = append([]textstyles.RuneWithMetadata{{
-			Rune:  ' ',
-			Style: p.ScrollLeftHint.Style,
-		}}, newLine...)
+		newLine = append([]textstyles.RuneWithMetadata{{Rune: ' ', Style: p.ScrollLeftHint.Style}}, newLine...)
 	}
 
 	// Add the visible runes
@@ -287,16 +284,13 @@ func (p *Pager) decorateLine(lineNumberToShow *linemetadata.Number, numberPrefix
 			// space...
 			newLine[0] = textstyles.RuneWithMetadata{Rune: ' ', Style: p.ScrollLeftHint.Style}
 			// ...then prepend another space:
-			newLine = append([]textstyles.RuneWithMetadata{{
-				Rune:  ' ',
-				Style: p.ScrollLeftHint.Style,
-			}}, newLine...)
+			newLine = append([]textstyles.RuneWithMetadata{{Rune: ' ', Style: p.ScrollLeftHint.Style}}, newLine...)
 
 			// Prepending ref: https://stackoverflow.com/a/53737602/473672
 		}
 
 		// Set can-scroll-left marker
-		newLine[0] = textstyles.RuneWithMetadata{Rune: p.ScrollLeftHint.Rune, Style: p.ScrollLeftHint.Style}
+		newLine[0] = p.ScrollLeftHint
 	}
 
 	// Add scroll right indicator
@@ -310,7 +304,7 @@ func (p *Pager) decorateLine(lineNumberToShow *linemetadata.Number, numberPrefix
 			newLine = append(newLine, textstyles.RuneWithMetadata{Rune: ' ', Style: p.ScrollRightHint.Style})
 		}
 
-		newLine[len(newLine)-1] = textstyles.RuneWithMetadata{Rune: p.ScrollRightHint.Rune, Style: p.ScrollRightHint.Style}
+		newLine[len(newLine)-1] = p.ScrollRightHint
 	}
 
 	return newLine

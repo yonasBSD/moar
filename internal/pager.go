@@ -88,8 +88,8 @@ type Pager struct {
 	QuitIfOneScreen bool
 
 	// Ref: https://github.com/walles/moor/issues/94
-	ScrollLeftHint  twin.StyledRune
-	ScrollRightHint twin.StyledRune
+	ScrollLeftHint  textstyles.RuneWithMetadata
+	ScrollRightHint textstyles.RuneWithMetadata
 
 	SideScrollAmount int // Left / right arrow keys scroll amount
 
@@ -217,8 +217,8 @@ func NewPager(readers ...*reader.ReaderImpl) *Pager {
 		DeInit:           true,
 		SideScrollAmount: 16,
 		TabSize:          8, // This is what less defaults to
-		ScrollLeftHint:   twin.NewStyledRune('<', twin.StyleDefault.WithAttr(twin.AttrReverse)),
-		ScrollRightHint:  twin.NewStyledRune('>', twin.StyleDefault.WithAttr(twin.AttrReverse)),
+		ScrollLeftHint:   textstyles.RuneWithMetadata{Rune: '<', Style: twin.StyleDefault.WithAttr(twin.AttrReverse)},
+		ScrollRightHint:  textstyles.RuneWithMetadata{Rune: '>', Style: twin.StyleDefault.WithAttr(twin.AttrReverse)},
 		scrollPosition:   newScrollPosition(name),
 	}
 
