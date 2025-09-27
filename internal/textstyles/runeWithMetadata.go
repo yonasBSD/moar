@@ -12,3 +12,7 @@ type RuneWithMetadata struct {
 func (r RuneWithMetadata) ToStyledRune() twin.StyledRune {
 	return twin.NewStyledRune(r.Rune, r.Style)
 }
+
+func (r RuneWithMetadata) Width() int {
+	return r.ToStyledRune().Width()
+}

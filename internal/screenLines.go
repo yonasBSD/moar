@@ -203,9 +203,9 @@ func (p *Pager) renderLine(line *reader.NumberedLine, numberPrefixLength int) []
 //   - Line number, or leading whitespace for wrapped lines
 //   - Scroll left indicator
 //   - Scroll right indicator
-func (p *Pager) decorateLine(lineNumberToShow *linemetadata.Number, numberPrefixLength int, contents []twin.StyledRune) []twin.StyledRune {
+func (p *Pager) decorateLine(lineNumberToShow *linemetadata.Number, numberPrefixLength int, contents []textstyles.RuneWithMetadata) []textstyles.RuneWithMetadata {
 	width, _ := p.screen.Size()
-	newLine := make([]twin.StyledRune, 0, width)
+	newLine := make([]textstyles.RuneWithMetadata, 0, width)
 	newLine = append(newLine, createLinePrefix(lineNumberToShow, numberPrefixLength)...)
 
 	// Find the first and last fully visible runes.
@@ -257,7 +257,10 @@ func (p *Pager) decorateLine(lineNumberToShow *linemetadata.Number, numberPrefix
 
 	// Prepend a space if we had to cut a rune in half at the start
 	if cutOffRuneToTheLeft {
-		newLine = append([]twin.StyledRune{twin.NewStyledRune(' ', p.ScrollLeftHint.Style)}, newLine...)
+		newLine = append([]textstyles.RuneWithMetadata{{
+			Rune:  ' ',
+			Style: p.ScrollLeftHint.Style,
+		}}, newLine...)
 	}
 
 	// Add the visible runes
@@ -267,7 +270,7 @@ func (p *Pager) decorateLine(lineNumberToShow *linemetadata.Number, numberPrefix
 
 	// Append a space if we had to cut a rune in half at the end
 	if cutOffRuneToTheRight {
-		newLine = append(newLine, twin.NewStyledRune(' ', p.ScrollRightHint.Style))
+		newLine = append(newLine, textstyles.RuneWithMetadata{Rune: ' ', Style: p.ScrollRightHint.Style})
 	}
 
 	// Add scroll left indicator
@@ -275,22 +278,25 @@ func (p *Pager) decorateLine(lineNumberToShow *linemetadata.Number, numberPrefix
 	if canScrollLeft && len(contents) > 0 {
 		if len(newLine) == 0 {
 			// Make room for the scroll left indicator
-			newLine = make([]twin.StyledRune, 1)
+			newLine = make([]textstyles.RuneWithMetadata, 1)
 		}
 
 		if newLine[0].Width() > 1 {
 			// Replace the first rune with two spaces so we can replace the
 			// leftmost cell with a scroll left indicator. First, convert to one
 			// space...
-			newLine[0] = twin.NewStyledRune(' ', p.ScrollLeftHint.Style)
+			newLine[0] = textstyles.RuneWithMetadata{Rune: ' ', Style: p.ScrollLeftHint.Style}
 			// ...then prepend another space:
-			newLine = append([]twin.StyledRune{twin.NewStyledRune(' ', p.ScrollLeftHint.Style)}, newLine...)
+			newLine = append([]textstyles.RuneWithMetadata{{
+				Rune:  ' ',
+				Style: p.ScrollLeftHint.Style,
+			}}, newLine...)
 
 			// Prepending ref: https://stackoverflow.com/a/53737602/473672
 		}
 
 		// Set can-scroll-left marker
-		newLine[0] = p.ScrollLeftHint
+		newLine[0] = textstyles.RuneWithMetadata{Rune: p.ScrollLeftHint.Rune, Style: p.ScrollLeftHint.Style}
 	}
 
 	// Add scroll right indicator
@@ -299,12 +305,12 @@ func (p *Pager) decorateLine(lineNumberToShow *linemetadata.Number, numberPrefix
 			// Replace the last rune with two spaces so we can replace the
 			// rightmost cell with a scroll right indicator. First, convert to one
 			// space...
-			newLine[len(newLine)-1] = twin.NewStyledRune(' ', p.ScrollRightHint.Style)
+			newLine[len(newLine)-1] = textstyles.RuneWithMetadata{Rune: ' ', Style: p.ScrollRightHint.Style}
 			// ...then append another space:
-			newLine = append(newLine, twin.NewStyledRune(' ', p.ScrollRightHint.Style))
+			newLine = append(newLine, textstyles.RuneWithMetadata{Rune: ' ', Style: p.ScrollRightHint.Style})
 		}
 
-		newLine[len(newLine)-1] = p.ScrollRightHint
+		newLine[len(newLine)-1] = textstyles.RuneWithMetadata{Rune: p.ScrollRightHint.Rune, Style: p.ScrollRightHint.Style}
 	}
 
 	return newLine
@@ -313,15 +319,15 @@ func (p *Pager) decorateLine(lineNumberToShow *linemetadata.Number, numberPrefix
 // Generate a line number prefix of the given length.
 //
 // Can be empty or all-whitespace depending on parameters.
-func createLinePrefix(lineNumber *linemetadata.Number, numberPrefixLength int) []twin.StyledRune {
+func createLinePrefix(lineNumber *linemetadata.Number, numberPrefixLength int) []textstyles.RuneWithMetadata {
 	if numberPrefixLength == 0 {
-		return []twin.StyledRune{}
+		return []textstyles.RuneWithMetadata{}
 	}
 
-	lineNumberPrefix := make([]twin.StyledRune, 0, numberPrefixLength)
+	lineNumberPrefix := make([]textstyles.RuneWithMetadata, 0, numberPrefixLength)
 	if lineNumber == nil {
 		for len(lineNumberPrefix) < numberPrefixLength {
-			lineNumberPrefix = append(lineNumberPrefix, twin.StyledRune{Rune: ' '})
+			lineNumberPrefix = append(lineNumberPrefix, textstyles.RuneWithMetadata{Rune: ' '})
 		}
 		return lineNumberPrefix
 	}
@@ -338,7 +344,7 @@ func createLinePrefix(lineNumber *linemetadata.Number, numberPrefixLength int) [
 			break
 		}
 
-		lineNumberPrefix = append(lineNumberPrefix, twin.NewStyledRune(digit, lineNumbersStyle))
+		lineNumberPrefix = append(lineNumberPrefix, textstyles.RuneWithMetadata{Rune: digit, Style: lineNumbersStyle})
 	}
 
 	return lineNumberPrefix
