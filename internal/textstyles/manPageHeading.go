@@ -9,12 +9,12 @@ import (
 func manPageHeadingFromString(s string) *StyledRunesWithTrailer {
 	// For great performance, first check the string without allocating any
 	// memory.
-	if !parseManPageHeading(s, func(_ twin.StyledRune) {}) {
+	if !parseManPageHeading(s, func(_ RuneWithMetadata) {}) {
 		return nil
 	}
 
-	cells := make([]twin.StyledRune, 0, len(s)/2)
-	ok := parseManPageHeading(s, func(cell twin.StyledRune) {
+	cells := make([]RuneWithMetadata, 0, len(s)/2)
+	ok := parseManPageHeading(s, func(cell RuneWithMetadata) {
 		cells = append(cells, cell)
 	})
 	if !ok {
@@ -36,7 +36,7 @@ func manPageHeadingFromString(s string) *StyledRunesWithTrailer {
 // A man page heading is all caps. Also, each character is encoded as
 // char+backspace+char, where both chars need to be the same. Whitespace is an
 // exception, they can be not bold.
-func parseManPageHeading(s string, reportStyledRune func(twin.StyledRune)) bool {
+func parseManPageHeading(s string, reportStyledRune func(RuneWithMetadata)) bool {
 	if len(s) < 3 {
 		// We don't want to match empty strings. Also, strings of length 1 and 2
 		// cannot be man page headings since "char+backspace+char" is 3 bytes.
@@ -78,7 +78,7 @@ func parseManPageHeading(s string, reportStyledRune func(twin.StyledRune)) bool 
 
 			if unicode.IsSpace(firstChar) {
 				// Whitespace is an exception, it can be not bold
-				reportStyledRune(twin.StyledRune{Rune: firstChar, Style: ManPageHeading})
+				reportStyledRune(RuneWithMetadata{Rune: firstChar, Style: ManPageHeading})
 
 				// Assume what we got was a new first char
 				firstChar = char
@@ -105,7 +105,7 @@ func parseManPageHeading(s string, reportStyledRune func(twin.StyledRune)) bool 
 				return false
 			}
 
-			reportStyledRune(twin.StyledRune{Rune: char, Style: ManPageHeading})
+			reportStyledRune(RuneWithMetadata{Rune: char, Style: ManPageHeading})
 			state = stateExpectingFirstChar
 
 		default:

@@ -119,7 +119,7 @@ func StyledRunesFromString(plainTextStyle twin.Style, s string, lineIndex *linem
 		return *manPageHeading
 	}
 
-	var cells []twin.StyledRune
+	var cells []RuneWithMetadata
 
 	// Specs: https://en.wikipedia.org/wiki/ANSI_escape_code#3-bit_and_4-bit
 	styleUnprintable := twin.StyleDefault.WithBackground(twin.NewColor16(1)).WithForeground(twin.NewColor16(7))
