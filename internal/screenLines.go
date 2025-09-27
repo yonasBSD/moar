@@ -39,7 +39,7 @@ func (p *Pager) redraw(spinner string) {
 		lastUpdatedScreenLineNumber = screenLineNumber
 		column := 0
 		for _, cell := range row.cells {
-			column += p.screen.SetCell(column, lastUpdatedScreenLineNumber, cell)
+			column += p.screen.SetCell(column, lastUpdatedScreenLineNumber, cell.ToStyledRune())
 		}
 	}
 
@@ -53,7 +53,7 @@ func (p *Pager) redraw(spinner string) {
 	spinnerLine := textstyles.StyledRunesFromString(statusbarStyle, eofSpinner, nil).StyledRunes
 	column := 0
 	for _, cell := range spinnerLine {
-		column += p.screen.SetCell(column, lastUpdatedScreenLineNumber+1, cell)
+		column += p.screen.SetCell(column, lastUpdatedScreenLineNumber+1, cell.ToStyledRune())
 	}
 
 	p.mode.drawFooter(statusText, spinner)
@@ -164,13 +164,13 @@ func (p *Pager) renderLines() ([]renderedLine, string) {
 // indent, and to (optionally) render the line number.
 func (p *Pager) renderLine(line *reader.NumberedLine, numberPrefixLength int) []renderedLine {
 	highlighted := line.HighlightedTokens(plainTextStyle, searchHitStyle, searchHitLineBackground, p.searchPattern)
-	var wrapped [][]twin.StyledRune
+	var wrapped [][]textstyles.RuneWithMetadata
 	if p.WrapLongLines {
 		width, _ := p.screen.Size()
 		wrapped = wrapLine(width-numberPrefixLength, highlighted.StyledRunes)
 	} else {
 		// All on one line
-		wrapped = [][]twin.StyledRune{highlighted.StyledRunes}
+		wrapped = [][]textstyles.RuneWithMetadata{highlighted.StyledRunes}
 	}
 
 	rendered := make([]renderedLine, 0)

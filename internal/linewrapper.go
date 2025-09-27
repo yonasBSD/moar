@@ -3,6 +3,7 @@ package internal
 import (
 	"unicode"
 
+	"github.com/walles/moor/v2/internal/textstyles"
 	"github.com/walles/moor/v2/twin"
 )
 
@@ -86,17 +87,17 @@ func getScreenCellCount(runes []twin.StyledRune) int {
 }
 
 // Wrap one line of text to a maximum width
-func wrapLine(width int, line []twin.StyledRune) [][]twin.StyledRune {
+func wrapLine(width int, line []twin.StyledRune) [][]textstyles.RuneWithMetadata {
 	// Trailing space risks showing up by itself on a line, which would just
 	// look weird.
 	line = twin.TrimSpaceRight(line)
 
 	screenCellCount := getScreenCellCount(line)
 	if screenCellCount == 0 {
-		return [][]twin.StyledRune{{}}
+		return [][]textstyles.RuneWithMetadata{{}}
 	}
 
-	wrapped := make([][]twin.StyledRune, 0, len(line)/width)
+	wrapped := make([][]textstyles.RuneWithMetadata, 0, len(line)/width)
 	for screenCellCount > width {
 		wrapWidth := getWrapCount(line, width)
 		firstPart := line[:wrapWidth]
