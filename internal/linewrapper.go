@@ -4,7 +4,6 @@ import (
 	"unicode"
 
 	"github.com/walles/moor/v2/internal/textstyles"
-	"github.com/walles/moor/v2/twin"
 )
 
 // From: https://www.compart.com/en/unicode/U+00A0
@@ -87,17 +86,17 @@ func getScreenCellCount(runes []textstyles.RuneWithMetadata) int {
 }
 
 // Wrap one line of text to a maximum width
-func wrapLine(width int, line []textstyles.RuneWithMetadata) [][]textstyles.RuneWithMetadata {
+func wrapLine(width int, line textstyles.RuneWithMetadataSlice) []textstyles.RuneWithMetadataSlice {
 	// Trailing space risks showing up by itself on a line, which would just
 	// look weird.
-	line = twin.TrimSpaceRight(line)
+	line = line.WithoutSpaceRight()
 
 	screenCellCount := getScreenCellCount(line)
 	if screenCellCount == 0 {
-		return [][]textstyles.RuneWithMetadata{{}}
+		return []textstyles.RuneWithMetadataSlice{}
 	}
 
-	wrapped := make([][]textstyles.RuneWithMetadata, 0, len(line)/width)
+	wrapped := make([]textstyles.RuneWithMetadataSlice, 0, len(line)/width)
 	for screenCellCount > width {
 		wrapWidth := getWrapCount(line, width)
 		firstPart := line[:wrapWidth]
@@ -105,13 +104,13 @@ func wrapLine(width int, line []textstyles.RuneWithMetadata) [][]textstyles.Rune
 		if !isOnFirstLine {
 			// Leading whitespace on wrapped lines would just look like
 			// indentation, which would be weird for wrapped text.
-			firstPart = twin.TrimSpaceLeft(firstPart)
+			firstPart = firstPart.WithoutSpaceLeft()
 		}
 
-		wrapped = append(wrapped, twin.TrimSpaceRight(firstPart))
+		wrapped = append(wrapped, firstPart.WithoutSpaceRight())
 
 		// These runes still need processing
-		remaining := twin.TrimSpaceLeft(line[wrapWidth:])
+		remaining := line[wrapWidth:].WithoutSpaceLeft()
 
 		// Track how many screen cells are left to handle
 		handledCount := len(line) - len(remaining)
@@ -125,11 +124,11 @@ func wrapLine(width int, line []textstyles.RuneWithMetadata) [][]textstyles.Rune
 	if !isOnFirstLine {
 		// Leading whitespace on wrapped lines would just look like
 		// indentation, which would be weird for wrapped text.
-		line = twin.TrimSpaceLeft(line)
+		line = line.WithoutSpaceLeft()
 	}
 
 	if len(line) > 0 {
-		wrapped = append(wrapped, twin.TrimSpaceRight(line))
+		wrapped = append(wrapped, line.WithoutSpaceRight())
 	}
 
 	return wrapped

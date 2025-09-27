@@ -16,7 +16,7 @@ func tokenize(input string) []textstyles.RuneWithMetadata {
 	return line.HighlightedTokens(twin.StyleDefault, twin.StyleDefault, nil, nil, nil).StyledRunes
 }
 
-func rowsToString(cellLines [][]textstyles.RuneWithMetadata) string {
+func rowsToString(cellLines []textstyles.RuneWithMetadataSlice) string {
 	returnMe := ""
 	for _, cellLine := range cellLines {
 		lineString := ""
@@ -37,7 +37,7 @@ func assertWrap(t *testing.T, input string, widthInScreenCells int, wrappedLines
 	toWrap := tokenize(input)
 	actual := wrapLine(widthInScreenCells, toWrap)
 
-	expected := [][]textstyles.RuneWithMetadata{}
+	expected := []textstyles.RuneWithMetadataSlice{}
 	for _, wrappedLine := range wrappedLines {
 		expected = append(expected, tokenize(wrappedLine))
 	}

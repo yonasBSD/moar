@@ -18,7 +18,7 @@ type renderedLine struct {
 	// will have a wrapIndex of 1.
 	wrapIndex int
 
-	cells []textstyles.RuneWithMetadata
+	cells textstyles.RuneWithMetadataSlice
 
 	// Used for rendering clear-to-end-of-line control sequences:
 	// https://en.wikipedia.org/wiki/ANSI_escape_code#EL
@@ -91,7 +91,7 @@ func (p *Pager) renderLines() ([]renderedLine, string) {
 
 		var onScreenLength int
 		for i := range rendering {
-			trimmedLen := len(twin.TrimSpaceRight(rendering[i].cells))
+			trimmedLen := len(rendering[i].cells.WithoutSpaceRight())
 			if trimmedLen > onScreenLength {
 				onScreenLength = trimmedLen
 			}
@@ -164,13 +164,13 @@ func (p *Pager) renderLines() ([]renderedLine, string) {
 // indent, and to (optionally) render the line number.
 func (p *Pager) renderLine(line *reader.NumberedLine, numberPrefixLength int) []renderedLine {
 	highlighted := line.HighlightedTokens(plainTextStyle, searchHitStyle, searchHitLineBackground, p.searchPattern)
-	var wrapped [][]textstyles.RuneWithMetadata
+	var wrapped []textstyles.RuneWithMetadataSlice
 	if p.WrapLongLines {
 		width, _ := p.screen.Size()
 		wrapped = wrapLine(width-numberPrefixLength, highlighted.StyledRunes)
 	} else {
 		// All on one line
-		wrapped = [][]textstyles.RuneWithMetadata{highlighted.StyledRunes}
+		wrapped = []textstyles.RuneWithMetadataSlice{highlighted.StyledRunes}
 	}
 
 	rendered := make([]renderedLine, 0)
