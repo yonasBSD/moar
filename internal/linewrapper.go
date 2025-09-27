@@ -14,7 +14,7 @@ const NO_BREAK_SPACE = '\xa0'
 
 // Given some text and a maximum width in screen cells, find the best point at
 // which to wrap the text. Return value is in number of runes.
-func getWrapCount(line []twin.StyledRune, maxScreenCellsCount int) int {
+func getWrapCount(line []textstyles.RuneWithMetadata, maxScreenCellsCount int) int {
 	screenCells := 0
 	bestCutPoint := maxScreenCellsCount
 	inLeadingWhitespace := true
@@ -77,7 +77,7 @@ func getWrapCount(line []twin.StyledRune, maxScreenCellsCount int) int {
 }
 
 // How many screen cells wide will this line be?
-func getScreenCellCount(runes []twin.StyledRune) int {
+func getScreenCellCount(runes []textstyles.RuneWithMetadata) int {
 	cellCount := 0
 	for _, rune := range runes {
 		cellCount += rune.Width()
@@ -87,7 +87,7 @@ func getScreenCellCount(runes []twin.StyledRune) int {
 }
 
 // Wrap one line of text to a maximum width
-func wrapLine(width int, line []twin.StyledRune) [][]textstyles.RuneWithMetadata {
+func wrapLine(width int, line []textstyles.RuneWithMetadata) [][]textstyles.RuneWithMetadata {
 	// Trailing space risks showing up by itself on a line, which would just
 	// look weird.
 	line = twin.TrimSpaceRight(line)

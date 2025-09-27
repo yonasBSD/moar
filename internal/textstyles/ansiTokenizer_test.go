@@ -20,7 +20,7 @@ import (
 const samplesDir = "../../sample-files"
 
 // Convert a cells array to a plain string
-func cellsToPlainString(cells []twin.StyledRune) string {
+func cellsToPlainString(cells []RuneWithMetadata) string {
 	returnMe := ""
 	for _, cell := range cells {
 		returnMe += string(cell.Rune)

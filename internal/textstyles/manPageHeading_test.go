@@ -8,7 +8,7 @@ import (
 )
 
 func isManPageHeading(s string) bool {
-	return parseManPageHeading(s, func(_ twin.StyledRune) {})
+	return parseManPageHeading(s, func(_ RuneWithMetadata) {})
 }
 
 func TestIsManPageHeading(t *testing.T) {
