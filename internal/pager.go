@@ -91,7 +91,9 @@ type Pager struct {
 	ScrollLeftHint  twin.StyledRune
 	ScrollRightHint twin.StyledRune
 
-	SideScrollAmount int // Should be positive
+	SideScrollAmount int // Left / right arrow keys scroll amount
+
+	TabSize int // Number of spaces per tab, default 8, should be positive
 
 	// If non-nil, scroll to this line as soon as possible. Set this value to
 	// IndexMax() to follow the end of the input (tail).
@@ -214,6 +216,7 @@ func NewPager(readers ...*reader.ReaderImpl) *Pager {
 		ShowStatusBar:    true,
 		DeInit:           true,
 		SideScrollAmount: 16,
+		TabSize:          8, // This is what less defaults to
 		ScrollLeftHint:   twin.NewStyledRune('<', twin.StyleDefault.WithAttr(twin.AttrReverse)),
 		ScrollRightHint:  twin.NewStyledRune('>', twin.StyleDefault.WithAttr(twin.AttrReverse)),
 		scrollPosition:   newScrollPosition(name),
@@ -406,6 +409,11 @@ func (p *Pager) StartPaging(screen twin.Screen, chromaStyle *chroma.Style, chrom
 	}()
 
 	textstyles.UnprintableStyle = p.UnprintableStyle
+	if p.TabSize > 0 {
+		// "0" = unset, stay at the default. If the tab size is negative, just
+		// ignoring it seems like the right move.
+		textstyles.TabSize = p.TabSize
+	}
 	consumeLessTermcapEnvs(screen.TerminalBackground(), chromaStyle, chromaFormatter)
 	styleUI(screen.TerminalBackground(), chromaStyle, chromaFormatter, p.StatusBarStyle, p.WithTerminalFg)
 

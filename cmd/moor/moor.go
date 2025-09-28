@@ -175,6 +175,21 @@ func parseShiftAmount(shiftAmount string) (uint, error) {
 	return uint(value), nil
 }
 
+func parseTabAmount(tabAmount string) (uint, error) {
+	value, err := strconv.ParseUint(tabAmount, 10, 32)
+	if err != nil {
+		return 0, err
+	}
+
+	if value < 1 {
+		return 0, fmt.Errorf("Tab size must be at least 1")
+	}
+
+	// Let's add an upper bound as well if / when requested
+
+	return uint(value), nil
+}
+
 func parseMouseMode(mouseMode string) (twin.MouseMode, error) {
 	switch mouseMode {
 	case "auto":
@@ -369,6 +384,7 @@ func pagerFromArgs(
 		twin.NewStyledRune('>', twin.StyleDefault.WithAttr(twin.AttrReverse)),
 		"Shown when view can scroll right. One character with optional ANSI highlighting.", parseScrollHint)
 	shift := flagSetFunc(flagSet, "shift", 16, "Horizontal scroll `amount` >=1, defaults to 16", parseShiftAmount)
+	tabSize := flagSetFunc(flagSet, "tab-size", 8, "Number of spaces per tab stop, defaults to 8", parseTabAmount)
 	mouseMode := flagSetFunc(
 		flagSet,
 		"mousemode",
@@ -548,6 +564,7 @@ func pagerFromArgs(
 	pager.ScrollLeftHint = *scrollLeftHint
 	pager.ScrollRightHint = *scrollRightHint
 	pager.SideScrollAmount = int(*shift)
+	pager.TabSize = int(*tabSize)
 
 	pager.TargetLine = targetLine
 	if *follow && pager.TargetLine == nil {

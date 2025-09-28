@@ -99,6 +99,11 @@ func TestBrokenUtf8(t *testing.T) {
 }
 
 func startPaging(t *testing.T, reader *reader.ReaderImpl) *twin.FakeScreen {
+	// 0 means default tab size. Defaults to 8 to be like less.
+	return startPagingWithTabSize(t, 0, reader)
+}
+
+func startPagingWithTabSize(t *testing.T, tabSize int, reader *reader.ReaderImpl) *twin.FakeScreen {
 	err := reader.Wait()
 	if err != nil {
 		t.Fatalf("Failed waiting for reader: %v", err)
@@ -106,6 +111,7 @@ func startPaging(t *testing.T, reader *reader.ReaderImpl) *twin.FakeScreen {
 
 	screen := twin.NewFakeScreen(20, 10)
 	pager := NewPager(reader)
+	pager.TabSize = tabSize
 	pager.ShowLineNumbers = false
 
 	// Tell our Pager to quit immediately
@@ -145,10 +151,10 @@ func startPagingWithTerminalFg(t *testing.T, reader *reader.ReaderImpl, withTerm
 }
 
 // assertIndexOfFirstX verifies the (zero-based) index of the first 'x'
-func assertIndexOfFirstX(t *testing.T, s string, expectedIndex int) {
+func assertIndexOfFirstX(t *testing.T, tabSize int, s string, expectedIndex int) {
 	reader := reader.NewFromTextForTesting("", s)
 
-	contents := startPaging(t, reader).GetRow(0)
+	contents := startPagingWithTabSize(t, tabSize, reader).GetRow(0)
 	for pos, cell := range contents {
 		if cell.Rune != 'x' {
 			continue
@@ -159,8 +165,8 @@ func assertIndexOfFirstX(t *testing.T, s string, expectedIndex int) {
 			return
 		}
 
-		t.Errorf("Expected first 'x' to be at (zero-based) index %d, but was at %d: \"%s\"",
-			expectedIndex, pos, strings.ReplaceAll(s, "\x09", "<TAB>"))
+		t.Errorf("Expected first 'x' with tab size %d to be at (zero-based) index %d, but was at %d: \"%s\"",
+			tabSize, expectedIndex, pos, strings.ReplaceAll(s, "\x09", "<TAB>"))
 		return
 	}
 
@@ -168,22 +174,26 @@ func assertIndexOfFirstX(t *testing.T, s string, expectedIndex int) {
 }
 
 func TestTabHandling(t *testing.T) {
-	assertIndexOfFirstX(t, "x", 0)
+	assertIndexOfFirstX(t, 4, "x", 0)
 
-	assertIndexOfFirstX(t, "\x09x", 4)
-	assertIndexOfFirstX(t, "\x09\x09x", 8)
+	assertIndexOfFirstX(t, 4, "\x09x", 4)
+	assertIndexOfFirstX(t, 4, "\x09\x09x", 8)
 
-	assertIndexOfFirstX(t, "J\x09x", 4)
-	assertIndexOfFirstX(t, "Jo\x09x", 4)
-	assertIndexOfFirstX(t, "Joh\x09x", 4)
-	assertIndexOfFirstX(t, "Joha\x09x", 8)
-	assertIndexOfFirstX(t, "Johan\x09x", 8)
+	assertIndexOfFirstX(t, 4, "J\x09x", 4)
+	assertIndexOfFirstX(t, 4, "Jo\x09x", 4)
+	assertIndexOfFirstX(t, 4, "Joh\x09x", 4)
+	assertIndexOfFirstX(t, 4, "Joha\x09x", 8)
+	assertIndexOfFirstX(t, 4, "Johan\x09x", 8)
 
-	assertIndexOfFirstX(t, "\x09J\x09x", 8)
-	assertIndexOfFirstX(t, "\x09Jo\x09x", 8)
-	assertIndexOfFirstX(t, "\x09Joh\x09x", 8)
-	assertIndexOfFirstX(t, "\x09Joha\x09x", 12)
-	assertIndexOfFirstX(t, "\x09Johan\x09x", 12)
+	assertIndexOfFirstX(t, 4, "\x09J\x09x", 8)
+	assertIndexOfFirstX(t, 4, "\x09Jo\x09x", 8)
+	assertIndexOfFirstX(t, 4, "\x09Joh\x09x", 8)
+	assertIndexOfFirstX(t, 4, "\x09Joha\x09x", 12)
+	assertIndexOfFirstX(t, 4, "\x09Johan\x09x", 12)
+}
+
+func TestTabHandling_TabSize8(t *testing.T) {
+	assertIndexOfFirstX(t, 8, "\x09x", 8)
 }
 
 func TestCodeHighlighting(t *testing.T) {

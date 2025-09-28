@@ -27,7 +27,8 @@ var ManPageBold = twin.StyleDefault.WithAttr(twin.AttrBold)
 var ManPageUnderline = twin.StyleDefault.WithAttr(twin.AttrUnderline)
 var ManPageHeading = twin.StyleDefault.WithAttr(twin.AttrBold)
 
-const _TabSize = 4
+// This is what less (checked 581.2 on macOS) defaults to
+var TabSize = 8
 
 const BACKSPACE = '\b'
 
@@ -72,7 +73,7 @@ func WithoutFormatting(s string, lineIndex *linemetadata.Index) string {
 					stripped.WriteRune(' ')
 					runeCount++
 
-					if runeCount%_TabSize == 0 {
+					if runeCount%TabSize == 0 {
 						// We arrived at the next tab stop
 						break
 					}
@@ -134,7 +135,7 @@ func StyledRunesFromString(plainTextStyle twin.Style, s string, lineIndex *linem
 						Style: style,
 					})
 
-					if (len(cells))%_TabSize == 0 {
+					if (len(cells))%TabSize == 0 {
 						// We arrived at the next tab stop
 						break
 					}
