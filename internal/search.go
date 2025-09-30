@@ -25,8 +25,8 @@ func (p *Pager) scrollToSearchHits() {
 		return
 	}
 
-	firstHitPosition := p.findFirstHit(*lineIndex, nil, false)
-	if firstHitPosition == nil {
+	firstHitIndex := p.findFirstHit(*lineIndex, nil, false)
+	if firstHitIndex == nil {
 		canWrap := (*lineIndex != linemetadata.Index{})
 		if !canWrap {
 			// No match, can't wrap, give up
@@ -34,19 +34,21 @@ func (p *Pager) scrollToSearchHits() {
 		}
 
 		// Try again from the top
-		firstHitPosition = p.findFirstHit(linemetadata.Index{}, lineIndex, false)
+		firstHitIndex = p.findFirstHit(linemetadata.Index{}, lineIndex, false)
 	}
-	if firstHitPosition == nil {
+	if firstHitIndex == nil {
 		// No match, give up
 		return
 	}
+
+	firstHitPosition := NewScrollPositionFromIndex(*firstHitIndex, "scrollToSearchHits")
 
 	if firstHitPosition.isVisible(p) {
 		// Already on-screen, never mind
 		return
 	}
 
-	p.scrollPosition = *firstHitPosition
+	p.scrollPosition = firstHitPosition
 }
 
 // Scroll backwards to the previous search hit, while the user is typing the
@@ -69,8 +71,8 @@ func (p *Pager) scrollToSearchHitsBackwards() {
 		return
 	}
 
-	firstHitPosition := p.findFirstHit(*lineIndex, nil, true)
-	if firstHitPosition == nil {
+	firstHitIndex := p.findFirstHit(*lineIndex, nil, true)
+	if firstHitIndex == nil {
 		lastLine := linemetadata.IndexFromLength(p.Reader().GetLineCount())
 		if lastLine == nil {
 			// In the first part of the search we had some lines to search.
@@ -85,12 +87,14 @@ func (p *Pager) scrollToSearchHitsBackwards() {
 		}
 
 		// Try again from the bottom
-		firstHitPosition = p.findFirstHit(*lastLine, lineIndex, true)
+		firstHitIndex = p.findFirstHit(*lastLine, lineIndex, true)
 	}
-	if firstHitPosition == nil {
+	if firstHitIndex == nil {
 		// No match, give up
 		return
 	}
+
+	firstHitPosition := NewScrollPositionFromIndex(*firstHitIndex, "scrollToSearchHitsBackwards")
 
 	if firstHitPosition.isVisible(p) {
 		// Already on-screen, never mind
@@ -101,18 +105,14 @@ func (p *Pager) scrollToSearchHitsBackwards() {
 	p.scrollPosition = firstHitPosition.PreviousLine(p.visibleHeight() - 1)
 }
 
-// NOTE: When we search, we do that by looping over the *input lines*, not the
-// screen lines. That's why startPosition is a LineNumber rather than a
-// scrollPosition.
+// Search input lines. Not screen lines!
 //
 // The `beforePosition` parameter is exclusive, meaning that line will not be
 // searched.
 //
 // For the actual searching, this method will call _findFirstHit() in parallel
 // on multiple cores, to help large file search performance.
-//
-// FIXME: We should take startPosition.deltaScreenLines into account as well!
-func (p *Pager) findFirstHit(startPosition linemetadata.Index, beforePosition *linemetadata.Index, backwards bool) *scrollPosition {
+func (p *Pager) findFirstHit(startPosition linemetadata.Index, beforePosition *linemetadata.Index, backwards bool) *linemetadata.Index {
 	// If the number of lines to search matches the number of cores (or more),
 	// divide the search into chunks. Otherwise use one chunk.
 	chunkCount := runtime.NumCPU()
@@ -170,11 +170,11 @@ func (p *Pager) findFirstHit(startPosition linemetadata.Index, beforePosition *l
 	}
 
 	// Make a results array, with one result per chunk
-	findings := make([]chan *scrollPosition, chunkCount)
+	findings := make([]chan *linemetadata.Index, chunkCount)
 
 	// Search all chunks in parallel
 	for i, searchStart := range searchStarts {
-		findings[i] = make(chan *scrollPosition)
+		findings[i] = make(chan *linemetadata.Index)
 
 		searchEndIndex := i + 1
 		var chunkBefore *linemetadata.Index
@@ -207,7 +207,7 @@ func (p *Pager) findFirstHit(startPosition linemetadata.Index, beforePosition *l
 }
 
 // NOTE: When we search, we do that by looping over the *input lines*, not the
-// screen lines. That's why startPosition is a LineNumber rather than a
+// screen lines. That's why startPosition is an Index rather than a
 // scrollPosition.
 //
 // The `beforePosition` parameter is exclusive, meaning that line will not be
@@ -217,7 +217,7 @@ func (p *Pager) findFirstHit(startPosition linemetadata.Index, beforePosition *l
 // help large file search performance.
 //
 // FIXME: We should take startPosition.deltaScreenLines into account as well!
-func _findFirstHit(reader reader.Reader, startPosition linemetadata.Index, pattern regexp.Regexp, beforePosition *linemetadata.Index, backwards bool) *scrollPosition {
+func _findFirstHit(reader reader.Reader, startPosition linemetadata.Index, pattern regexp.Regexp, beforePosition *linemetadata.Index, backwards bool) *linemetadata.Index {
 	searchPosition := startPosition
 	for {
 		line := reader.GetLine(searchPosition)
@@ -228,7 +228,7 @@ func _findFirstHit(reader reader.Reader, startPosition linemetadata.Index, patte
 
 		lineText := line.Plain()
 		if pattern.MatchString(lineText) {
-			return scrollPositionFromIndex("findFirstHit", searchPosition)
+			return &searchPosition
 		}
 
 		if backwards {
@@ -292,12 +292,12 @@ func (p *Pager) scrollToNextSearchHit() {
 		panic(fmt.Sprint("Unknown search mode when finding next: ", p.mode))
 	}
 
-	firstHitPosition := p.findFirstHit(firstSearchPosition, nil, false)
-	if firstHitPosition == nil {
+	firstHitIndex := p.findFirstHit(firstSearchPosition, nil, false)
+	if firstHitIndex == nil {
 		p.mode = PagerModeNotFound{pager: p}
 		return
 	}
-	p.scrollPosition = *firstHitPosition
+	p.scrollPosition = NewScrollPositionFromIndex(*firstHitIndex, "scrollToNextSearchHit")
 
 	// Don't let any search hit scroll out of sight
 	p.setTargetLine(nil)
@@ -331,12 +331,12 @@ func (p *Pager) scrollToPreviousSearchHit() {
 		panic(fmt.Sprint("Unknown search mode when finding previous: ", p.mode))
 	}
 
-	firstHitPosition := p.findFirstHit(firstSearchPosition, nil, true)
-	if firstHitPosition == nil {
+	firstHitIndex := p.findFirstHit(firstSearchPosition, nil, true)
+	if firstHitIndex == nil {
 		p.mode = PagerModeNotFound{pager: p}
 		return
 	}
-	p.scrollPosition = *firstHitPosition
+	p.scrollPosition = *scrollPositionFromIndex("scrollToPreviousSearchHit", *firstHitIndex)
 
 	// Don't let any search hit scroll out of sight
 	p.setTargetLine(nil)

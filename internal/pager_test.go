@@ -359,8 +359,7 @@ func TestFindFirstHitSimple(t *testing.T) {
 	pager.searchPattern = toPattern("AB")
 
 	hit := pager.findFirstHit(linemetadata.Index{}, nil, false)
-	assert.Assert(t, hit.internalDontTouch.lineIndex.IsZero())
-	assert.Equal(t, hit.internalDontTouch.deltaScreenLines, 0)
+	assert.Assert(t, hit.IsZero())
 }
 
 func TestFindFirstHitAnsi(t *testing.T) {
@@ -373,8 +372,7 @@ func TestFindFirstHitAnsi(t *testing.T) {
 	pager.searchPattern = toPattern("AB")
 
 	hit := pager.findFirstHit(linemetadata.Index{}, nil, false)
-	assert.Assert(t, hit.internalDontTouch.lineIndex.IsZero())
-	assert.Equal(t, hit.internalDontTouch.deltaScreenLines, 0)
+	assert.Assert(t, hit.IsZero())
 }
 
 func TestFindFirstHitNoMatch(t *testing.T) {
