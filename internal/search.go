@@ -73,21 +73,21 @@ func (p *Pager) scrollToSearchHitsBackwards() {
 
 	firstHitIndex := p.findFirstHit(*lineIndex, nil, true)
 	if firstHitIndex == nil {
-		lastLine := linemetadata.IndexFromLength(p.Reader().GetLineCount())
-		if lastLine == nil {
+		lastLineIndex := linemetadata.IndexFromLength(p.Reader().GetLineCount())
+		if lastLineIndex == nil {
 			// In the first part of the search we had some lines to search.
 			// Lines should never go away, so this should never happen.
 			log.Error("Wrapped backwards search had no lines to search")
 			return
 		}
-		canWrap := (*lineIndex != *lastLine)
+		canWrap := (*lineIndex != *lastLineIndex)
 		if !canWrap {
 			// No match, can't wrap, give up
 			return
 		}
 
 		// Try again from the bottom
-		firstHitIndex = p.findFirstHit(*lastLine, lineIndex, true)
+		firstHitIndex = p.findFirstHit(*lastLineIndex, lineIndex, true)
 	}
 	if firstHitIndex == nil {
 		// No match, give up
@@ -275,24 +275,24 @@ func (p *Pager) scrollToNextSearchHit() {
 		return
 	}
 
-	var firstSearchPosition linemetadata.Index
+	var firstSearchIndex linemetadata.Index
 
 	switch {
 	case p.isViewing():
 		// Start searching on the first line below the bottom of the screen
 		position := p.getLastVisiblePosition().NextLine(1)
-		firstSearchPosition = *position.lineIndex(p)
+		firstSearchIndex = *position.lineIndex(p)
 
 	case p.isNotFound():
 		// Restart searching from the top
 		p.mode = PagerModeViewing{pager: p}
-		firstSearchPosition = linemetadata.Index{}
+		firstSearchIndex = linemetadata.Index{}
 
 	default:
 		panic(fmt.Sprint("Unknown search mode when finding next: ", p.mode))
 	}
 
-	firstHitIndex := p.findFirstHit(firstSearchPosition, nil, false)
+	firstHitIndex := p.findFirstHit(firstSearchIndex, nil, false)
 	if firstHitIndex == nil {
 		p.mode = PagerModeNotFound{pager: p}
 		return
@@ -314,24 +314,24 @@ func (p *Pager) scrollToPreviousSearchHit() {
 		return
 	}
 
-	var firstSearchPosition linemetadata.Index
+	var firstSearchIndex linemetadata.Index
 
 	switch {
 	case p.isViewing():
 		// Start searching on the first line above the top of the screen
 		position := p.scrollPosition.PreviousLine(1)
-		firstSearchPosition = *position.lineIndex(p)
+		firstSearchIndex = *position.lineIndex(p)
 
 	case p.isNotFound():
 		// Restart searching from the bottom
 		p.mode = PagerModeViewing{pager: p}
-		firstSearchPosition = *linemetadata.IndexFromLength(p.Reader().GetLineCount())
+		firstSearchIndex = *linemetadata.IndexFromLength(p.Reader().GetLineCount())
 
 	default:
 		panic(fmt.Sprint("Unknown search mode when finding previous: ", p.mode))
 	}
 
-	firstHitIndex := p.findFirstHit(firstSearchPosition, nil, true)
+	firstHitIndex := p.findFirstHit(firstSearchIndex, nil, true)
 	if firstHitIndex == nil {
 		p.mode = PagerModeNotFound{pager: p}
 		return
