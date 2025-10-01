@@ -14,7 +14,7 @@ func modeName(pager *Pager) string {
 		return "Viewing"
 	case PagerModeNotFound:
 		return "NotFound"
-	case PagerModeSearch:
+	case *PagerModeSearch:
 		return "Search"
 	case *PagerModeGotoLine:
 		return "GotoLine"
@@ -115,13 +115,10 @@ func Test152(t *testing.T) {
 	pager.screen = screen
 	assert.Equal(t, "Viewing", modeName(pager), "Initial pager state")
 
-	// Search for the first not-visible hit
-	pager.searchString = "abcde"
-	searchMode := PagerModeSearch{pager: pager}
+	searchMode := NewPagerModeSearch(pager, SearchDirectionForward, pager.scrollPosition)
 	pager.mode = searchMode
-
-	// Scroll to the next search hit
-	searchMode.updateSearchPattern()
+	// Search for the first not-visible hit
+	searchMode.inputBox.setText("abcde")
 
 	assert.Equal(t, "Search", modeName(pager))
 	assert.Equal(t, 2, pager.lineIndex().Index())

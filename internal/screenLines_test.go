@@ -267,7 +267,7 @@ func TestShortenedInput(t *testing.T) {
 	pager.scrollToEnd()
 	assert.Equal(t, pager.lineIndex().Index(), 991, "This should have been the effect of calling scrollToEnd()")
 
-	pager.mode = &PagerModeFilter{pager: &pager}
+	pager.mode = NewPagerModeFilter(&pager)
 	pager.filterPattern = regexp.MustCompile("first") // Match only the first line
 
 	rendered, _ := pager.renderScreenLines()
@@ -304,7 +304,7 @@ func TestShortenedInputManyLines(t *testing.T) {
 	pager.scrollToEnd()
 	assert.Equal(t, pager.lineIndex().Index(), 990, "Should be at the last line before filtering")
 
-	pager.mode = &PagerModeFilter{pager: &pager}
+	pager.mode = NewPagerModeFilter(&pager)
 	pager.filterPattern = regexp.MustCompile(`^match`)
 
 	rendered, _ := pager.renderScreenLines()

@@ -154,13 +154,13 @@ func (m PagerModeViewing) onRune(char rune) {
 		p.handleScrolledDown()
 
 	case '/':
-		p.mode = PagerModeSearch{pager: p, direction: SearchDirectionForward, initialScrollPosition: p.scrollPosition}
+		p.mode = NewPagerModeSearch(p, SearchDirectionForward, p.scrollPosition)
 		p.setTargetLine(nil)
 		p.searchString = ""
 		p.searchPattern = nil
 
 	case '?':
-		p.mode = PagerModeSearch{pager: p, direction: SearchDirectionBackward, initialScrollPosition: p.scrollPosition}
+		p.mode = NewPagerModeSearch(p, SearchDirectionBackward, p.scrollPosition)
 		p.setTargetLine(nil)
 		p.searchString = ""
 		p.searchPattern = nil
@@ -169,14 +169,14 @@ func (m PagerModeViewing) onRune(char rune) {
 		if !p.isShowingHelp {
 			// Filtering the help text is not supported. Feel free to work on
 			// that if you feel that's time well spent.
-			p.mode = &PagerModeFilter{pager: p}
+			p.mode = NewPagerModeFilter(p)
 			p.searchString = ""
 			p.searchPattern = nil
 			p.filterPattern = nil
 		}
 
 	case 'g':
-		p.mode = &PagerModeGotoLine{pager: p}
+		p.mode = NewPagerModeGotoLine(p)
 		p.setTargetLine(nil)
 
 	case ':':

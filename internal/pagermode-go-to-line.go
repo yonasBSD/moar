@@ -5,69 +5,78 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"github.com/walles/moor/v2/internal/linemetadata"
-	"github.com/walles/moor/v2/internal/util"
 	"github.com/walles/moor/v2/twin"
 )
 
 type PagerModeGotoLine struct {
-	pager *Pager
+	pager    *Pager
+	inputBox InputBox
+}
 
-	gotoLineString string
+func NewPagerModeGotoLine(p *Pager) *PagerModeGotoLine {
+	m := &PagerModeGotoLine{
+		pager: p,
+		inputBox: InputBox{
+			accept:        INPUTBOX_ACCEPT_POSITIVE_NUMBERS,
+			onTextChanged: nil,
+		},
+	}
+	return m
 }
 
 func (m *PagerModeGotoLine) drawFooter(_ string, _ string) {
-	p := m.pager
+	m.inputBox.draw(m.pager.screen, "Go to line number: ")
+}
 
-	_, height := p.screen.Size()
-
-	formattedGotoLineString := m.gotoLineString
-	if len(formattedGotoLineString) > 0 {
-		goToLineInt, err := strconv.Atoi(formattedGotoLineString)
-		if err != nil {
-			panic("goto line string should always be a number: " + formattedGotoLineString)
-		}
-		formattedGotoLineString = util.FormatInt(goToLineInt)
+func (m *PagerModeGotoLine) updateLineNumber(text string) {
+	newLineNumber, err := strconv.Atoi(text)
+	if err != nil {
+		log.Debugf("Got non-number goto text '%s'", text)
+		return
 	}
-
-	pos := 0
-	for _, token := range "Go to line number: " + formattedGotoLineString {
-		pos += p.screen.SetCell(pos, height-1, twin.NewStyledRune(token, twin.StyleDefault))
+	if newLineNumber < 1 {
+		log.Debugf("Got non-positive goto line number: %d", newLineNumber)
+		return
 	}
-
-	// Add a cursor
-	p.screen.SetCell(pos, height-1, twin.NewStyledRune(' ', twin.StyleDefault.WithAttr(twin.AttrReverse)))
+	targetIndex := linemetadata.IndexFromOneBased(newLineNumber)
+	m.pager.scrollPosition = NewScrollPositionFromIndex(
+		targetIndex,
+		"onGotoLineKey",
+	)
+	m.pager.setTargetLine(&targetIndex)
 }
 
 func (m *PagerModeGotoLine) onKey(key twin.KeyCode) {
-	p := m.pager
-
 	switch key {
 	case twin.KeyEnter:
-		newLineNumber, err := strconv.Atoi(m.gotoLineString)
-		if err == nil {
-			targetIndex := linemetadata.IndexFromOneBased(newLineNumber)
-			p.scrollPosition = NewScrollPositionFromIndex(
-				targetIndex,
-				"onGotoLineKey",
-			)
-			p.setTargetLine(&targetIndex)
-		}
-		p.mode = PagerModeViewing{pager: p}
+		m.updateLineNumber(m.inputBox.text)
+		m.pager.mode = PagerModeViewing{pager: m.pager}
 
 	case twin.KeyEscape:
-		p.mode = PagerModeViewing{pager: p}
+		m.pager.mode = PagerModeViewing{pager: m.pager}
 
-	case twin.KeyBackspace, twin.KeyDelete:
-		if len(m.gotoLineString) == 0 {
-			return
-		}
+	case twin.KeyHome:
+		m.inputBox.moveCursorHome()
 
-		m.gotoLineString = removeLastChar(m.gotoLineString)
+	case twin.KeyEnd:
+		m.inputBox.moveCursorEnd()
+
+	case twin.KeyLeft:
+		m.inputBox.moveCursorLeft()
+
+	case twin.KeyRight:
+		m.inputBox.moveCursorRight()
+
+	case twin.KeyBackspace:
+		m.inputBox.backspace()
+
+	case twin.KeyDelete:
+		m.inputBox.delete()
 
 	default:
 		log.Tracef("Unhandled goto key event %v, treating as a viewing key event", key)
-		p.mode = PagerModeViewing{pager: p}
-		p.mode.onKey(key)
+		m.pager.mode = PagerModeViewing{pager: m.pager}
+		m.pager.mode.onKey(key)
 	}
 }
 
@@ -86,16 +95,5 @@ func (m *PagerModeGotoLine) onRune(char rune) {
 		return
 	}
 
-	newGotoLineString := m.gotoLineString + string(char)
-	newGotoLineNumber, err := strconv.Atoi(newGotoLineString)
-	if err != nil {
-		log.Debugf("Got non-number goto rune '%s'/0x%08x: %s", string(char), int32(char), err)
-		return
-	}
-	if newGotoLineNumber < 1 {
-		log.Debugf("Got non-positive goto line number: %d", newGotoLineNumber)
-		return
-	}
-
-	m.gotoLineString = newGotoLineString
+	m.inputBox.insertRune(char)
 }
