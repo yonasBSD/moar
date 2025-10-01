@@ -27,8 +27,8 @@ func (p *Pager) scrollToSearchHits() {
 
 	firstHitIndex := p.findFirstHit(*lineIndex, nil, false)
 	if firstHitIndex == nil {
-		canWrap := (*lineIndex != linemetadata.Index{})
-		if !canWrap {
+		alreadyAtTheTop := (*lineIndex == linemetadata.Index{})
+		if alreadyAtTheTop {
 			// No match, can't wrap, give up
 			return
 		}
