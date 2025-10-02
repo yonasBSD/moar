@@ -121,7 +121,7 @@ func (b *InputBox) insertRune(char rune) bool {
 	b.text = string(newRunes)
 	b.cursorPos++
 
-	// finally lets tell someone that the text has changed
+	// finally let's tell someone that the text has changed
 	if b.onTextChanged != nil {
 		b.onTextChanged(b.text)
 	}
