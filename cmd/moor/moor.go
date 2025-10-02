@@ -205,9 +205,27 @@ func parseMouseMode(mouseMode string) (twin.MouseMode, error) {
 
 func pumpToStdout(inputFilenames ...string) error {
 	if len(inputFilenames) > 0 {
+		stdinDone := false
+
 		// If we get both redirected stdin and an input filenames, should only
 		// copy the files and ignore stdin, because that's how less works.
 		for _, inputFilename := range inputFilenames {
+			if inputFilename == "-" && !term.IsTerminal(int(os.Stdin.Fd())) {
+				// "-" with redirected stdin means "read from stdin"
+				if stdinDone {
+					// stdin already drained, don't do it again
+					continue
+				}
+
+				_, err := io.Copy(os.Stdout, os.Stdin)
+				if err != nil {
+					return fmt.Errorf("Failed to copy stdin to stdout: %w", err)
+				}
+
+				stdinDone = true
+				continue
+			}
+
 			inputFile, _, err := reader.ZOpen(inputFilename)
 			if err != nil {
 				return fmt.Errorf("Failed to open %s: %w", inputFilename, err)
@@ -451,15 +469,20 @@ func pagerFromArgs(
 	})
 
 	flagSetArgs := flagSet.Args()
-	if stdinIsRedirected && len(flagSetArgs) == 1 && flagSetArgs[0] == "-" {
-		// "-" is special, if we're getting data from stdin we should just ignore it
+	if stdinIsRedirected && len(flagSetArgs) == 0 {
+		// "-" is special if stdin is redirected, means "read from stdin"
 		//
 		// Ref: https://github.com/walles/moor/issues/162
-		flagSetArgs = []string{}
+		flagSetArgs = []string{"-"}
 	}
 
 	// Check that any input files can be opened
 	for _, inputFilename := range flagSetArgs {
+		if stdinIsRedirected && inputFilename == "-" {
+			// stdin can be opened
+			continue
+		}
+
 		// Need to check before newScreen() below, otherwise the screen
 		// will be cleared before we print the "No such file" error.
 		err := reader.TryOpen(inputFilename)
@@ -503,27 +526,38 @@ func pagerFromArgs(
 
 	var readerImpls []*reader.ReaderImpl
 	shouldFormat := *reFormat
-	if stdinIsRedirected {
-		// Display input pipe contents
-		readerImpl, err := reader.NewFromStream("", os.Stdin, formatter, reader.ReaderOptions{Lexer: *lexer, ShouldFormat: shouldFormat})
+	readerOptions := reader.ReaderOptions{Lexer: *lexer, ShouldFormat: shouldFormat}
 
-		// If the user is doing "sudo something | moor" we can't show the UI until
-		// we start getting data, otherwise we'll mess up sudo's password prompt.
-		readerImpl.AwaitFirstByte()
+	// Display the input file(s) contents
+	stdinDone := false
+	for _, inputFilename := range flagSetArgs {
+		var readerImpl *reader.ReaderImpl
+		var err error
+
+		if stdinIsRedirected && inputFilename == "-" {
+			if stdinDone {
+				// stdin already drained, don't do it again
+				continue
+			}
+
+			readerImpl, err = reader.NewFromStream("<stdin>", os.Stdin, formatter, readerOptions)
+			if err != nil {
+				return nil, nil, chroma.Style{}, nil, logsRequested, err
+			}
+
+			// If the user is doing "sudo something | moor" we can't show the UI until
+			// we start getting data, otherwise we'll mess up sudo's password prompt.
+			readerImpl.AwaitFirstByte()
+
+			stdinDone = true
+		} else {
+			readerImpl, err = reader.NewFromFilename(inputFilename, formatter, readerOptions)
+		}
 
 		if err != nil {
 			return nil, nil, chroma.Style{}, nil, logsRequested, err
 		}
 		readerImpls = append(readerImpls, readerImpl)
-	} else {
-		// Display the input file(s) contents
-		for _, inputFilename := range flagSetArgs {
-			readerImpl, err := reader.NewFromFilename(inputFilename, formatter, reader.ReaderOptions{Lexer: *lexer, ShouldFormat: shouldFormat})
-			if err != nil {
-				return nil, nil, chroma.Style{}, nil, logsRequested, err
-			}
-			readerImpls = append(readerImpls, readerImpl)
-		}
 	}
 
 	// We got the first byte, this means sudo is done (if it was used) and we
