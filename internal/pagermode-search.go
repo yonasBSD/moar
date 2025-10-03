@@ -3,7 +3,6 @@ package internal
 import (
 	"regexp"
 	"unicode"
-	"unicode/utf8"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/walles/moor/v2/twin"
@@ -20,32 +19,35 @@ type PagerModeSearch struct {
 	pager                 *Pager
 	initialScrollPosition scrollPosition // Pager position before search started
 	direction             SearchDirection
+	inputBox              *InputBox
+}
+
+func NewPagerModeSearch(p *Pager, direction SearchDirection, initialScrollPosition scrollPosition) *PagerModeSearch {
+	m := &PagerModeSearch{
+		pager:                 p,
+		initialScrollPosition: initialScrollPosition,
+		direction:             direction,
+	}
+	m.inputBox = &InputBox{
+		accept: INPUTBOX_ACCEPT_ALL,
+		onTextChanged: func(text string) {
+			m.updateSearchPattern(text)
+		},
+	}
+	return m
 }
 
 func (m PagerModeSearch) drawFooter(_ string, _ string) {
-	width, height := m.pager.screen.Size()
-
 	prompt := "Search: "
 	if m.direction == SearchDirectionBackward {
 		prompt = "Search backwards: "
 	}
-
-	pos := 0
-	for _, token := range prompt + m.pager.searchString {
-		pos += m.pager.screen.SetCell(pos, height-1, twin.NewStyledRune(token, twin.StyleDefault))
-	}
-
-	// Add a cursor
-	pos += m.pager.screen.SetCell(pos, height-1, twin.NewStyledRune(' ', twin.StyleDefault.WithAttr(twin.AttrReverse)))
-
-	// Clear the rest of the line
-	for pos < width {
-		pos += m.pager.screen.SetCell(pos, height-1, twin.NewStyledRune(' ', twin.StyleDefault))
-	}
+	m.inputBox.draw(m.pager.screen, prompt)
 }
 
-func (m *PagerModeSearch) updateSearchPattern() {
-	m.pager.searchPattern = toPattern(m.pager.searchString)
+func (m *PagerModeSearch) updateSearchPattern(text string) {
+	m.pager.searchString = text
+	m.pager.searchPattern = toPattern(text)
 
 	switch m.direction {
 	case SearchDirectionBackward:
@@ -97,15 +99,6 @@ func toPattern(compileMe string) *regexp.Regexp {
 	panic(err)
 }
 
-// From: https://stackoverflow.com/a/57005674/473672
-func removeLastChar(s string) string {
-	r, size := utf8.DecodeLastRuneInString(s)
-	if r == utf8.RuneError && (size == 0 || size == 1) {
-		size = 0
-	}
-	return s[:len(s)-size]
-}
-
 func (m PagerModeSearch) onKey(key twin.KeyCode) {
 	switch key {
 	case twin.KeyEnter:
@@ -115,17 +108,27 @@ func (m PagerModeSearch) onKey(key twin.KeyCode) {
 		m.pager.mode = PagerModeViewing{pager: m.pager}
 		m.pager.scrollPosition = m.initialScrollPosition
 
-	case twin.KeyBackspace, twin.KeyDelete:
-		if len(m.pager.searchString) == 0 {
-			return
-		}
-
-		m.pager.searchString = removeLastChar(m.pager.searchString)
-		m.updateSearchPattern()
-
 	case twin.KeyUp, twin.KeyDown, twin.KeyPgUp, twin.KeyPgDown:
 		m.pager.mode = PagerModeViewing{pager: m.pager}
 		m.pager.mode.onKey(key)
+
+	case twin.KeyHome:
+		m.inputBox.moveCursorHome()
+
+	case twin.KeyEnd:
+		m.inputBox.moveCursorEnd()
+
+	case twin.KeyLeft:
+		m.inputBox.moveCursorLeft()
+
+	case twin.KeyRight:
+		m.inputBox.moveCursorRight()
+
+	case twin.KeyBackspace:
+		m.inputBox.backspace()
+
+	case twin.KeyDelete:
+		m.inputBox.delete()
 
 	default:
 		log.Debugf("Unhandled search key event %v", key)
@@ -133,16 +136,5 @@ func (m PagerModeSearch) onKey(key twin.KeyCode) {
 }
 
 func (m PagerModeSearch) onRune(char rune) {
-	if char == '\x08' {
-		// Backspace
-		if len(m.pager.searchString) == 0 {
-			return
-		}
-
-		m.pager.searchString = removeLastChar(m.pager.searchString)
-	} else {
-		m.pager.searchString = m.pager.searchString + string(char)
-	}
-
-	m.updateSearchPattern()
+	m.inputBox.insertRune(char)
 }

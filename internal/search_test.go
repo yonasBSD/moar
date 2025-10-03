@@ -14,7 +14,7 @@ func modeName(pager *Pager) string {
 		return "Viewing"
 	case PagerModeNotFound:
 		return "NotFound"
-	case PagerModeSearch:
+	case *PagerModeSearch:
 		return "Search"
 	case *PagerModeGotoLine:
 		return "GotoLine"
@@ -106,6 +106,15 @@ func TestScrollToNextSearchHit_WrapAfterFound(t *testing.T) {
 	assert.Equal(t, 4, pager.lineIndex().Index())
 }
 
+// setText sets the text of the inputBox and triggers the onTextChanged callback.
+func (b *InputBox) setText(text string) {
+	b.text = text
+	b.moveCursorEnd()
+	if b.onTextChanged != nil {
+		b.onTextChanged(b.text)
+	}
+}
+
 // Ref: https://github.com/walles/moor/issues/152
 func Test152(t *testing.T) {
 	// Show a pager on a five lines terminal
@@ -115,13 +124,10 @@ func Test152(t *testing.T) {
 	pager.screen = screen
 	assert.Equal(t, "Viewing", modeName(pager), "Initial pager state")
 
-	// Search for the first not-visible hit
-	pager.searchString = "abcde"
-	searchMode := PagerModeSearch{pager: pager}
+	searchMode := NewPagerModeSearch(pager, SearchDirectionForward, pager.scrollPosition)
 	pager.mode = searchMode
-
-	// Scroll to the next search hit
-	searchMode.updateSearchPattern()
+	// Search for the first not-visible hit
+	searchMode.inputBox.setText("abcde")
 
 	assert.Equal(t, "Search", modeName(pager))
 	assert.Equal(t, 2, pager.lineIndex().Index())

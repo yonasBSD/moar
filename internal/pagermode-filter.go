@@ -6,27 +6,31 @@ import (
 )
 
 type PagerModeFilter struct {
-	pager        *Pager
-	filterString string
+	pager    *Pager
+	inputBox *InputBox
+}
+
+func NewPagerModeFilter(p *Pager) *PagerModeFilter {
+	m := &PagerModeFilter{
+		pager: p,
+	}
+	m.inputBox = &InputBox{
+		accept: INPUTBOX_ACCEPT_ALL,
+		onTextChanged: func(text string) {
+			m.updateFilterPattern(text)
+		},
+	}
+	return m
 }
 
 func (m PagerModeFilter) drawFooter(_ string, _ string) {
-	width, height := m.pager.screen.Size()
+	m.inputBox.draw(m.pager.screen, "Filter: ")
+}
 
-	prompt := "Filter: "
-
-	pos := 0
-	for _, token := range prompt + m.filterString {
-		pos += m.pager.screen.SetCell(pos, height-1, twin.NewStyledRune(token, twin.StyleDefault))
-	}
-
-	// Add a cursor
-	pos += m.pager.screen.SetCell(pos, height-1, twin.NewStyledRune(' ', twin.StyleDefault.WithAttr(twin.AttrReverse)))
-
-	// Clear the rest of the line
-	for pos < width {
-		pos += m.pager.screen.SetCell(pos, height-1, twin.NewStyledRune(' ', twin.StyleDefault))
-	}
+func (m *PagerModeFilter) updateFilterPattern(text string) {
+	m.pager.filterPattern = toPattern(text)
+	m.pager.searchString = text
+	m.pager.searchPattern = toPattern(text)
 }
 
 func (m *PagerModeFilter) onKey(key twin.KeyCode) {
@@ -40,21 +44,27 @@ func (m *PagerModeFilter) onKey(key twin.KeyCode) {
 		m.pager.searchString = ""
 		m.pager.searchPattern = nil
 
-	case twin.KeyBackspace, twin.KeyDelete:
-		if len(m.filterString) == 0 {
-			return
-		}
-
-		m.filterString = removeLastChar(m.filterString)
-		m.pager.filterPattern = toPattern(m.filterString)
-		m.pager.searchString = m.filterString
-		m.pager.searchPattern = toPattern(m.filterString)
-
-	case twin.KeyUp, twin.KeyDown, twin.KeyRight, twin.KeyLeft, twin.KeyPgUp, twin.KeyPgDown, twin.KeyHome, twin.KeyEnd:
+	case twin.KeyUp, twin.KeyDown, twin.KeyPgUp, twin.KeyPgDown:
 		viewing := PagerModeViewing{pager: m.pager}
-
-		// Scroll up / down
 		viewing.onKey(key)
+
+	case twin.KeyHome:
+		m.inputBox.moveCursorHome()
+
+	case twin.KeyEnd:
+		m.inputBox.moveCursorEnd()
+
+	case twin.KeyLeft:
+		m.inputBox.moveCursorLeft()
+
+	case twin.KeyRight:
+		m.inputBox.moveCursorRight()
+
+	case twin.KeyBackspace:
+		m.inputBox.backspace()
+
+	case twin.KeyDelete:
+		m.inputBox.delete()
 
 	default:
 		log.Debugf("Unhandled filter key event %v", key)
@@ -62,18 +72,5 @@ func (m *PagerModeFilter) onKey(key twin.KeyCode) {
 }
 
 func (m *PagerModeFilter) onRune(char rune) {
-	if char == '\x08' {
-		// Backspace
-		if len(m.filterString) == 0 {
-			return
-		}
-
-		m.filterString = removeLastChar(m.filterString)
-	} else {
-		m.filterString = m.filterString + string(char)
-	}
-
-	m.pager.filterPattern = toPattern(m.filterString)
-	m.pager.searchString = m.filterString
-	m.pager.searchPattern = toPattern(m.filterString)
+	m.inputBox.insertRune(char)
 }
