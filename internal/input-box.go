@@ -31,15 +31,6 @@ type InputBox struct {
 	onTextChanged InputBoxOnTextChanged
 }
 
-// setText sets the text of the inputBox and triggers the onTextChanged callback.
-func (b *InputBox) setText(text string) {
-	b.text = text
-	b.moveCursorEnd()
-	if b.onTextChanged != nil {
-		b.onTextChanged(b.text)
-	}
-}
-
 // draw renders the input box at the bottom line of the screen, showing a
 // simple prompt and the current text with a reverse attribute cursor.
 func (b *InputBox) draw(screen twin.Screen, prompt string) {
