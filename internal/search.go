@@ -60,6 +60,12 @@ func (p *Pager) scrollToSearchHits() {
 	}
 }
 
+// Return true if any search hit is currently visible on screen.
+//
+// A search hit is considered visible if the first character of the hit is
+// visible. This means that if the hit is longer than one character, the rest of
+// it may be off-screen to the right. If that happens, the user can scroll right
+// manually to see the rest of the hit.
 func (p *Pager) searchHitIsVisible() bool {
 	// FIXME: Test this with:
 	// - view mode with status bar
@@ -79,7 +85,35 @@ func (p *Pager) searchHitIsVisible() bool {
 	return false
 }
 
+// Scroll right looking for search hits. Return true if we found any.
 func (p *Pager) scrollRightToSearchHits() bool {
+	if p.WrapLongLines {
+		// No horizontal scrolling when wrapping
+		return false
+	}
+
+	// Check how far right we can scroll at most. Factors involved:
+	// - Screen width
+	// - Length of longest visible line
+	screenWidth, _ := p.screen.Size()
+	longestLineLength := p.longestLineLength
+
+	// With a 10 wide screen and a 15 wide line (max index 14), the leftmost
+	// screen column can at most be 5:
+	//
+	// Screen column: 0123456789
+	// Line column:   5678901234
+	maxLeftmostColumn := longestLineLength - screenWidth
+	if p.leftColumnZeroBased >= maxLeftmostColumn {
+		// Can't scroll right
+		return false
+	}
+
+	// FIXME: Scroll right one screen width at a time (taking into account
+	// scroll-left and scroll right markers) and check if we find any search
+	// hits
+	write code here
+
 	panic("Unimplemented")
 }
 
