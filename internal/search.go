@@ -25,6 +25,16 @@ func (p *Pager) scrollToSearchHits() {
 		return
 	}
 
+	if p.searchHitIsVisible() {
+		// Already on-screen
+		return
+	}
+
+	if p.scrollRightToSearchHits() {
+		// Found it to the right, done!
+		return
+	}
+
 	firstHitIndex := p.findFirstHit(*lineIndex, nil, false)
 	if firstHitIndex == nil {
 		alreadyAtTheTop := (*lineIndex == linemetadata.Index{})
@@ -41,14 +51,21 @@ func (p *Pager) scrollToSearchHits() {
 		return
 	}
 
-	firstHitPosition := NewScrollPositionFromIndex(*firstHitIndex, "scrollToSearchHits")
+	// Found a match on some line
+	p.scrollPosition = NewScrollPositionFromIndex(*firstHitIndex, "scrollToSearchHits")
 
-	if firstHitPosition.isVisible(p) {
-		// Already on-screen, never mind
-		return
+	p.leftColumnZeroBased = 0
+	if !p.searchHitIsVisible() {
+		p.scrollRightToSearchHits()
 	}
+}
 
-	p.scrollPosition = firstHitPosition
+func (p *Pager) searchHitIsVisible() bool {
+	panic("Unimplemented")
+}
+
+func (p *Pager) scrollRightToSearchHits() bool {
+	panic("Unimplemented")
 }
 
 // Scroll backwards to the previous search hit, while the user is typing the
