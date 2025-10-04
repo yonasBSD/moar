@@ -38,7 +38,7 @@ func (line *Line) HighlightedTokens(
 	matchRanges := getMatchRanges(&plain, search)
 
 	fromString := textstyles.StyledRunesFromString(plainTextStyle, line.raw, lineIndex)
-	returnRunes := make([]textstyles.RuneWithMetadata, 0, len(fromString.StyledRunes))
+	returnRunes := make([]textstyles.CellWithMetadata, 0, len(fromString.StyledRunes))
 	for _, token := range fromString.StyledRunes {
 		style := token.Style
 		searchHit := matchRanges.InRange(len(returnRunes))
@@ -50,7 +50,7 @@ func (line *Line) HighlightedTokens(
 			style = style.WithBackground(*searchHitLineBackground)
 		}
 
-		returnRunes = append(returnRunes, textstyles.RuneWithMetadata{
+		returnRunes = append(returnRunes, textstyles.CellWithMetadata{
 			Rune:         token.Rune,
 			Style:        style,
 			HasSearchHit: searchHit,

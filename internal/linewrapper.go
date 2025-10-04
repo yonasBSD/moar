@@ -13,7 +13,7 @@ const NO_BREAK_SPACE = '\xa0'
 
 // Given some text and a maximum width in screen cells, find the best point at
 // which to wrap the text. Return value is in number of runes.
-func getWrapCount(line []textstyles.RuneWithMetadata, maxScreenCellsCount int) int {
+func getWrapCount(line []textstyles.CellWithMetadata, maxScreenCellsCount int) int {
 	screenCells := 0
 	bestCutPoint := maxScreenCellsCount
 	inLeadingWhitespace := true
@@ -76,7 +76,7 @@ func getWrapCount(line []textstyles.RuneWithMetadata, maxScreenCellsCount int) i
 }
 
 // How many screen cells wide will this line be?
-func getScreenCellCount(runes []textstyles.RuneWithMetadata) int {
+func getScreenCellCount(runes []textstyles.CellWithMetadata) int {
 	cellCount := 0
 	for _, rune := range runes {
 		cellCount += rune.Width()
@@ -86,17 +86,17 @@ func getScreenCellCount(runes []textstyles.RuneWithMetadata) int {
 }
 
 // Wrap one line of text to a maximum width
-func wrapLine(width int, line textstyles.RuneWithMetadataSlice) []textstyles.RuneWithMetadataSlice {
+func wrapLine(width int, line textstyles.CellWithMetadataSlice) []textstyles.CellWithMetadataSlice {
 	// Trailing space risks showing up by itself on a line, which would just
 	// look weird.
 	line = line.WithoutSpaceRight()
 
 	screenCellCount := getScreenCellCount(line)
 	if screenCellCount == 0 {
-		return []textstyles.RuneWithMetadataSlice{{}}
+		return []textstyles.CellWithMetadataSlice{{}}
 	}
 
-	wrapped := make([]textstyles.RuneWithMetadataSlice, 0, len(line)/width)
+	wrapped := make([]textstyles.CellWithMetadataSlice, 0, len(line)/width)
 	for screenCellCount > width {
 		wrapWidth := getWrapCount(line, width)
 		firstPart := line[:wrapWidth]

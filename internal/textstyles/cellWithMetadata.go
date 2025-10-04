@@ -7,24 +7,24 @@ import (
 )
 
 // Like twin.StyledRune, but with additional metadata
-type RuneWithMetadata struct {
+type CellWithMetadata struct {
 	Rune         rune
 	Style        twin.Style
 	HasSearchHit bool // True if this rune is part of a search hit
 }
 
-func (r RuneWithMetadata) ToStyledRune() twin.StyledRune {
+func (r CellWithMetadata) ToStyledRune() twin.StyledRune {
 	return twin.NewStyledRune(r.Rune, r.Style)
 }
 
-func (r RuneWithMetadata) Width() int {
+func (r CellWithMetadata) Width() int {
 	return r.ToStyledRune().Width()
 }
 
-type RuneWithMetadataSlice []RuneWithMetadata
+type CellWithMetadataSlice []CellWithMetadata
 
 // Returns a copy of the slice with leading whitespace removed
-func (runes RuneWithMetadataSlice) WithoutSpaceLeft() RuneWithMetadataSlice {
+func (runes CellWithMetadataSlice) WithoutSpaceLeft() CellWithMetadataSlice {
 	for i := range runes {
 		cell := runes[i]
 		if !unicode.IsSpace(cell.Rune) {
@@ -35,11 +35,11 @@ func (runes RuneWithMetadataSlice) WithoutSpaceLeft() RuneWithMetadataSlice {
 	}
 
 	// All whitespace, return empty
-	return RuneWithMetadataSlice{}
+	return CellWithMetadataSlice{}
 }
 
 // Returns a copy of the slice with trailing whitespace removed
-func (runes RuneWithMetadataSlice) WithoutSpaceRight() RuneWithMetadataSlice {
+func (runes CellWithMetadataSlice) WithoutSpaceRight() CellWithMetadataSlice {
 	for i := len(runes) - 1; i >= 0; i-- {
 		cell := runes[i]
 		if !unicode.IsSpace(cell.Rune) {
@@ -50,5 +50,5 @@ func (runes RuneWithMetadataSlice) WithoutSpaceRight() RuneWithMetadataSlice {
 	}
 
 	// All whitespace, return empty
-	return RuneWithMetadataSlice{}
+	return CellWithMetadataSlice{}
 }

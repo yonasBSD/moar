@@ -17,7 +17,7 @@ import (
 // NOTE: You can find related tests in pager_test.go.
 
 // Converts a cell row to a plain string and removes trailing whitespace.
-func renderedToString(row []textstyles.RuneWithMetadata) string {
+func renderedToString(row []textstyles.CellWithMetadata) string {
 	rowString := ""
 	for _, cell := range row {
 		rowString += string(cell.Rune)
@@ -126,7 +126,7 @@ func TestSearchHighlight(t *testing.T) {
 		{
 			inputLineIndex: linemetadata.Index{},
 			wrapIndex:      0,
-			cells: []textstyles.RuneWithMetadata{
+			cells: []textstyles.CellWithMetadata{
 				{Rune: 'x', Style: twin.StyleDefault},
 				{Rune: '"', Style: twin.StyleDefault.WithAttr(twin.AttrReverse), HasSearchHit: true},
 				{Rune: '"', Style: twin.StyleDefault.WithAttr(twin.AttrReverse), HasSearchHit: true},

@@ -20,7 +20,7 @@ import (
 const samplesDir = "../../sample-files"
 
 // Convert a cells array to a plain string
-func cellsToPlainString(cells []RuneWithMetadata) string {
+func cellsToPlainString(cells []CellWithMetadata) string {
 	returnMe := ""
 	for _, cell := range cells {
 		returnMe += string(cell.Rune)
@@ -134,41 +134,41 @@ func TestTokenize(t *testing.T) {
 func TestUnderline(t *testing.T) {
 	tokens := StyledRunesFromString(twin.StyleDefault, "a\x1b[4mb\x1b[24mc", nil).StyledRunes
 	assert.Equal(t, len(tokens), 3)
-	assert.Equal(t, tokens[0], RuneWithMetadata{Rune: 'a', Style: twin.StyleDefault})
-	assert.Equal(t, tokens[1], RuneWithMetadata{Rune: 'b', Style: twin.StyleDefault.WithAttr(twin.AttrUnderline)})
-	assert.Equal(t, tokens[2], RuneWithMetadata{Rune: 'c', Style: twin.StyleDefault})
+	assert.Equal(t, tokens[0], CellWithMetadata{Rune: 'a', Style: twin.StyleDefault})
+	assert.Equal(t, tokens[1], CellWithMetadata{Rune: 'b', Style: twin.StyleDefault.WithAttr(twin.AttrUnderline)})
+	assert.Equal(t, tokens[2], CellWithMetadata{Rune: 'c', Style: twin.StyleDefault})
 }
 
 func TestManPages(t *testing.T) {
 	// Bold
 	tokens := StyledRunesFromString(twin.StyleDefault, "ab\bbc", nil).StyledRunes
 	assert.Equal(t, len(tokens), 3)
-	assert.Equal(t, tokens[0], RuneWithMetadata{Rune: 'a', Style: twin.StyleDefault})
-	assert.Equal(t, tokens[1], RuneWithMetadata{Rune: 'b', Style: twin.StyleDefault.WithAttr(twin.AttrBold)})
-	assert.Equal(t, tokens[2], RuneWithMetadata{Rune: 'c', Style: twin.StyleDefault})
+	assert.Equal(t, tokens[0], CellWithMetadata{Rune: 'a', Style: twin.StyleDefault})
+	assert.Equal(t, tokens[1], CellWithMetadata{Rune: 'b', Style: twin.StyleDefault.WithAttr(twin.AttrBold)})
+	assert.Equal(t, tokens[2], CellWithMetadata{Rune: 'c', Style: twin.StyleDefault})
 
 	// Underline
 	tokens = StyledRunesFromString(twin.StyleDefault, "a_\bbc", nil).StyledRunes
 	assert.Equal(t, len(tokens), 3)
-	assert.Equal(t, tokens[0], RuneWithMetadata{Rune: 'a', Style: twin.StyleDefault})
-	assert.Equal(t, tokens[1], RuneWithMetadata{Rune: 'b', Style: twin.StyleDefault.WithAttr(twin.AttrUnderline)})
-	assert.Equal(t, tokens[2], RuneWithMetadata{Rune: 'c', Style: twin.StyleDefault})
+	assert.Equal(t, tokens[0], CellWithMetadata{Rune: 'a', Style: twin.StyleDefault})
+	assert.Equal(t, tokens[1], CellWithMetadata{Rune: 'b', Style: twin.StyleDefault.WithAttr(twin.AttrUnderline)})
+	assert.Equal(t, tokens[2], CellWithMetadata{Rune: 'c', Style: twin.StyleDefault})
 
 	// Bullet point 1, taken from doing this on my macOS system:
 	// env PAGER="hexdump -C" man printf | moor
 	tokens = StyledRunesFromString(twin.StyleDefault, "a+\b+\bo\bob", nil).StyledRunes
 	assert.Equal(t, len(tokens), 3)
-	assert.Equal(t, tokens[0], RuneWithMetadata{Rune: 'a', Style: twin.StyleDefault})
-	assert.Equal(t, tokens[1], RuneWithMetadata{Rune: '•', Style: twin.StyleDefault})
-	assert.Equal(t, tokens[2], RuneWithMetadata{Rune: 'b', Style: twin.StyleDefault})
+	assert.Equal(t, tokens[0], CellWithMetadata{Rune: 'a', Style: twin.StyleDefault})
+	assert.Equal(t, tokens[1], CellWithMetadata{Rune: '•', Style: twin.StyleDefault})
+	assert.Equal(t, tokens[2], CellWithMetadata{Rune: 'b', Style: twin.StyleDefault})
 
 	// Bullet point 2, taken from doing this using the "fish" shell on my macOS system:
 	// man printf | hexdump -C | moor
 	tokens = StyledRunesFromString(twin.StyleDefault, "a+\bob", nil).StyledRunes
 	assert.Equal(t, len(tokens), 3)
-	assert.Equal(t, tokens[0], RuneWithMetadata{Rune: 'a', Style: twin.StyleDefault})
-	assert.Equal(t, tokens[1], RuneWithMetadata{Rune: '•', Style: twin.StyleDefault})
-	assert.Equal(t, tokens[2], RuneWithMetadata{Rune: 'b', Style: twin.StyleDefault})
+	assert.Equal(t, tokens[0], CellWithMetadata{Rune: 'a', Style: twin.StyleDefault})
+	assert.Equal(t, tokens[1], CellWithMetadata{Rune: '•', Style: twin.StyleDefault})
+	assert.Equal(t, tokens[2], CellWithMetadata{Rune: 'b', Style: twin.StyleDefault})
 }
 
 func TestManPageHeadings(t *testing.T) {
@@ -264,7 +264,7 @@ func TestHyperlink_escBackslash(t *testing.T) {
 
 	tokens := StyledRunesFromString(twin.StyleDefault, "a\x1b]8;;"+url+"\x1b\\bc\x1b]8;;\x1b\\d", nil).StyledRunes
 
-	assert.DeepEqual(t, tokens, []RuneWithMetadata{
+	assert.DeepEqual(t, tokens, []CellWithMetadata{
 		{Rune: 'a', Style: twin.StyleDefault},
 		{Rune: 'b', Style: twin.StyleDefault.WithHyperlink(&url)},
 		{Rune: 'c', Style: twin.StyleDefault.WithHyperlink(&url)},
@@ -280,7 +280,7 @@ func TestHyperlink_bell(t *testing.T) {
 
 	tokens := StyledRunesFromString(twin.StyleDefault, "a\x1b]8;;"+url+"\x07bc\x1b]8;;\x07d", nil).StyledRunes
 
-	assert.DeepEqual(t, tokens, []RuneWithMetadata{
+	assert.DeepEqual(t, tokens, []CellWithMetadata{
 		{Rune: 'a', Style: twin.StyleDefault},
 		{Rune: 'b', Style: twin.StyleDefault.WithHyperlink(&url)},
 		{Rune: 'c', Style: twin.StyleDefault.WithHyperlink(&url)},
@@ -300,7 +300,7 @@ func TestHyperlink_nonTerminatingEsc(t *testing.T) {
 			// good enough.
 			continue
 		}
-		assert.Equal(t, tokens[i], RuneWithMetadata{Rune: rune(complete[i]), Style: twin.StyleDefault},
+		assert.Equal(t, tokens[i], CellWithMetadata{Rune: rune(complete[i]), Style: twin.StyleDefault},
 			"i=%d, c=%s, tokens=%v", i, string(complete[i]), tokens)
 	}
 }
@@ -319,7 +319,7 @@ func TestHyperlink_incomplete(t *testing.T) {
 					// that's good enough.
 					continue
 				}
-				assert.Equal(t, tokens[i], RuneWithMetadata{Rune: rune(complete[i]), Style: twin.StyleDefault})
+				assert.Equal(t, tokens[i], CellWithMetadata{Rune: rune(complete[i]), Style: twin.StyleDefault})
 			}
 		})
 	}

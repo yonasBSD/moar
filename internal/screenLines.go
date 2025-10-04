@@ -18,7 +18,7 @@ type renderedLine struct {
 	// will have a wrapIndex of 1.
 	wrapIndex int
 
-	cells textstyles.RuneWithMetadataSlice
+	cells textstyles.CellWithMetadataSlice
 
 	// Used for rendering clear-to-end-of-line control sequences:
 	// https://en.wikipedia.org/wiki/ANSI_escape_code#EL
@@ -148,7 +148,7 @@ func (p *Pager) renderLines() ([]renderedLine, string) {
 		}
 
 		for len(line.cells) < screenWidth {
-			line.cells = append(line.cells, twin.NewStyledRune(' ', line.trailer))
+			line.cells = append(line.cells, textstyles.CellWithMetadata{Rune: ' ', Style: line.trailer})
 		}
 	}
 
@@ -164,13 +164,13 @@ func (p *Pager) renderLines() ([]renderedLine, string) {
 // indent, and to (optionally) render the line number.
 func (p *Pager) renderLine(line *reader.NumberedLine, numberPrefixLength int) []renderedLine {
 	highlighted := line.HighlightedTokens(plainTextStyle, searchHitStyle, searchHitLineBackground, p.searchPattern)
-	var wrapped []textstyles.RuneWithMetadataSlice
+	var wrapped []textstyles.CellWithMetadataSlice
 	if p.WrapLongLines {
 		width, _ := p.screen.Size()
 		wrapped = wrapLine(width-numberPrefixLength, highlighted.StyledRunes)
 	} else {
 		// All on one line
-		wrapped = []textstyles.RuneWithMetadataSlice{highlighted.StyledRunes}
+		wrapped = []textstyles.CellWithMetadataSlice{highlighted.StyledRunes}
 	}
 
 	rendered := make([]renderedLine, 0)
@@ -203,9 +203,9 @@ func (p *Pager) renderLine(line *reader.NumberedLine, numberPrefixLength int) []
 //   - Line number, or leading whitespace for wrapped lines
 //   - Scroll left indicator
 //   - Scroll right indicator
-func (p *Pager) decorateLine(lineNumberToShow *linemetadata.Number, numberPrefixLength int, contents []textstyles.RuneWithMetadata) []textstyles.RuneWithMetadata {
+func (p *Pager) decorateLine(lineNumberToShow *linemetadata.Number, numberPrefixLength int, contents []textstyles.CellWithMetadata) []textstyles.CellWithMetadata {
 	width, _ := p.screen.Size()
-	newLine := make([]textstyles.RuneWithMetadata, 0, width)
+	newLine := make([]textstyles.CellWithMetadata, 0, width)
 	newLine = append(newLine, createLinePrefix(lineNumberToShow, numberPrefixLength)...)
 
 	// Find the first and last fully visible runes.
@@ -257,7 +257,7 @@ func (p *Pager) decorateLine(lineNumberToShow *linemetadata.Number, numberPrefix
 
 	// Prepend a space if we had to cut a rune in half at the start
 	if cutOffRuneToTheLeft {
-		newLine = append([]textstyles.RuneWithMetadata{{Rune: ' ', Style: p.ScrollLeftHint.Style}}, newLine...)
+		newLine = append([]textstyles.CellWithMetadata{{Rune: ' ', Style: p.ScrollLeftHint.Style}}, newLine...)
 	}
 
 	// Add the visible runes
@@ -267,7 +267,7 @@ func (p *Pager) decorateLine(lineNumberToShow *linemetadata.Number, numberPrefix
 
 	// Append a space if we had to cut a rune in half at the end
 	if cutOffRuneToTheRight {
-		newLine = append(newLine, textstyles.RuneWithMetadata{Rune: ' ', Style: p.ScrollRightHint.Style})
+		newLine = append(newLine, textstyles.CellWithMetadata{Rune: ' ', Style: p.ScrollRightHint.Style})
 	}
 
 	// Add scroll left indicator
@@ -275,16 +275,16 @@ func (p *Pager) decorateLine(lineNumberToShow *linemetadata.Number, numberPrefix
 	if canScrollLeft && len(contents) > 0 {
 		if len(newLine) == 0 {
 			// Make room for the scroll left indicator
-			newLine = make([]textstyles.RuneWithMetadata, 1)
+			newLine = make([]textstyles.CellWithMetadata, 1)
 		}
 
 		if newLine[0].Width() > 1 {
 			// Replace the first rune with two spaces so we can replace the
 			// leftmost cell with a scroll left indicator. First, convert to one
 			// space...
-			newLine[0] = textstyles.RuneWithMetadata{Rune: ' ', Style: p.ScrollLeftHint.Style}
+			newLine[0] = textstyles.CellWithMetadata{Rune: ' ', Style: p.ScrollLeftHint.Style}
 			// ...then prepend another space:
-			newLine = append([]textstyles.RuneWithMetadata{{Rune: ' ', Style: p.ScrollLeftHint.Style}}, newLine...)
+			newLine = append([]textstyles.CellWithMetadata{{Rune: ' ', Style: p.ScrollLeftHint.Style}}, newLine...)
 
 			// Prepending ref: https://stackoverflow.com/a/53737602/473672
 		}
@@ -299,9 +299,9 @@ func (p *Pager) decorateLine(lineNumberToShow *linemetadata.Number, numberPrefix
 			// Replace the last rune with two spaces so we can replace the
 			// rightmost cell with a scroll right indicator. First, convert to one
 			// space...
-			newLine[len(newLine)-1] = textstyles.RuneWithMetadata{Rune: ' ', Style: p.ScrollRightHint.Style}
+			newLine[len(newLine)-1] = textstyles.CellWithMetadata{Rune: ' ', Style: p.ScrollRightHint.Style}
 			// ...then append another space:
-			newLine = append(newLine, textstyles.RuneWithMetadata{Rune: ' ', Style: p.ScrollRightHint.Style})
+			newLine = append(newLine, textstyles.CellWithMetadata{Rune: ' ', Style: p.ScrollRightHint.Style})
 		}
 
 		newLine[len(newLine)-1] = p.ScrollRightHint
@@ -313,15 +313,15 @@ func (p *Pager) decorateLine(lineNumberToShow *linemetadata.Number, numberPrefix
 // Generate a line number prefix of the given length.
 //
 // Can be empty or all-whitespace depending on parameters.
-func createLinePrefix(lineNumber *linemetadata.Number, numberPrefixLength int) []textstyles.RuneWithMetadata {
+func createLinePrefix(lineNumber *linemetadata.Number, numberPrefixLength int) []textstyles.CellWithMetadata {
 	if numberPrefixLength == 0 {
-		return []textstyles.RuneWithMetadata{}
+		return []textstyles.CellWithMetadata{}
 	}
 
-	lineNumberPrefix := make([]textstyles.RuneWithMetadata, 0, numberPrefixLength)
+	lineNumberPrefix := make([]textstyles.CellWithMetadata, 0, numberPrefixLength)
 	if lineNumber == nil {
 		for len(lineNumberPrefix) < numberPrefixLength {
-			lineNumberPrefix = append(lineNumberPrefix, textstyles.RuneWithMetadata{Rune: ' '})
+			lineNumberPrefix = append(lineNumberPrefix, textstyles.CellWithMetadata{Rune: ' '})
 		}
 		return lineNumberPrefix
 	}
@@ -338,7 +338,7 @@ func createLinePrefix(lineNumber *linemetadata.Number, numberPrefixLength int) [
 			break
 		}
 
-		lineNumberPrefix = append(lineNumberPrefix, textstyles.RuneWithMetadata{Rune: digit, Style: lineNumbersStyle})
+		lineNumberPrefix = append(lineNumberPrefix, textstyles.CellWithMetadata{Rune: digit, Style: lineNumbersStyle})
 	}
 
 	return lineNumberPrefix

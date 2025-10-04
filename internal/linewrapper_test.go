@@ -11,12 +11,12 @@ import (
 	"github.com/walles/moor/v2/twin"
 )
 
-func tokenize(input string) []textstyles.RuneWithMetadata {
+func tokenize(input string) []textstyles.CellWithMetadata {
 	line := reader.NewLine(input)
 	return line.HighlightedTokens(twin.StyleDefault, twin.StyleDefault, nil, nil, nil).StyledRunes
 }
 
-func rowsToString(cellLines []textstyles.RuneWithMetadataSlice) string {
+func rowsToString(cellLines []textstyles.CellWithMetadataSlice) string {
 	returnMe := ""
 	for _, cellLine := range cellLines {
 		lineString := ""
@@ -37,7 +37,7 @@ func assertWrap(t *testing.T, input string, widthInScreenCells int, wrappedLines
 	toWrap := tokenize(input)
 	actual := wrapLine(widthInScreenCells, toWrap)
 
-	expected := []textstyles.RuneWithMetadataSlice{}
+	expected := []textstyles.CellWithMetadataSlice{}
 	for _, wrappedLine := range wrappedLines {
 		expected = append(expected, tokenize(wrappedLine))
 	}
