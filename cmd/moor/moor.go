@@ -528,6 +528,12 @@ func pagerFromArgs(
 	shouldFormat := *reFormat
 	readerOptions := reader.ReaderOptions{Lexer: *lexer, ShouldFormat: shouldFormat}
 
+	// MAN_PN is set by GNU man. Example value: "printf(1)"
+	stdinName := os.Getenv("MAN_PN")
+	if stdinName == "" {
+		stdinName = "<stdin>"
+	}
+
 	// Display the input file(s) contents
 	stdinDone := false
 	for _, inputFilename := range flagSetArgs {
@@ -540,7 +546,7 @@ func pagerFromArgs(
 				continue
 			}
 
-			readerImpl, err = reader.NewFromStream("<stdin>", os.Stdin, formatter, readerOptions)
+			readerImpl, err = reader.NewFromStream(stdinName, os.Stdin, formatter, readerOptions)
 			if err != nil {
 				return nil, nil, chroma.Style{}, nil, logsRequested, err
 			}
