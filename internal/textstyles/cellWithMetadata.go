@@ -8,9 +8,10 @@ import (
 
 // Like twin.StyledRune, but with additional metadata
 type CellWithMetadata struct {
-	Rune         rune
-	Style        twin.Style
-	HasSearchHit bool // True if this rune is part of a search hit
+	Rune  rune
+	Style twin.Style
+
+	StartsSearchHit bool // True if this cell is the first cell of a search hit
 }
 
 func (r CellWithMetadata) ToStyledRune() twin.StyledRune {
