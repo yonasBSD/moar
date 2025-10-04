@@ -61,7 +61,22 @@ func (p *Pager) scrollToSearchHits() {
 }
 
 func (p *Pager) searchHitIsVisible() bool {
-	panic("Unimplemented")
+	// FIXME: Test this with:
+	// - view mode with status bar
+	// - view mode with no status bar
+	// - search mode
+	renderedScreenLines, _ := p.renderScreenLines()
+	for _, row := range renderedScreenLines {
+		for _, cell := range row {
+			if cell.StartsSearchHit {
+				// Found a search hit on screen!
+				return true
+			}
+		}
+	}
+
+	// No search hits found
+	return false
 }
 
 func (p *Pager) scrollRightToSearchHits() bool {
