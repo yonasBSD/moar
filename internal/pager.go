@@ -514,8 +514,7 @@ func (p *Pager) StartPaging(screen twin.Screen, chromaStyle *chroma.Style, chrom
 			// Also, we only do this if we have exactly one reader, because
 			// that's what less does.
 			if len(p.readers) == 1 && p.QuitIfOneScreen && !p.isShowingHelp && r.Done.Load() && r.HighlightingDone.Load() {
-				width, height := p.screen.Size()
-				if fitsOnOneScreen(r, width, height-p.DeInitFalseMargin) {
+				if p.fitsOnOneScreen() {
 					// Ref:
 					// https://github.com/walles/moor/issues/113#issuecomment-1368294132
 					p.ShowLineNumbers = false // Requires a redraw to take effect, see below
@@ -597,7 +596,62 @@ func (p *Pager) StartPaging(screen twin.Screen, chromaStyle *chroma.Style, chrom
 // shell prompt.
 //
 // This way nothing gets scrolled off screen after we exit.
-func fitsOnOneScreen(reader *reader.ReaderImpl, width int, height int) bool {
+func (p *Pager) fitsOnOneScreenWrapped() bool {
+	if len(p.readers) != 1 {
+		// At most one screen will fit on one screen...
+		return false
+	}
+
+	// Create a fake screen of height + 1 lines
+	width, height := p.screen.Size()
+
+	// If the screen height is one, and the prompt height is zero, then the last
+	// line number will be zero. But since we want one extra line to check for
+	// overflow, we now want the last line number to be one.
+	//
+	// So if the initial height is 1, we want the last line number to be 1.
+	// Which is what we get from here.
+	lastScreenRow := height - p.DeInitFalseMargin
+
+	// If the last screen row is supposed to be one, we need to set the height
+	// to two. So we add one here.
+	testScreenHeight := lastScreenRow + 1
+	testScreen := twin.NewFakeScreen(width, testScreenHeight)
+
+	// Create a fake pager for that screen, with no status bar, and matching
+	// line number settings + tab size and wrap settings
+	p.readerLock.Lock()
+	fakePager := NewPager(p.readers[0])
+	p.readerLock.Unlock()
+	fakePager.screen = testScreen
+	fakePager.ShowLineNumbers = false // If we drop quit-if-one-screen, we will not print any line numbers
+	fakePager.WrapLongLines = p.WrapLongLines
+	fakePager.ShowStatusBar = false // We are only interested in content lines
+	fakePager.TabSize = p.TabSize
+
+	// Render on our test screen
+	rendered, _ := fakePager.renderLines()
+
+	return len(rendered) < testScreenHeight
+}
+
+func (p *Pager) fitsOnOneScreen() bool {
+	if len(p.readers) != 1 {
+		// At most one screen will fit on one screen...
+		return false
+	}
+
+	if p.WrapLongLines {
+		return p.fitsOnOneScreenWrapped()
+	}
+
+	width, height := p.screen.Size()
+	height -= p.DeInitFalseMargin
+
+	p.readerLock.Lock()
+	reader := p.readers[0]
+	p.readerLock.Unlock()
+
 	if reader.GetLineCount() > height {
 		return false
 	}
