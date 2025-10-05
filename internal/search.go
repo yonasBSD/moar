@@ -96,6 +96,10 @@ func (p *Pager) scrollRightToSearchHits() bool {
 	// - Screen width
 	// - Length of longest visible line
 	screenWidth, _ := p.screen.Size()
+
+	FIXME: p.longestLineLength is not the full length of the line, but only what's visible on screen
+	so we need to count the lengths of the visible lines
+
 	longestLineLength := p.longestLineLength
 
 	// With a 10 wide screen and a 15 wide line (max index 14), the leftmost
@@ -109,6 +113,10 @@ func (p *Pager) scrollRightToSearchHits() bool {
 	restoreLeftColumn := p.leftColumnZeroBased
 
 	for p.leftColumnZeroBased < maxLeftmostColumn {
+		// FIXME: Rather than scrolling right one screen at a time, we should
+		// consider scanning all lines for search hits and scrolling directly to the
+		// first one that is off-screen to the right.
+
 		// If the screen width is 1, and we have no line numbers, the answer
 		// could be 1. But since the last column could be covered by scroll-right
 		// markers, we'll say 0.
