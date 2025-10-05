@@ -29,6 +29,7 @@ type renderedLine struct {
 
 type renderedScreen struct {
 	lines      []renderedLine
+	inputLines []*reader.NumberedLine
 	statusText string
 }
 
@@ -157,7 +158,7 @@ func (p *Pager) renderLines() renderedScreen {
 		}
 	}
 
-	return renderedScreen{lines: allLines, statusText: inputLines.StatusText}
+	return renderedScreen{lines: allLines, statusText: inputLines.StatusText, inputLines: inputLines.Lines}
 }
 
 // Render one input line into one or more screen lines.

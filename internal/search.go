@@ -97,10 +97,14 @@ func (p *Pager) scrollRightToSearchHits() bool {
 	// - Length of longest visible line
 	screenWidth, _ := p.screen.Size()
 
-	FIXME: p.longestLineLength is not the full length of the line, but only what's visible on screen
-	so we need to count the lengths of the visible lines
-
-	longestLineLength := p.longestLineLength
+	longestLineLength := 0 // In screen cells, some runes are double-width
+	rendered := p.renderLines()
+	for _, inputLine := range rendered.inputLines {
+		lineLength := inputLine.DisplayWidth()
+		if lineLength > longestLineLength {
+			longestLineLength = lineLength
+		}
+	}
 
 	// With a 10 wide screen and a 15 wide line (max index 14), the leftmost
 	// screen column can at most be 5:
