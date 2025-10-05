@@ -166,13 +166,13 @@ func (p *Pager) renderLines() ([]renderedLine, string) {
 	// Drop the lines that should go above the screen
 	allLines = allLines[firstVisibleIndex:]
 
+	// Drop the lines that would have gone below the screen
 	wantedLineCount := p.visibleHeight()
-	if len(allLines) <= wantedLineCount {
-		// Screen has enough room for everything, return everything
-		return allLines, inputLines.StatusText
+	if len(allLines) > wantedLineCount {
+		allLines = allLines[:wantedLineCount]
 	}
 
-	return allLines[0:wantedLineCount], inputLines.StatusText
+	return allLines, inputLines.StatusText
 }
 
 // Render one input line into one or more screen lines.
