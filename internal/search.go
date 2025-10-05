@@ -68,12 +68,22 @@ func (p *Pager) scrollToSearchHits() {
 // it may be off-screen to the right. If that happens, the user can scroll right
 // manually to see the rest of the hit.
 func (p *Pager) searchHitIsVisible() bool {
-	// FIXME: Test this with:
-	// - view mode with status bar
-	// - view mode with no status bar
-	// - search mode
 	rendered := p.renderLines()
-	for _, row := range rendered.lines {
+	contentLines := rendered.lines
+	if len(contentLines) == 0 {
+		// No lines on screen, no hits
+		return false
+	}
+
+	// Only the viewing mode cares about the status bar setting
+	_, isViewing := p.mode.(PagerModeViewing)
+	hasStatusBar := (isViewing && p.ShowStatusBar) || !isViewing
+	if hasStatusBar {
+		// Don't include the status bar line
+		contentLines = contentLines[:len(contentLines)-1]
+	}
+
+	for _, row := range contentLines {
 		for _, cell := range row.cells {
 			if cell.StartsSearchHit {
 				// Found a search hit on screen!
