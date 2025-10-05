@@ -241,7 +241,7 @@ func (p *Pager) visibleHeight() int {
 	return height
 }
 
-// How many cells are needed for this line number?
+// How many cells are needed for this line number? Includes padding.
 //
 // Returns 0 if line numbers are disabled.
 func (p *Pager) getLineNumberPrefixLength(lineNumber linemetadata.Number) int {

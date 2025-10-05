@@ -104,17 +104,39 @@ func (p *Pager) scrollRightToSearchHits() bool {
 	// Screen column: 0123456789
 	// Line column:   5678901234
 	maxLeftmostColumn := longestLineLength - screenWidth
-	if p.leftColumnZeroBased >= maxLeftmostColumn {
-		// Can't scroll right
-		return false
+
+	restoreShowLineNumbers := p.ShowLineNumbers
+	restoreLeftColumn := p.leftColumnZeroBased
+
+	for p.leftColumnZeroBased < maxLeftmostColumn {
+		// If the screen width is 1, and we have no line numbers, the answer
+		// could be 1. But since the last column could be covered by scroll-right
+		// markers, we'll say 0.
+		firstNotVisibleColumn := p.leftColumnZeroBased + screenWidth - p.getMaxNumberPrefixLength() - 1
+		if firstNotVisibleColumn < 0 {
+			// FIXME: Test this with super narrow screens. Should we just log and return false here?
+			panic("Screen width is too small to show anything")
+		}
+
+		scrollToColumn := firstNotVisibleColumn
+		if scrollToColumn > maxLeftmostColumn {
+			scrollToColumn = maxLeftmostColumn
+		}
+
+		p.ShowLineNumbers = false
+		p.leftColumnZeroBased = scrollToColumn
+
+		if p.searchHitIsVisible() {
+			// Found it!
+			return true
+		}
 	}
 
-	// FIXME: Scroll right one screen width at a time (taking into account
-	// scroll-left and scroll right markers) and check if we find any search
-	// hits
-	write code here
+	// Can't scroll right, pretend nothing happened
+	p.ShowLineNumbers = restoreShowLineNumbers
+	p.leftColumnZeroBased = restoreLeftColumn
+	return false
 
-	panic("Unimplemented")
 }
 
 // Scroll backwards to the previous search hit, while the user is typing the
