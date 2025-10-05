@@ -127,8 +127,10 @@ func (p *Pager) scrollRightToSearchHits() bool {
 		// markers, we'll say 0.
 		firstNotVisibleColumn := p.leftColumnZeroBased + screenWidth - rendered.numberPrefixWidth - 1
 		if firstNotVisibleColumn < 0 {
-			// FIXME: Test this with super narrow screens. Should we just log and return false here?
-			panic("Screen width is too small to show anything")
+			log.Info("Screen is narrower than number prefix length, not scrolling right for search hits")
+			p.ShowLineNumbers = restoreShowLineNumbers
+			p.leftColumnZeroBased = restoreLeftColumn
+			return false
 		}
 
 		scrollToColumn := firstNotVisibleColumn
