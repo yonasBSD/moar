@@ -391,47 +391,6 @@ func (p *Pager) getLastVisiblePosition() *scrollPosition {
 	}
 }
 
-func (p *Pager) getMaxNumberPrefixLength() int {
-	lineCount := p.Reader().GetLineCount()
-	if lineCount == 0 {
-		// No lines available, so no line numbers
-		return 0
-	}
-	maxPossibleIndex := *linemetadata.IndexFromLength(lineCount)
-
-	canonical := canonicalFromPager(p)
-
-	// This is an approximation assuming we don't do any wrapping. Finding the
-	// real answer while wrapping requires rendering, which requires the real
-	// answer and so on, so we do an approximation here to save us from
-	// recursion.
-	//
-	// Let's improve on demand.
-	var index linemetadata.Index
-	// Ref: https://github.com/walles/moor/issues/198
-	if canonical.lineIndex != nil {
-		index = *canonical.lineIndex
-	}
-	maxVisibleIndex := index.NonWrappingAdd(
-		canonical.deltaScreenLines +
-			p.visibleHeight() - 1)
-	if maxVisibleIndex.IsAfter(maxPossibleIndex) {
-		maxVisibleIndex = maxPossibleIndex
-	}
-
-	var number linemetadata.Number
-	lastVisibleLine := p.Reader().GetLine(maxVisibleIndex)
-
-	// nil can happen when the input stream is empty
-	if lastVisibleLine != nil {
-		number = lastVisibleLine.Number
-	}
-
-	// Count the length of the last line number
-	return p.getLineNumberPrefixLength(number)
-
-}
-
 func (si *scrollPositionInternal) getMaxNumberPrefixLength(pager *Pager) int {
 	maxPossibleIndex := *linemetadata.IndexFromLength(pager.Reader().GetLineCount())
 

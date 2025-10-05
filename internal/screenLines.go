@@ -28,9 +28,10 @@ type renderedLine struct {
 }
 
 type renderedScreen struct {
-	lines      []renderedLine
-	inputLines []*reader.NumberedLine
-	statusText string
+	lines             []renderedLine
+	inputLines        []*reader.NumberedLine
+	numberPrefixWidth int // Including padding. 0 means no line numbers.
+	statusText        string
 }
 
 // Refresh the whole pager display, both contents lines and the status line at
@@ -158,7 +159,12 @@ func (p *Pager) renderLines() renderedScreen {
 		}
 	}
 
-	return renderedScreen{lines: allLines, statusText: inputLines.StatusText, inputLines: inputLines.Lines}
+	return renderedScreen{
+		lines:             allLines,
+		statusText:        inputLines.StatusText,
+		inputLines:        inputLines.Lines,
+		numberPrefixWidth: numberPrefixLength,
+	}
 }
 
 // Render one input line into one or more screen lines.
