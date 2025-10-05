@@ -356,7 +356,7 @@ func (p *Pager) isScrolledToEnd() bool {
 	}
 	lastInputLineIndex := *linemetadata.IndexFromLength(inputLineCount)
 
-	visibleLines, _ := p.renderLines()
+	visibleLines := p.renderLines().lines
 	lastVisibleLine := visibleLines[len(visibleLines)-1]
 	if lastVisibleLine.inputLineIndex != lastInputLineIndex {
 		// Last input line is not on the screen
@@ -376,12 +376,12 @@ func (p *Pager) isScrolledToEnd() bool {
 
 // Returns nil if there are no lines
 func (p *Pager) getLastVisiblePosition() *scrollPosition {
-	renderedLines, _ := p.renderLines()
-	if len(renderedLines) == 0 {
+	rendered := p.renderLines()
+	if len(rendered.lines) == 0 {
 		return nil
 	}
 
-	lastRenderedLine := renderedLines[len(renderedLines)-1]
+	lastRenderedLine := rendered.lines[len(rendered.lines)-1]
 	return &scrollPosition{
 		internalDontTouch: scrollPositionInternal{
 			name:             "Last Visible Position",

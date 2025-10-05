@@ -630,9 +630,9 @@ func (p *Pager) fitsOnOneScreenWrapped() bool {
 	fakePager.TabSize = p.TabSize
 
 	// Render on our test screen
-	rendered, _ := fakePager.renderLines()
+	rendered := fakePager.renderLines()
 
-	return len(rendered) < testScreenHeight
+	return len(rendered.lines) < testScreenHeight
 }
 
 func (p *Pager) fitsOnOneScreen() bool {
@@ -672,8 +672,8 @@ func (p *Pager) fitsOnOneScreen() bool {
 // "leaving" pager contents on screen after exit.
 func (p *Pager) ReprintAfterExit() error {
 	// Figure out how many screen lines are used by pager contents
-	renderedScreenLines, _ := p.renderLines()
-	screenLinesCount := len(renderedScreenLines)
+	renderedScreen := p.renderLines()
+	screenLinesCount := len(renderedScreen.lines)
 
 	_, screenHeight := p.screen.Size()
 	screenHeightWithoutFooter := screenHeight - p.DeInitFalseMargin

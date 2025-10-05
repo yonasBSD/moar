@@ -100,9 +100,9 @@ func TestEmpty(t *testing.T) {
 		FilterPattern: &pager.filterPattern,
 	}
 
-	rendered, statusText := pager.renderLines()
-	assert.Equal(t, len(rendered), 0)
-	assert.Equal(t, "test: <empty>", statusText)
+	rendered := pager.renderLines()
+	assert.Equal(t, len(rendered.lines), 0)
+	assert.Equal(t, "test: <empty>", rendered.statusText)
 	assert.Assert(t, pager.lineIndex() == nil)
 }
 
@@ -159,10 +159,10 @@ func TestOverflowDown(t *testing.T) {
 		FilterPattern: &pager.filterPattern,
 	}
 
-	rendered, statusText := pager.renderLines()
-	assert.Equal(t, len(rendered), 1)
-	assert.Equal(t, "hej", renderedToString(rendered[0].cells))
-	assert.Equal(t, "test: 1 line  100%", statusText)
+	rendered := pager.renderLines()
+	assert.Equal(t, len(rendered.lines), 1)
+	assert.Equal(t, "hej", renderedToString(rendered.lines[0].cells))
+	assert.Equal(t, "test: 1 line  100%", rendered.statusText)
 	assert.Assert(t, pager.lineIndex().IsZero())
 	assert.Equal(t, pager.deltaScreenLines(), 0)
 }
@@ -184,10 +184,10 @@ func TestOverflowUp(t *testing.T) {
 		FilterPattern: &pager.filterPattern,
 	}
 
-	rendered, statusText := pager.renderLines()
-	assert.Equal(t, len(rendered), 1)
-	assert.Equal(t, "hej", renderedToString(rendered[0].cells))
-	assert.Equal(t, "test: 1 line  100%", statusText)
+	rendered := pager.renderLines()
+	assert.Equal(t, len(rendered.lines), 1)
+	assert.Equal(t, "hej", renderedToString(rendered.lines[0].cells))
+	assert.Equal(t, "test: 1 line  100%", rendered.statusText)
 	assert.Assert(t, pager.lineIndex().IsZero())
 	assert.Equal(t, pager.deltaScreenLines(), 0)
 }
@@ -253,8 +253,8 @@ func TestOneLineTerminal(t *testing.T) {
 		FilterPattern: &pager.filterPattern,
 	}
 
-	rendered, _ := pager.renderLines()
-	assert.Equal(t, len(rendered), 0)
+	rendered := pager.renderLines()
+	assert.Equal(t, len(rendered.lines), 0)
 }
 
 // What happens if we are scrolled to the bottom of a 1000 lines file, and then
@@ -281,9 +281,9 @@ func TestShortenedInput(t *testing.T) {
 	pager.mode = NewPagerModeFilter(&pager)
 	pager.filterPattern = regexp.MustCompile("first") // Match only the first line
 
-	rendered, _ := pager.renderLines()
-	assert.Equal(t, len(rendered), 1, "Should have rendered one line")
-	assert.Equal(t, "first", renderedToString(rendered[0].cells))
+	rendered := pager.renderLines()
+	assert.Equal(t, len(rendered.lines), 1, "Should have rendered one line")
+	assert.Equal(t, "first", renderedToString(rendered.lines[0].cells))
 	assert.Equal(t, pager.lineIndex().Index(), 0, "Should have scrolled to the first line")
 }
 
@@ -318,16 +318,16 @@ func TestShortenedInputManyLines(t *testing.T) {
 	pager.mode = NewPagerModeFilter(&pager)
 	pager.filterPattern = regexp.MustCompile(`^match`)
 
-	rendered, _ := pager.renderLines()
-	assert.Equal(t, len(rendered), 10, "Should have rendered 10 lines")
+	rendered := pager.renderLines()
+	assert.Equal(t, len(rendered.lines), 10, "Should have rendered 10 lines")
 
 	expectedLines := []string{}
 	for i := 90; i < 100; i++ {
 		expectedLines = append(expectedLines, "match "+strconv.Itoa(i))
 	}
-	for i, row := range rendered {
+	for i, row := range rendered.lines {
 		assert.Equal(t, renderedToString(row.cells), expectedLines[i], "Line %d mismatch", i)
 	}
 	assert.Equal(t, pager.lineIndex().Index(), 90, "The last lines should now be visible")
-	assert.Equal(t, "match 99", renderedToString(rendered[len(rendered)-1].cells))
+	assert.Equal(t, "match 99", renderedToString(rendered.lines[len(rendered.lines)-1].cells))
 }

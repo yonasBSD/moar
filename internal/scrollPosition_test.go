@@ -92,7 +92,7 @@ func TestFastScrollAcross1000DoesNotPanic(t *testing.T) {
 
 	// Trigger rendering (and canonicalization). If the prefix is miscomputed
 	// this would previously panic inside createLinePrefix().
-	lines, status := pager.renderLines()
-	assert.Assert(t, lines != nil) // sanity
-	_ = status                     // not asserted here; we only care about not panicking
+	rendered := pager.renderLines()
+	assert.Assert(t, rendered.lines != nil) // sanity
+	_ = rendered.statusText                 // not asserted here; we only care about not panicking
 }

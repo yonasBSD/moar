@@ -71,9 +71,9 @@ func (p *Pager) searchHitIsVisible() bool {
 	// - view mode with status bar
 	// - view mode with no status bar
 	// - search mode
-	renderedScreenLines, _ := p.renderScreenLines()
-	for _, row := range renderedScreenLines {
-		for _, cell := range row {
+	rendered := p.renderLines()
+	for _, row := range rendered.lines {
+		for _, cell := range row.cells {
 			if cell.StartsSearchHit {
 				// Found a search hit on screen!
 				return true

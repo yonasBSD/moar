@@ -27,6 +27,11 @@ type renderedLine struct {
 	trailer twin.Style
 }
 
+type renderedScreen struct {
+	lines      []renderedLine
+	statusText string
+}
+
 // Refresh the whole pager display, both contents lines and the status line at
 // the bottom
 func (p *Pager) redraw(spinner string) {
@@ -34,8 +39,8 @@ func (p *Pager) redraw(spinner string) {
 	p.longestLineLength = 0
 
 	lastUpdatedScreenLineNumber := -1
-	renderedScreenLines, statusText := p.renderLines()
-	for screenLineNumber, row := range renderedScreenLines {
+	renderedScreen := p.renderLines()
+	for screenLineNumber, row := range renderedScreen.lines {
 		lastUpdatedScreenLineNumber = screenLineNumber
 		column := 0
 		for _, cell := range row.cells {
@@ -56,7 +61,7 @@ func (p *Pager) redraw(spinner string) {
 		column += p.screen.SetCell(column, lastUpdatedScreenLineNumber+1, cell.ToStyledRune())
 	}
 
-	p.mode.drawFooter(statusText, spinner)
+	p.mode.drawFooter(renderedScreen.statusText, spinner)
 
 	p.screen.Show()
 }
@@ -71,7 +76,7 @@ func (p *Pager) redraw(spinner string) {
 // The maximum number of lines returned by this method is limited by the screen
 // height. If the status line is visible, you'll get at most one less than the
 // screen height from this method.
-func (p *Pager) renderLines() ([]renderedLine, string) {
+func (p *Pager) renderLines() renderedScreen {
 	var lineIndex linemetadata.Index
 	if p.lineIndex() != nil {
 		lineIndex = *p.lineIndex()
@@ -79,7 +84,7 @@ func (p *Pager) renderLines() ([]renderedLine, string) {
 	inputLines := p.Reader().GetLines(lineIndex, p.visibleHeight())
 	if len(inputLines.Lines) == 0 {
 		// Empty input, empty output
-		return []renderedLine{}, inputLines.StatusText
+		return renderedScreen{statusText: inputLines.StatusText}
 	}
 
 	lastVisibleLineNumber := inputLines.Lines[len(inputLines.Lines)-1].Number
@@ -152,7 +157,7 @@ func (p *Pager) renderLines() ([]renderedLine, string) {
 		}
 	}
 
-	return allLines, inputLines.StatusText
+	return renderedScreen{lines: allLines, statusText: inputLines.StatusText}
 }
 
 // Render one input line into one or more screen lines.
