@@ -672,7 +672,7 @@ func (p *Pager) fitsOnOneScreen() bool {
 // "leaving" pager contents on screen after exit.
 func (p *Pager) ReprintAfterExit() error {
 	// Figure out how many screen lines are used by pager contents
-	renderedScreenLines, _ := p.renderScreenLines()
+	renderedScreenLines, _ := p.renderLines()
 	screenLinesCount := len(renderedScreenLines)
 
 	_, screenHeight := p.screen.Size()

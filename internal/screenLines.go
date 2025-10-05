@@ -34,12 +34,11 @@ func (p *Pager) redraw(spinner string) {
 	p.longestLineLength = 0
 
 	lastUpdatedScreenLineNumber := -1
-	var renderedScreenLines [][]twin.StyledRune
-	renderedScreenLines, statusText := p.renderScreenLines()
+	renderedScreenLines, statusText := p.renderLines()
 	for screenLineNumber, row := range renderedScreenLines {
 		lastUpdatedScreenLineNumber = screenLineNumber
 		column := 0
-		for _, cell := range row {
+		for _, cell := range row.cells {
 			column += p.screen.SetCell(column, lastUpdatedScreenLineNumber, cell)
 		}
 	}
@@ -60,38 +59,6 @@ func (p *Pager) redraw(spinner string) {
 	p.mode.drawFooter(statusText, spinner)
 
 	p.screen.Show()
-}
-
-// Render screen lines into an array of lines consisting of Cells.
-//
-// At most height - 1 lines will be returned, leaving room for one status line.
-//
-// The lines returned by this method are decorated with horizontal scroll
-// markers and line numbers and are ready to be output to the screen.
-func (p *Pager) renderScreenLines() (lines [][]twin.StyledRune, statusText string) {
-	renderedLines, statusText := p.renderLines()
-	if len(renderedLines) == 0 {
-		return
-	}
-
-	// Construct the screen lines to return
-	screenLines := make([][]twin.StyledRune, 0, len(renderedLines))
-	for _, renderedLine := range renderedLines {
-		screenLines = append(screenLines, renderedLine.cells)
-
-		if renderedLine.trailer == twin.StyleDefault {
-			continue
-		}
-
-		// Fill up with the trailer
-		screenWidth, _ := p.screen.Size()
-		for len(screenLines[len(screenLines)-1]) < screenWidth {
-			screenLines[len(screenLines)-1] =
-				append(screenLines[len(screenLines)-1], twin.NewStyledRune(' ', renderedLine.trailer))
-		}
-	}
-
-	return screenLines, statusText
 }
 
 // Render all lines that should go on the screen.
@@ -169,7 +136,20 @@ func (p *Pager) renderLines() ([]renderedLine, string) {
 	// Drop the lines that would have gone below the screen
 	wantedLineCount := p.visibleHeight()
 	if len(allLines) > wantedLineCount {
-		allLines = allLines[:wantedLineCount]
+		allLines = allLines[0:wantedLineCount]
+	}
+
+	// Fill in the line trailers
+	screenWidth, _ := p.screen.Size()
+	for i := range allLines {
+		line := &allLines[i]
+		if line.trailer == twin.StyleDefault {
+			continue
+		}
+
+		for len(line.cells) < screenWidth {
+			line.cells = append(line.cells, twin.NewStyledRune(' ', line.trailer))
+		}
 	}
 
 	return allLines, inputLines.StatusText
