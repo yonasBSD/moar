@@ -54,6 +54,7 @@ func (p *Pager) scrollToSearchHits() {
 	// Found a match on some line
 	p.scrollPosition = NewScrollPositionFromIndex(*firstHitIndex, "scrollToSearchHits")
 
+	// FIXME: What should we do with line numbers here? Turn them on or not?
 	p.leftColumnZeroBased = 0
 	if !p.searchHitIsVisible() {
 		p.scrollRightToSearchHits()
@@ -359,6 +360,7 @@ func (p *Pager) isNotFound() bool {
 	return isNotFound
 }
 
+// Scroll to the next search hit, after the user presses 'n'.
 func (p *Pager) scrollToNextSearchHit() {
 	if p.searchPattern == nil {
 		// Nothing to search for, never mind
@@ -367,6 +369,11 @@ func (p *Pager) scrollToNextSearchHit() {
 
 	if p.Reader().GetLineCount() == 0 {
 		// Nothing to search in, never mind
+		return
+	}
+
+	if p.scrollRightToSearchHits() {
+		// Found it to the right, done!
 		return
 	}
 
@@ -401,6 +408,12 @@ func (p *Pager) scrollToNextSearchHit() {
 
 	// Don't let any search hit scroll out of sight
 	p.setTargetLine(nil)
+
+	// FIXME: What should we do with line numbers here? Turn them on or not?
+	p.leftColumnZeroBased = 0
+	if !p.searchHitIsVisible() {
+		p.scrollRightToSearchHits()
+	}
 }
 
 func (p *Pager) scrollToPreviousSearchHit() {
