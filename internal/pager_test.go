@@ -112,7 +112,7 @@ func startPagingWithTabSize(t *testing.T, tabSize int, reader *reader.ReaderImpl
 	screen := twin.NewFakeScreen(20, 10)
 	pager := NewPager(reader)
 	pager.TabSize = tabSize
-	pager.ShowLineNumbersPreference = false
+	pager.ShowLineNumbers = false
 	pager.showLineNumbers = false
 
 	// Tell our Pager to quit immediately
@@ -136,7 +136,7 @@ func startPagingWithTerminalFg(t *testing.T, reader *reader.ReaderImpl, withTerm
 
 	screen := twin.NewFakeScreen(20, 10)
 	pager := NewPager(reader)
-	pager.ShowLineNumbersPreference = false
+	pager.ShowLineNumbers = false
 	pager.showLineNumbers = false
 	pager.WithTerminalFg = withTerminalFg
 
@@ -423,7 +423,7 @@ func TestScrollToBottomWrapNextToLastLine(t *testing.T) {
 
 	pager := NewPager(reader)
 	pager.WrapLongLines = true
-	pager.ShowLineNumbersPreference = false
+	pager.ShowLineNumbers = false
 	pager.showLineNumbers = false
 	pager.screen = screen
 
@@ -459,7 +459,7 @@ func TestScrollToEndLongInput(t *testing.T) {
 	// "X" marks the spot
 	reader := reader.NewFromTextForTesting("test", strings.Repeat(".\n", lineCount-1)+"X")
 	pager := NewPager(reader)
-	pager.ShowLineNumbersPreference = true
+	pager.ShowLineNumbers = true
 	pager.showLineNumbers = true
 
 	// Tell our Pager to quit immediately
@@ -607,7 +607,7 @@ func TestPageSamples(t *testing.T) {
 
 			pager := NewPager(myReader)
 			pager.WrapLongLines = false
-			pager.ShowLineNumbersPreference = false
+			pager.ShowLineNumbers = false
 			pager.showLineNumbers = false
 
 			// Heigh 3 = two lines of contents + one footer
@@ -675,7 +675,7 @@ func TestClearToEndOfLine_ClearFromNotStart(t *testing.T) {
 // Validate rendering of https://en.wikipedia.org/wiki/ANSI_escape_code#EL
 func TestClearToEndOfLine_ClearFromStartScrolledRight(t *testing.T) {
 	pager := NewPager(reader.NewFromTextForTesting("TestClearToEol", blueBackgroundClearToEol0))
-	pager.ShowLineNumbersPreference = false
+	pager.ShowLineNumbers = false
 	pager.showLineNumbers = false
 
 	// Tell our Pager to quit immediately

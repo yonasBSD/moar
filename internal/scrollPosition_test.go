@@ -22,7 +22,7 @@ func testCanonicalize1000(t *testing.T, withStatusBar bool, currentStartLine lin
 		BackingReader: pager.readers[pager.currentReader],
 		FilterPattern: &pager.filterPattern,
 	}
-	pager.ShowLineNumbersPreference = true
+	pager.ShowLineNumbers = true
 	pager.showLineNumbers = true
 	pager.ShowStatusBar = withStatusBar
 	pager.scrollPosition = scrollPosition{
@@ -79,7 +79,7 @@ func TestFastScrollAcross1000DoesNotPanic(t *testing.T) {
 		BackingReader: pager.readers[pager.currentReader],
 		FilterPattern: &pager.filterPattern,
 	}
-	pager.ShowLineNumbersPreference = true
+	pager.ShowLineNumbers = true
 	pager.showLineNumbers = true
 
 	// Start more than one screen height before the line numbers get longer...

@@ -75,7 +75,7 @@ type Pager struct {
 	preHelpState  *_PreHelpState
 
 	// User preference
-	ShowLineNumbersPreference bool
+	ShowLineNumbers bool
 
 	// Current state, initialized in StartPaging()
 	showLineNumbers bool
@@ -211,19 +211,19 @@ func NewPager(readers ...*reader.ReaderImpl) *Pager {
 	}
 
 	pager := Pager{
-		readers:                   readers,
-		currentReader:             0,
-		readerSwitched:            make(chan struct{}, 1),
-		quit:                      false,
-		ShowLineNumbersPreference: true, // Constant throghout the lifetime of the pager
-		showLineNumbers:           true, // Will be updated over time
-		ShowStatusBar:             true,
-		DeInit:                    true,
-		SideScrollAmount:          16,
-		TabSize:                   8, // This is what less defaults to
-		ScrollLeftHint:            textstyles.CellWithMetadata{Rune: '<', Style: twin.StyleDefault.WithAttr(twin.AttrReverse)},
-		ScrollRightHint:           textstyles.CellWithMetadata{Rune: '>', Style: twin.StyleDefault.WithAttr(twin.AttrReverse)},
-		scrollPosition:            newScrollPosition(name),
+		readers:          readers,
+		currentReader:    0,
+		readerSwitched:   make(chan struct{}, 1),
+		quit:             false,
+		ShowLineNumbers:  true, // Constant throghout the lifetime of the pager
+		showLineNumbers:  true, // Will be updated over time
+		ShowStatusBar:    true,
+		DeInit:           true,
+		SideScrollAmount: 16,
+		TabSize:          8, // This is what less defaults to
+		ScrollLeftHint:   textstyles.CellWithMetadata{Rune: '<', Style: twin.StyleDefault.WithAttr(twin.AttrReverse)},
+		ScrollRightHint:  textstyles.CellWithMetadata{Rune: '>', Style: twin.StyleDefault.WithAttr(twin.AttrReverse)},
+		scrollPosition:   newScrollPosition(name),
 	}
 
 	pager.mode = PagerModeViewing{pager: &pager}
@@ -412,7 +412,7 @@ func (p *Pager) StartPaging(screen twin.Screen, chromaStyle *chroma.Style, chrom
 		}
 	}()
 
-	p.showLineNumbers = p.ShowLineNumbersPreference
+	p.showLineNumbers = p.ShowLineNumbers
 
 	textstyles.UnprintableStyle = p.UnprintableStyle
 	if p.TabSize > 0 {
