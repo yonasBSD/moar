@@ -259,10 +259,9 @@ Execute `release.sh` and follow instructions.
 
 - Start at a certain line if run as `moor file.txt:42`
 
-- Handle search hits to the right of the right screen edge. Searching forwards
-  should move first right, then to the left edge and down. Searching backwards
-  should move first left, then up and to the right edge (if needed for showing
-  search hits).
+- Handle search hits to the right of the right screen edge when searching
+  backwards. Searching backwards should move first left, then up and to the
+  rightmost hit.
 
 - Support viewing multiple files by pushing them in reverse order on the view
   stack.
@@ -314,3 +313,7 @@ Execute `release.sh` and follow instructions.
   not by input file line.
 
 - Define 'g' to prompt for a line number to go to.
+
+- Handle search hits to the right of the right screen edge when searching
+  forwards. Searching forwards now moves first right, then to the left edge
+  and down.
