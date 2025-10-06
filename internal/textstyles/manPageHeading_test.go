@@ -8,7 +8,7 @@ import (
 )
 
 func isManPageHeading(s string) bool {
-	return parseManPageHeading(s, func(_ twin.StyledRune) {})
+	return parseManPageHeading(s, func(_ CellWithMetadata) {})
 }
 
 func TestIsManPageHeading(t *testing.T) {
@@ -35,9 +35,9 @@ func TestManPageHeadingFromString_NotBoldSpace(t *testing.T) {
 
 	assert.Assert(t, result != nil)
 	assert.Equal(t, len(result.StyledRunes), 3)
-	assert.Equal(t, result.StyledRunes[0], twin.StyledRune{Rune: 'A', Style: ManPageHeading})
-	assert.Equal(t, result.StyledRunes[1], twin.StyledRune{Rune: ' ', Style: ManPageHeading})
-	assert.Equal(t, result.StyledRunes[2], twin.StyledRune{Rune: 'B', Style: ManPageHeading})
+	assert.Equal(t, result.StyledRunes[0], CellWithMetadata{Rune: 'A', Style: ManPageHeading})
+	assert.Equal(t, result.StyledRunes[1], CellWithMetadata{Rune: ' ', Style: ManPageHeading})
+	assert.Equal(t, result.StyledRunes[2], CellWithMetadata{Rune: 'B', Style: ManPageHeading})
 }
 
 func TestManPageHeadingFromString_WithBoldSpace(t *testing.T) {
@@ -48,7 +48,7 @@ func TestManPageHeadingFromString_WithBoldSpace(t *testing.T) {
 
 	assert.Assert(t, result != nil)
 	assert.Equal(t, len(result.StyledRunes), 3)
-	assert.Equal(t, result.StyledRunes[0], twin.StyledRune{Rune: 'A', Style: ManPageHeading})
-	assert.Equal(t, result.StyledRunes[1], twin.StyledRune{Rune: ' ', Style: ManPageHeading})
-	assert.Equal(t, result.StyledRunes[2], twin.StyledRune{Rune: 'B', Style: ManPageHeading})
+	assert.Equal(t, result.StyledRunes[0], CellWithMetadata{Rune: 'A', Style: ManPageHeading})
+	assert.Equal(t, result.StyledRunes[1], CellWithMetadata{Rune: ' ', Style: ManPageHeading})
+	assert.Equal(t, result.StyledRunes[2], CellWithMetadata{Rune: 'B', Style: ManPageHeading})
 }

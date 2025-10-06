@@ -3,7 +3,7 @@ package internal
 import (
 	"unicode"
 
-	"github.com/walles/moor/v2/twin"
+	"github.com/walles/moor/v2/internal/textstyles"
 )
 
 // From: https://www.compart.com/en/unicode/U+00A0
@@ -13,7 +13,7 @@ const NO_BREAK_SPACE = '\xa0'
 
 // Given some text and a maximum width in screen cells, find the best point at
 // which to wrap the text. Return value is in number of runes.
-func getWrapCount(line []twin.StyledRune, maxScreenCellsCount int) int {
+func getWrapCount(line []textstyles.CellWithMetadata, maxScreenCellsCount int) int {
 	screenCells := 0
 	bestCutPoint := maxScreenCellsCount
 	inLeadingWhitespace := true
@@ -76,7 +76,7 @@ func getWrapCount(line []twin.StyledRune, maxScreenCellsCount int) int {
 }
 
 // How many screen cells wide will this line be?
-func getScreenCellCount(runes []twin.StyledRune) int {
+func getScreenCellCount(runes []textstyles.CellWithMetadata) int {
 	cellCount := 0
 	for _, rune := range runes {
 		cellCount += rune.Width()
@@ -86,17 +86,17 @@ func getScreenCellCount(runes []twin.StyledRune) int {
 }
 
 // Wrap one line of text to a maximum width
-func wrapLine(width int, line []twin.StyledRune) [][]twin.StyledRune {
+func wrapLine(width int, line textstyles.CellWithMetadataSlice) []textstyles.CellWithMetadataSlice {
 	// Trailing space risks showing up by itself on a line, which would just
 	// look weird.
-	line = twin.TrimSpaceRight(line)
+	line = line.WithoutSpaceRight()
 
 	screenCellCount := getScreenCellCount(line)
 	if screenCellCount == 0 {
-		return [][]twin.StyledRune{{}}
+		return []textstyles.CellWithMetadataSlice{{}}
 	}
 
-	wrapped := make([][]twin.StyledRune, 0, len(line)/width)
+	wrapped := make([]textstyles.CellWithMetadataSlice, 0, len(line)/width)
 	for screenCellCount > width {
 		wrapWidth := getWrapCount(line, width)
 		firstPart := line[:wrapWidth]
@@ -104,13 +104,13 @@ func wrapLine(width int, line []twin.StyledRune) [][]twin.StyledRune {
 		if !isOnFirstLine {
 			// Leading whitespace on wrapped lines would just look like
 			// indentation, which would be weird for wrapped text.
-			firstPart = twin.TrimSpaceLeft(firstPart)
+			firstPart = firstPart.WithoutSpaceLeft()
 		}
 
-		wrapped = append(wrapped, twin.TrimSpaceRight(firstPart))
+		wrapped = append(wrapped, firstPart.WithoutSpaceRight())
 
 		// These runes still need processing
-		remaining := twin.TrimSpaceLeft(line[wrapWidth:])
+		remaining := line[wrapWidth:].WithoutSpaceLeft()
 
 		// Track how many screen cells are left to handle
 		handledCount := len(line) - len(remaining)
@@ -124,11 +124,11 @@ func wrapLine(width int, line []twin.StyledRune) [][]twin.StyledRune {
 	if !isOnFirstLine {
 		// Leading whitespace on wrapped lines would just look like
 		// indentation, which would be weird for wrapped text.
-		line = twin.TrimSpaceLeft(line)
+		line = line.WithoutSpaceLeft()
 	}
 
 	if len(line) > 0 {
-		wrapped = append(wrapped, twin.TrimSpaceRight(line))
+		wrapped = append(wrapped, line.WithoutSpaceRight())
 	}
 
 	return wrapped

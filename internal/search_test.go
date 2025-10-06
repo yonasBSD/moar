@@ -132,3 +132,14 @@ func Test152(t *testing.T) {
 	assert.Equal(t, "Search", modeName(pager))
 	assert.Equal(t, 2, pager.lineIndex().Index())
 }
+
+// This test used to provoke a panic
+func TestScrollRightToSearchHitsNarrowScreen(t *testing.T) {
+	reader := reader.NewFromTextForTesting("", "abcdefg")
+	screen := twin.NewFakeScreen(1, 5)
+	pager := NewPager(reader)
+	pager.screen = screen
+
+	// We just want this to not crash
+	pager.scrollRightToSearchHits()
+}

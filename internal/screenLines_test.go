@@ -9,15 +9,27 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/walles/moor/v2/internal/linemetadata"
 	"github.com/walles/moor/v2/internal/reader"
+	"github.com/walles/moor/v2/internal/textstyles"
 	"github.com/walles/moor/v2/twin"
 	"gotest.tools/v3/assert"
 )
 
 // NOTE: You can find related tests in pager_test.go.
 
+// Converts a cell row to a plain string and removes trailing whitespace.
+func renderedToString(row []textstyles.CellWithMetadata) string {
+	rowString := ""
+	for _, cell := range row {
+		rowString += string(cell.Rune)
+	}
+
+	return strings.TrimRight(rowString, " ")
+}
+
 func testHorizontalCropping(t *testing.T, contents string, firstVisibleColumn int, lastVisibleColumn int, expected string) {
 	pager := NewPager(nil)
 	pager.ShowLineNumbers = false
+	pager.showLineNumbers = false
 
 	pager.screen = twin.NewFakeScreen(1+lastVisibleColumn-firstVisibleColumn, 99)
 	pager.leftColumnZeroBased = firstVisibleColumn
@@ -28,7 +40,7 @@ func testHorizontalCropping(t *testing.T, contents string, firstVisibleColumn in
 		Line: &lineContents,
 	}
 	screenLine := pager.renderLine(&numberedLine, pager.getLineNumberPrefixLength(numberedLine.Number))
-	assert.Equal(t, rowToString(screenLine[0].cells), expected)
+	assert.Equal(t, renderedToString(screenLine[0].cells), expected)
 }
 
 func TestCreateScreenLine(t *testing.T) {
@@ -89,9 +101,9 @@ func TestEmpty(t *testing.T) {
 		FilterPattern: &pager.filterPattern,
 	}
 
-	rendered, statusText := pager.renderLines()
-	assert.Equal(t, len(rendered), 0)
-	assert.Equal(t, "test: <empty>", statusText)
+	rendered := pager.renderLines()
+	assert.Equal(t, len(rendered.lines), 0)
+	assert.Equal(t, "test: <empty>", rendered.statusText)
 	assert.Assert(t, pager.lineIndex() == nil)
 }
 
@@ -115,10 +127,10 @@ func TestSearchHighlight(t *testing.T) {
 		{
 			inputLineIndex: linemetadata.Index{},
 			wrapIndex:      0,
-			cells: []twin.StyledRune{
+			cells: []textstyles.CellWithMetadata{
 				{Rune: 'x', Style: twin.StyleDefault},
-				{Rune: '"', Style: twin.StyleDefault.WithAttr(twin.AttrReverse)},
-				{Rune: '"', Style: twin.StyleDefault.WithAttr(twin.AttrReverse)},
+				{Rune: '"', Style: twin.StyleDefault.WithAttr(twin.AttrReverse), StartsSearchHit: true},
+				{Rune: '"', Style: twin.StyleDefault.WithAttr(twin.AttrReverse), StartsSearchHit: false},
 				{Rune: 'x', Style: twin.StyleDefault},
 			},
 		},
@@ -148,10 +160,10 @@ func TestOverflowDown(t *testing.T) {
 		FilterPattern: &pager.filterPattern,
 	}
 
-	rendered, statusText := pager.renderLines()
-	assert.Equal(t, len(rendered), 1)
-	assert.Equal(t, "hej", rowToString(rendered[0].cells))
-	assert.Equal(t, "test: 1 line  100%", statusText)
+	rendered := pager.renderLines()
+	assert.Equal(t, len(rendered.lines), 1)
+	assert.Equal(t, "hej", renderedToString(rendered.lines[0].cells))
+	assert.Equal(t, "test: 1 line  100%", rendered.statusText)
 	assert.Assert(t, pager.lineIndex().IsZero())
 	assert.Equal(t, pager.deltaScreenLines(), 0)
 }
@@ -173,10 +185,10 @@ func TestOverflowUp(t *testing.T) {
 		FilterPattern: &pager.filterPattern,
 	}
 
-	rendered, statusText := pager.renderLines()
-	assert.Equal(t, len(rendered), 1)
-	assert.Equal(t, "hej", rowToString(rendered[0].cells))
-	assert.Equal(t, "test: 1 line  100%", statusText)
+	rendered := pager.renderLines()
+	assert.Equal(t, len(rendered.lines), 1)
+	assert.Equal(t, "hej", renderedToString(rendered.lines[0].cells))
+	assert.Equal(t, "test: 1 line  100%", rendered.statusText)
 	assert.Assert(t, pager.lineIndex().IsZero())
 	assert.Equal(t, pager.deltaScreenLines(), 0)
 }
@@ -189,6 +201,7 @@ func TestWrapping(t *testing.T) {
 
 	pager.WrapLongLines = true
 	pager.ShowLineNumbers = false
+	pager.showLineNumbers = false
 
 	assert.NilError(t, reader.Wait())
 
@@ -242,8 +255,8 @@ func TestOneLineTerminal(t *testing.T) {
 		FilterPattern: &pager.filterPattern,
 	}
 
-	rendered, _ := pager.renderLines()
-	assert.Equal(t, len(rendered), 0)
+	rendered := pager.renderLines()
+	assert.Equal(t, len(rendered.lines), 0)
 }
 
 // What happens if we are scrolled to the bottom of a 1000 lines file, and then
@@ -270,9 +283,9 @@ func TestShortenedInput(t *testing.T) {
 	pager.mode = NewPagerModeFilter(&pager)
 	pager.filterPattern = regexp.MustCompile("first") // Match only the first line
 
-	rendered, _ := pager.renderLines()
-	assert.Equal(t, len(rendered), 1, "Should have rendered one line")
-	assert.Equal(t, "first", rowToString(rendered[0].cells))
+	rendered := pager.renderLines()
+	assert.Equal(t, len(rendered.lines), 1, "Should have rendered one line")
+	assert.Equal(t, "first", renderedToString(rendered.lines[0].cells))
 	assert.Equal(t, pager.lineIndex().Index(), 0, "Should have scrolled to the first line")
 }
 
@@ -307,16 +320,16 @@ func TestShortenedInputManyLines(t *testing.T) {
 	pager.mode = NewPagerModeFilter(&pager)
 	pager.filterPattern = regexp.MustCompile(`^match`)
 
-	rendered, _ := pager.renderLines()
-	assert.Equal(t, len(rendered), 10, "Should have rendered 10 lines")
+	rendered := pager.renderLines()
+	assert.Equal(t, len(rendered.lines), 10, "Should have rendered 10 lines")
 
 	expectedLines := []string{}
 	for i := 90; i < 100; i++ {
 		expectedLines = append(expectedLines, "match "+strconv.Itoa(i))
 	}
-	for i, row := range rendered {
-		assert.Equal(t, rowToString(row.cells), expectedLines[i], "Line %d mismatch", i)
+	for i, row := range rendered.lines {
+		assert.Equal(t, renderedToString(row.cells), expectedLines[i], "Line %d mismatch", i)
 	}
 	assert.Equal(t, pager.lineIndex().Index(), 90, "The last lines should now be visible")
-	assert.Equal(t, "match 99", rowToString(rendered[len(rendered)-1].cells))
+	assert.Equal(t, "match 99", renderedToString(rendered.lines[len(rendered.lines)-1].cells))
 }

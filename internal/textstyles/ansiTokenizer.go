@@ -33,7 +33,7 @@ var TabSize = 8
 const BACKSPACE = '\b'
 
 type StyledRunesWithTrailer struct {
-	StyledRunes []twin.StyledRune
+	StyledRunes []CellWithMetadata
 	Trailer     twin.Style
 }
 
@@ -119,7 +119,7 @@ func StyledRunesFromString(plainTextStyle twin.Style, s string, lineIndex *linem
 		return *manPageHeading
 	}
 
-	var cells []twin.StyledRune
+	var cells []CellWithMetadata
 
 	// Specs: https://en.wikipedia.org/wiki/ANSI_escape_code#3-bit_and_4-bit
 	styleUnprintable := twin.StyleDefault.WithBackground(twin.NewColor16(1)).WithForeground(twin.NewColor16(7))
@@ -130,7 +130,7 @@ func StyledRunesFromString(plainTextStyle twin.Style, s string, lineIndex *linem
 
 			case '\x09': // TAB
 				for {
-					cells = append(cells, twin.StyledRune{
+					cells = append(cells, CellWithMetadata{
 						Rune:  ' ',
 						Style: style,
 					})
@@ -144,12 +144,12 @@ func StyledRunesFromString(plainTextStyle twin.Style, s string, lineIndex *linem
 			case '�': // Go's broken-UTF8 marker
 				switch UnprintableStyle {
 				case UnprintableStyleHighlight:
-					cells = append(cells, twin.StyledRune{
+					cells = append(cells, CellWithMetadata{
 						Rune:  '?',
 						Style: styleUnprintable,
 					})
 				case UnprintableStyleWhitespace:
-					cells = append(cells, twin.StyledRune{
+					cells = append(cells, CellWithMetadata{
 						Rune:  '?',
 						Style: twin.StyleDefault,
 					})
@@ -158,7 +158,7 @@ func StyledRunesFromString(plainTextStyle twin.Style, s string, lineIndex *linem
 				}
 
 			case BACKSPACE:
-				cells = append(cells, twin.StyledRune{
+				cells = append(cells, CellWithMetadata{
 					Rune:  '<',
 					Style: styleUnprintable,
 				})
@@ -167,12 +167,12 @@ func StyledRunesFromString(plainTextStyle twin.Style, s string, lineIndex *linem
 				if !twin.Printable(token.Rune) {
 					switch UnprintableStyle {
 					case UnprintableStyleHighlight:
-						cells = append(cells, twin.StyledRune{
+						cells = append(cells, CellWithMetadata{
 							Rune:  '?',
 							Style: styleUnprintable,
 						})
 					case UnprintableStyleWhitespace:
-						cells = append(cells, twin.StyledRune{
+						cells = append(cells, CellWithMetadata{
 							Rune:  ' ',
 							Style: twin.StyleDefault,
 						})
@@ -181,7 +181,10 @@ func StyledRunesFromString(plainTextStyle twin.Style, s string, lineIndex *linem
 					}
 					continue
 				}
-				cells = append(cells, token)
+				cells = append(cells, CellWithMetadata{
+					Rune:  token.Rune,
+					Style: token.Style,
+				})
 			}
 		}
 	})

@@ -25,6 +25,16 @@ func (p *Pager) scrollToSearchHits() {
 		return
 	}
 
+	if p.searchHitIsVisible() {
+		// Already on-screen
+		return
+	}
+
+	if p.scrollRightToSearchHits() {
+		// Found it to the right, done!
+		return
+	}
+
 	firstHitIndex := p.findFirstHit(*lineIndex, nil, false)
 	if firstHitIndex == nil {
 		alreadyAtTheTop := (*lineIndex == linemetadata.Index{})
@@ -41,14 +51,117 @@ func (p *Pager) scrollToSearchHits() {
 		return
 	}
 
-	firstHitPosition := NewScrollPositionFromIndex(*firstHitIndex, "scrollToSearchHits")
+	// Found a match on some line
+	p.scrollPosition = NewScrollPositionFromIndex(*firstHitIndex, "scrollToSearchHits")
 
-	if firstHitPosition.isVisible(p) {
-		// Already on-screen, never mind
-		return
+	p.leftColumnZeroBased = 0
+	p.showLineNumbers = p.ShowLineNumbers
+	if !p.searchHitIsVisible() {
+		p.scrollRightToSearchHits()
+	}
+}
+
+// Return true if any search hit is currently visible on screen.
+//
+// A search hit is considered visible if the first character of the hit is
+// visible. This means that if the hit is longer than one character, the rest of
+// it may be off-screen to the right. If that happens, the user can scroll right
+// manually to see the rest of the hit.
+func (p *Pager) searchHitIsVisible() bool {
+	rendered := p.renderLines()
+	contentLines := rendered.lines
+	if len(contentLines) == 0 {
+		// No lines on screen, no hits
+		return false
 	}
 
-	p.scrollPosition = firstHitPosition
+	// Only the viewing mode cares about the status bar setting
+	_, isViewing := p.mode.(PagerModeViewing)
+	hasStatusBar := (isViewing && p.ShowStatusBar) || !isViewing
+	if hasStatusBar {
+		// Don't include the status bar line
+		contentLines = contentLines[:len(contentLines)-1]
+	}
+
+	for _, row := range contentLines {
+		for _, cell := range row.cells {
+			if cell.StartsSearchHit {
+				// Found a search hit on screen!
+				return true
+			}
+		}
+	}
+
+	// No search hits found
+	return false
+}
+
+// Scroll right looking for search hits. Return true if we found any.
+func (p *Pager) scrollRightToSearchHits() bool {
+	if p.WrapLongLines {
+		// No horizontal scrolling when wrapping
+		return false
+	}
+
+	// Check how far right we can scroll at most. Factors involved:
+	// - Screen width
+	// - Length of longest visible line
+	screenWidth, _ := p.screen.Size()
+
+	longestLineLength := 0 // In screen cells, some runes are double-width
+	rendered := p.renderLines()
+	for _, inputLine := range rendered.inputLines {
+		lineLength := inputLine.DisplayWidth()
+		if lineLength > longestLineLength {
+			longestLineLength = lineLength
+		}
+	}
+
+	// With a 10 wide screen and a 15 wide line (max index 14), the leftmost
+	// screen column can at most be 5:
+	//
+	// Screen column: 0123456789
+	// Line column:   5678901234
+	maxLeftmostColumn := longestLineLength - screenWidth
+
+	restoreShowLineNumbers := p.showLineNumbers
+	restoreLeftColumn := p.leftColumnZeroBased
+
+	for p.leftColumnZeroBased < maxLeftmostColumn {
+		// FIXME: Rather than scrolling right one screen at a time, we should
+		// consider scanning all lines for search hits and scrolling directly to the
+		// first one that is off-screen to the right.
+
+		// If the screen width is 1, and we have no line numbers, the answer
+		// could be 1. But since the last column could be covered by scroll-right
+		// markers, we'll say 0.
+		firstNotVisibleColumn := p.leftColumnZeroBased + screenWidth - rendered.numberPrefixWidth - 1
+		if firstNotVisibleColumn < 0 {
+			log.Info("Screen is narrower than number prefix length, not scrolling right for search hits")
+			p.showLineNumbers = restoreShowLineNumbers
+			p.leftColumnZeroBased = restoreLeftColumn
+			return false
+		}
+
+		scrollToColumn := firstNotVisibleColumn
+		if scrollToColumn > maxLeftmostColumn {
+			scrollToColumn = maxLeftmostColumn
+		}
+
+		p.showLineNumbers = false
+		p.leftColumnZeroBased = scrollToColumn
+
+		if p.searchHitIsVisible() {
+			// Found it!
+			return true
+		}
+	}
+
+	// Can't scroll right, pretend nothing happened
+	p.showLineNumbers = restoreShowLineNumbers
+	p.leftColumnZeroBased = restoreLeftColumn
+	return false
+
 }
 
 // Scroll backwards to the previous search hit, while the user is typing the
@@ -259,6 +372,7 @@ func (p *Pager) isNotFound() bool {
 	return isNotFound
 }
 
+// Scroll to the next search hit, after the user presses 'n'.
 func (p *Pager) scrollToNextSearchHit() {
 	if p.searchPattern == nil {
 		// Nothing to search for, never mind
@@ -267,6 +381,11 @@ func (p *Pager) scrollToNextSearchHit() {
 
 	if p.Reader().GetLineCount() == 0 {
 		// Nothing to search in, never mind
+		return
+	}
+
+	if p.scrollRightToSearchHits() {
+		// Found it to the right, done!
 		return
 	}
 
@@ -301,6 +420,12 @@ func (p *Pager) scrollToNextSearchHit() {
 
 	// Don't let any search hit scroll out of sight
 	p.setTargetLine(nil)
+
+	p.leftColumnZeroBased = 0
+	p.showLineNumbers = p.ShowLineNumbers
+	if !p.searchHitIsVisible() {
+		p.scrollRightToSearchHits()
+	}
 }
 
 func (p *Pager) scrollToPreviousSearchHit() {

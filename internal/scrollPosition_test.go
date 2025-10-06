@@ -23,6 +23,7 @@ func testCanonicalize1000(t *testing.T, withStatusBar bool, currentStartLine lin
 		FilterPattern: &pager.filterPattern,
 	}
 	pager.ShowLineNumbers = true
+	pager.showLineNumbers = true
 	pager.ShowStatusBar = withStatusBar
 	pager.scrollPosition = scrollPosition{
 		internalDontTouch: scrollPositionInternal{
@@ -79,6 +80,7 @@ func TestFastScrollAcross1000DoesNotPanic(t *testing.T) {
 		FilterPattern: &pager.filterPattern,
 	}
 	pager.ShowLineNumbers = true
+	pager.showLineNumbers = true
 
 	// Start more than one screen height before the line numbers get longer...
 	start := linemetadata.IndexFromZeroBased(900)
@@ -92,7 +94,7 @@ func TestFastScrollAcross1000DoesNotPanic(t *testing.T) {
 
 	// Trigger rendering (and canonicalization). If the prefix is miscomputed
 	// this would previously panic inside createLinePrefix().
-	lines, status := pager.renderLines()
-	assert.Assert(t, lines != nil) // sanity
-	_ = status                     // not asserted here; we only care about not panicking
+	rendered := pager.renderLines()
+	assert.Assert(t, rendered.lines != nil) // sanity
+	_ = rendered.statusText                 // not asserted here; we only care about not panicking
 }

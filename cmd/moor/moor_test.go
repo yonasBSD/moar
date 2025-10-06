@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/walles/moor/v2/internal/linemetadata"
+	"github.com/walles/moor/v2/internal/textstyles"
 	"github.com/walles/moor/v2/twin"
 	"gotest.tools/v3/assert"
 )
@@ -11,7 +12,7 @@ import (
 func TestParseScrollHint(t *testing.T) {
 	token, err := parseScrollHint("ESC[7m>")
 	assert.NilError(t, err)
-	assert.Equal(t, token, twin.StyledRune{
+	assert.Equal(t, token, textstyles.CellWithMetadata{
 		Rune:  '>',
 		Style: twin.StyleDefault.WithAttr(twin.AttrReverse),
 	})

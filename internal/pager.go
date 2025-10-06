@@ -74,8 +74,11 @@ type Pager struct {
 	isShowingHelp bool
 	preHelpState  *_PreHelpState
 
-	// NewPager shows lines by default, this field can hide them
+	// User preference
 	ShowLineNumbers bool
+
+	// Current state, initialized in StartPaging()
+	showLineNumbers bool
 
 	StatusBarStyle StatusBarOption
 	ShowStatusBar  bool
@@ -88,8 +91,8 @@ type Pager struct {
 	QuitIfOneScreen bool
 
 	// Ref: https://github.com/walles/moor/issues/94
-	ScrollLeftHint  twin.StyledRune
-	ScrollRightHint twin.StyledRune
+	ScrollLeftHint  textstyles.CellWithMetadata
+	ScrollRightHint textstyles.CellWithMetadata
 
 	SideScrollAmount int // Left / right arrow keys scroll amount
 
@@ -212,13 +215,14 @@ func NewPager(readers ...*reader.ReaderImpl) *Pager {
 		currentReader:    0,
 		readerSwitched:   make(chan struct{}, 1),
 		quit:             false,
-		ShowLineNumbers:  true,
+		ShowLineNumbers:  true, // Constant throghout the lifetime of the pager
+		showLineNumbers:  true, // Will be updated over time
 		ShowStatusBar:    true,
 		DeInit:           true,
 		SideScrollAmount: 16,
 		TabSize:          8, // This is what less defaults to
-		ScrollLeftHint:   twin.NewStyledRune('<', twin.StyleDefault.WithAttr(twin.AttrReverse)),
-		ScrollRightHint:  twin.NewStyledRune('>', twin.StyleDefault.WithAttr(twin.AttrReverse)),
+		ScrollLeftHint:   textstyles.CellWithMetadata{Rune: '<', Style: twin.StyleDefault.WithAttr(twin.AttrReverse)},
+		ScrollRightHint:  textstyles.CellWithMetadata{Rune: '>', Style: twin.StyleDefault.WithAttr(twin.AttrReverse)},
 		scrollPosition:   newScrollPosition(name),
 	}
 
@@ -241,11 +245,11 @@ func (p *Pager) visibleHeight() int {
 	return height
 }
 
-// How many cells are needed for this line number?
+// How many cells are needed for this line number? Includes padding.
 //
 // Returns 0 if line numbers are disabled.
 func (p *Pager) getLineNumberPrefixLength(lineNumber linemetadata.Number) int {
-	if !p.ShowLineNumbers {
+	if !p.showLineNumbers {
 		return 0
 	}
 
@@ -321,13 +325,13 @@ func (p *Pager) Quit() {
 
 // Negative deltas move left instead
 func (p *Pager) moveRight(delta int) {
-	if p.ShowLineNumbers && delta > 0 {
-		p.ShowLineNumbers = false
+	if p.showLineNumbers && delta > 0 {
+		p.showLineNumbers = false
 		return
 	}
 
 	if p.leftColumnZeroBased == 0 && delta < 0 {
-		p.ShowLineNumbers = true
+		p.showLineNumbers = true
 		return
 	}
 
@@ -407,6 +411,8 @@ func (p *Pager) StartPaging(screen twin.Screen, chromaStyle *chroma.Style, chrom
 			log.Warnf("Reader reported an error: %s", r.Err.Error())
 		}
 	}()
+
+	p.showLineNumbers = p.ShowLineNumbers
 
 	textstyles.UnprintableStyle = p.UnprintableStyle
 	if p.TabSize > 0 {
@@ -517,7 +523,7 @@ func (p *Pager) StartPaging(screen twin.Screen, chromaStyle *chroma.Style, chrom
 				if p.fitsOnOneScreen() {
 					// Ref:
 					// https://github.com/walles/moor/issues/113#issuecomment-1368294132
-					p.ShowLineNumbers = false // Requires a redraw to take effect, see below
+					p.showLineNumbers = false // Requires a redraw to take effect, see below
 					p.DeInit = false
 					p.quit = true
 
@@ -624,15 +630,18 @@ func (p *Pager) fitsOnOneScreenWrapped() bool {
 	fakePager := NewPager(p.readers[0])
 	p.readerLock.Unlock()
 	fakePager.screen = testScreen
-	fakePager.ShowLineNumbers = false // If we drop quit-if-one-screen, we will not print any line numbers
+
+	// If we drop out because of quit-if-one-screen, we will not print any line numbers
+	fakePager.showLineNumbers = false
+
 	fakePager.WrapLongLines = p.WrapLongLines
 	fakePager.ShowStatusBar = false // We are only interested in content lines
 	fakePager.TabSize = p.TabSize
 
 	// Render on our test screen
-	rendered, _ := fakePager.renderLines()
+	rendered := fakePager.renderLines()
 
-	return len(rendered) < testScreenHeight
+	return len(rendered.lines) < testScreenHeight
 }
 
 func (p *Pager) fitsOnOneScreen() bool {
@@ -672,8 +681,8 @@ func (p *Pager) fitsOnOneScreen() bool {
 // "leaving" pager contents on screen after exit.
 func (p *Pager) ReprintAfterExit() error {
 	// Figure out how many screen lines are used by pager contents
-	renderedScreenLines, _ := p.renderLines()
-	screenLinesCount := len(renderedScreenLines)
+	renderedScreen := p.renderLines()
+	screenLinesCount := len(renderedScreen.lines)
 
 	_, screenHeight := p.screen.Size()
 	screenHeightWithoutFooter := screenHeight - p.DeInitFalseMargin

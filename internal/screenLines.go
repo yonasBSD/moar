@@ -18,13 +18,20 @@ type renderedLine struct {
 	// will have a wrapIndex of 1.
 	wrapIndex int
 
-	cells []twin.StyledRune
+	cells textstyles.CellWithMetadataSlice
 
 	// Used for rendering clear-to-end-of-line control sequences:
 	// https://en.wikipedia.org/wiki/ANSI_escape_code#EL
 	//
 	// Ref: https://github.com/walles/moor/issues/106
 	trailer twin.Style
+}
+
+type renderedScreen struct {
+	lines             []renderedLine
+	inputLines        []*reader.NumberedLine
+	numberPrefixWidth int // Including padding. 0 means no line numbers.
+	statusText        string
 }
 
 // Refresh the whole pager display, both contents lines and the status line at
@@ -34,12 +41,12 @@ func (p *Pager) redraw(spinner string) {
 	p.longestLineLength = 0
 
 	lastUpdatedScreenLineNumber := -1
-	renderedScreenLines, statusText := p.renderLines()
-	for screenLineNumber, row := range renderedScreenLines {
+	renderedScreen := p.renderLines()
+	for screenLineNumber, row := range renderedScreen.lines {
 		lastUpdatedScreenLineNumber = screenLineNumber
 		column := 0
 		for _, cell := range row.cells {
-			column += p.screen.SetCell(column, lastUpdatedScreenLineNumber, cell)
+			column += p.screen.SetCell(column, lastUpdatedScreenLineNumber, cell.ToStyledRune())
 		}
 	}
 
@@ -53,10 +60,10 @@ func (p *Pager) redraw(spinner string) {
 	spinnerLine := textstyles.StyledRunesFromString(statusbarStyle, eofSpinner, nil).StyledRunes
 	column := 0
 	for _, cell := range spinnerLine {
-		column += p.screen.SetCell(column, lastUpdatedScreenLineNumber+1, cell)
+		column += p.screen.SetCell(column, lastUpdatedScreenLineNumber+1, cell.ToStyledRune())
 	}
 
-	p.mode.drawFooter(statusText, spinner)
+	p.mode.drawFooter(renderedScreen.statusText, spinner)
 
 	p.screen.Show()
 }
@@ -71,7 +78,7 @@ func (p *Pager) redraw(spinner string) {
 // The maximum number of lines returned by this method is limited by the screen
 // height. If the status line is visible, you'll get at most one less than the
 // screen height from this method.
-func (p *Pager) renderLines() ([]renderedLine, string) {
+func (p *Pager) renderLines() renderedScreen {
 	var lineIndex linemetadata.Index
 	if p.lineIndex() != nil {
 		lineIndex = *p.lineIndex()
@@ -79,7 +86,7 @@ func (p *Pager) renderLines() ([]renderedLine, string) {
 	inputLines := p.Reader().GetLines(lineIndex, p.visibleHeight())
 	if len(inputLines.Lines) == 0 {
 		// Empty input, empty output
-		return []renderedLine{}, inputLines.StatusText
+		return renderedScreen{statusText: inputLines.StatusText}
 	}
 
 	lastVisibleLineNumber := inputLines.Lines[len(inputLines.Lines)-1].Number
@@ -91,7 +98,7 @@ func (p *Pager) renderLines() ([]renderedLine, string) {
 
 		var onScreenLength int
 		for i := range rendering {
-			trimmedLen := len(twin.TrimSpaceRight(rendering[i].cells))
+			trimmedLen := len(rendering[i].cells.WithoutSpaceRight())
 			if trimmedLen > onScreenLength {
 				onScreenLength = trimmedLen
 			}
@@ -148,11 +155,16 @@ func (p *Pager) renderLines() ([]renderedLine, string) {
 		}
 
 		for len(line.cells) < screenWidth {
-			line.cells = append(line.cells, twin.NewStyledRune(' ', line.trailer))
+			line.cells = append(line.cells, textstyles.CellWithMetadata{Rune: ' ', Style: line.trailer})
 		}
 	}
 
-	return allLines, inputLines.StatusText
+	return renderedScreen{
+		lines:             allLines,
+		statusText:        inputLines.StatusText,
+		inputLines:        inputLines.Lines,
+		numberPrefixWidth: numberPrefixLength,
+	}
 }
 
 // Render one input line into one or more screen lines.
@@ -164,13 +176,13 @@ func (p *Pager) renderLines() ([]renderedLine, string) {
 // indent, and to (optionally) render the line number.
 func (p *Pager) renderLine(line *reader.NumberedLine, numberPrefixLength int) []renderedLine {
 	highlighted := line.HighlightedTokens(plainTextStyle, searchHitStyle, searchHitLineBackground, p.searchPattern)
-	var wrapped [][]twin.StyledRune
+	var wrapped []textstyles.CellWithMetadataSlice
 	if p.WrapLongLines {
 		width, _ := p.screen.Size()
 		wrapped = wrapLine(width-numberPrefixLength, highlighted.StyledRunes)
 	} else {
 		// All on one line
-		wrapped = [][]twin.StyledRune{highlighted.StyledRunes}
+		wrapped = []textstyles.CellWithMetadataSlice{highlighted.StyledRunes}
 	}
 
 	rendered := make([]renderedLine, 0)
@@ -203,9 +215,9 @@ func (p *Pager) renderLine(line *reader.NumberedLine, numberPrefixLength int) []
 //   - Line number, or leading whitespace for wrapped lines
 //   - Scroll left indicator
 //   - Scroll right indicator
-func (p *Pager) decorateLine(lineNumberToShow *linemetadata.Number, numberPrefixLength int, contents []twin.StyledRune) []twin.StyledRune {
+func (p *Pager) decorateLine(lineNumberToShow *linemetadata.Number, numberPrefixLength int, contents []textstyles.CellWithMetadata) []textstyles.CellWithMetadata {
 	width, _ := p.screen.Size()
-	newLine := make([]twin.StyledRune, 0, width)
+	newLine := make([]textstyles.CellWithMetadata, 0, width)
 	newLine = append(newLine, createLinePrefix(lineNumberToShow, numberPrefixLength)...)
 
 	// Find the first and last fully visible runes.
@@ -257,7 +269,7 @@ func (p *Pager) decorateLine(lineNumberToShow *linemetadata.Number, numberPrefix
 
 	// Prepend a space if we had to cut a rune in half at the start
 	if cutOffRuneToTheLeft {
-		newLine = append([]twin.StyledRune{twin.NewStyledRune(' ', p.ScrollLeftHint.Style)}, newLine...)
+		newLine = append([]textstyles.CellWithMetadata{{Rune: ' ', Style: p.ScrollLeftHint.Style}}, newLine...)
 	}
 
 	// Add the visible runes
@@ -267,7 +279,7 @@ func (p *Pager) decorateLine(lineNumberToShow *linemetadata.Number, numberPrefix
 
 	// Append a space if we had to cut a rune in half at the end
 	if cutOffRuneToTheRight {
-		newLine = append(newLine, twin.NewStyledRune(' ', p.ScrollRightHint.Style))
+		newLine = append(newLine, textstyles.CellWithMetadata{Rune: ' ', Style: p.ScrollRightHint.Style})
 	}
 
 	// Add scroll left indicator
@@ -275,16 +287,16 @@ func (p *Pager) decorateLine(lineNumberToShow *linemetadata.Number, numberPrefix
 	if canScrollLeft && len(contents) > 0 {
 		if len(newLine) == 0 {
 			// Make room for the scroll left indicator
-			newLine = make([]twin.StyledRune, 1)
+			newLine = make([]textstyles.CellWithMetadata, 1)
 		}
 
 		if newLine[0].Width() > 1 {
 			// Replace the first rune with two spaces so we can replace the
 			// leftmost cell with a scroll left indicator. First, convert to one
 			// space...
-			newLine[0] = twin.NewStyledRune(' ', p.ScrollLeftHint.Style)
+			newLine[0] = textstyles.CellWithMetadata{Rune: ' ', Style: p.ScrollLeftHint.Style}
 			// ...then prepend another space:
-			newLine = append([]twin.StyledRune{twin.NewStyledRune(' ', p.ScrollLeftHint.Style)}, newLine...)
+			newLine = append([]textstyles.CellWithMetadata{{Rune: ' ', Style: p.ScrollLeftHint.Style}}, newLine...)
 
 			// Prepending ref: https://stackoverflow.com/a/53737602/473672
 		}
@@ -299,9 +311,9 @@ func (p *Pager) decorateLine(lineNumberToShow *linemetadata.Number, numberPrefix
 			// Replace the last rune with two spaces so we can replace the
 			// rightmost cell with a scroll right indicator. First, convert to one
 			// space...
-			newLine[len(newLine)-1] = twin.NewStyledRune(' ', p.ScrollRightHint.Style)
+			newLine[len(newLine)-1] = textstyles.CellWithMetadata{Rune: ' ', Style: p.ScrollRightHint.Style}
 			// ...then append another space:
-			newLine = append(newLine, twin.NewStyledRune(' ', p.ScrollRightHint.Style))
+			newLine = append(newLine, textstyles.CellWithMetadata{Rune: ' ', Style: p.ScrollRightHint.Style})
 		}
 
 		newLine[len(newLine)-1] = p.ScrollRightHint
@@ -313,15 +325,15 @@ func (p *Pager) decorateLine(lineNumberToShow *linemetadata.Number, numberPrefix
 // Generate a line number prefix of the given length.
 //
 // Can be empty or all-whitespace depending on parameters.
-func createLinePrefix(lineNumber *linemetadata.Number, numberPrefixLength int) []twin.StyledRune {
+func createLinePrefix(lineNumber *linemetadata.Number, numberPrefixLength int) []textstyles.CellWithMetadata {
 	if numberPrefixLength == 0 {
-		return []twin.StyledRune{}
+		return []textstyles.CellWithMetadata{}
 	}
 
-	lineNumberPrefix := make([]twin.StyledRune, 0, numberPrefixLength)
+	lineNumberPrefix := make([]textstyles.CellWithMetadata, 0, numberPrefixLength)
 	if lineNumber == nil {
 		for len(lineNumberPrefix) < numberPrefixLength {
-			lineNumberPrefix = append(lineNumberPrefix, twin.StyledRune{Rune: ' '})
+			lineNumberPrefix = append(lineNumberPrefix, textstyles.CellWithMetadata{Rune: ' '})
 		}
 		return lineNumberPrefix
 	}
@@ -338,7 +350,7 @@ func createLinePrefix(lineNumber *linemetadata.Number, numberPrefixLength int) [
 			break
 		}
 
-		lineNumberPrefix = append(lineNumberPrefix, twin.NewStyledRune(digit, lineNumbersStyle))
+		lineNumberPrefix = append(lineNumberPrefix, textstyles.CellWithMetadata{Rune: digit, Style: lineNumbersStyle})
 	}
 
 	return lineNumberPrefix
