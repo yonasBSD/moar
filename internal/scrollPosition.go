@@ -54,7 +54,7 @@ func canonicalFromPager(pager *Pager) scrollPositionCanonical {
 	return scrollPositionCanonical{
 		width:           width,
 		height:          height,
-		showLineNumbers: pager.ShowLineNumbers,
+		showLineNumbers: pager.showLineNumbers,
 		showStatusBar:   pager.ShowStatusBar,
 		wrapLongLines:   pager.WrapLongLines,
 

@@ -74,8 +74,11 @@ type Pager struct {
 	isShowingHelp bool
 	preHelpState  *_PreHelpState
 
-	// NewPager shows lines by default, this field can hide them
-	ShowLineNumbers bool
+	// User preference
+	ShowLineNumbersPreference bool
+
+	// Current state, initialized in StartPaging()
+	showLineNumbers bool
 
 	StatusBarStyle StatusBarOption
 	ShowStatusBar  bool
@@ -208,18 +211,19 @@ func NewPager(readers ...*reader.ReaderImpl) *Pager {
 	}
 
 	pager := Pager{
-		readers:          readers,
-		currentReader:    0,
-		readerSwitched:   make(chan struct{}, 1),
-		quit:             false,
-		ShowLineNumbers:  true,
-		ShowStatusBar:    true,
-		DeInit:           true,
-		SideScrollAmount: 16,
-		TabSize:          8, // This is what less defaults to
-		ScrollLeftHint:   textstyles.CellWithMetadata{Rune: '<', Style: twin.StyleDefault.WithAttr(twin.AttrReverse)},
-		ScrollRightHint:  textstyles.CellWithMetadata{Rune: '>', Style: twin.StyleDefault.WithAttr(twin.AttrReverse)},
-		scrollPosition:   newScrollPosition(name),
+		readers:                   readers,
+		currentReader:             0,
+		readerSwitched:            make(chan struct{}, 1),
+		quit:                      false,
+		ShowLineNumbersPreference: true, // Constant throghout the lifetime of the pager
+		showLineNumbers:           true, // Will be updated over time
+		ShowStatusBar:             true,
+		DeInit:                    true,
+		SideScrollAmount:          16,
+		TabSize:                   8, // This is what less defaults to
+		ScrollLeftHint:            textstyles.CellWithMetadata{Rune: '<', Style: twin.StyleDefault.WithAttr(twin.AttrReverse)},
+		ScrollRightHint:           textstyles.CellWithMetadata{Rune: '>', Style: twin.StyleDefault.WithAttr(twin.AttrReverse)},
+		scrollPosition:            newScrollPosition(name),
 	}
 
 	pager.mode = PagerModeViewing{pager: &pager}
@@ -245,7 +249,7 @@ func (p *Pager) visibleHeight() int {
 //
 // Returns 0 if line numbers are disabled.
 func (p *Pager) getLineNumberPrefixLength(lineNumber linemetadata.Number) int {
-	if !p.ShowLineNumbers {
+	if !p.showLineNumbers {
 		return 0
 	}
 
@@ -321,13 +325,13 @@ func (p *Pager) Quit() {
 
 // Negative deltas move left instead
 func (p *Pager) moveRight(delta int) {
-	if p.ShowLineNumbers && delta > 0 {
-		p.ShowLineNumbers = false
+	if p.showLineNumbers && delta > 0 {
+		p.showLineNumbers = false
 		return
 	}
 
 	if p.leftColumnZeroBased == 0 && delta < 0 {
-		p.ShowLineNumbers = true
+		p.showLineNumbers = true
 		return
 	}
 
@@ -407,6 +411,8 @@ func (p *Pager) StartPaging(screen twin.Screen, chromaStyle *chroma.Style, chrom
 			log.Warnf("Reader reported an error: %s", r.Err.Error())
 		}
 	}()
+
+	p.showLineNumbers = p.ShowLineNumbersPreference
 
 	textstyles.UnprintableStyle = p.UnprintableStyle
 	if p.TabSize > 0 {
@@ -517,7 +523,7 @@ func (p *Pager) StartPaging(screen twin.Screen, chromaStyle *chroma.Style, chrom
 				if p.fitsOnOneScreen() {
 					// Ref:
 					// https://github.com/walles/moor/issues/113#issuecomment-1368294132
-					p.ShowLineNumbers = false // Requires a redraw to take effect, see below
+					p.showLineNumbers = false // Requires a redraw to take effect, see below
 					p.DeInit = false
 					p.quit = true
 
@@ -624,7 +630,10 @@ func (p *Pager) fitsOnOneScreenWrapped() bool {
 	fakePager := NewPager(p.readers[0])
 	p.readerLock.Unlock()
 	fakePager.screen = testScreen
-	fakePager.ShowLineNumbers = false // If we drop quit-if-one-screen, we will not print any line numbers
+
+	// If we drop out because of quit-if-one-screen, we will not print any line numbers
+	fakePager.showLineNumbers = false
+
 	fakePager.WrapLongLines = p.WrapLongLines
 	fakePager.ShowStatusBar = false // We are only interested in content lines
 	fakePager.TabSize = p.TabSize

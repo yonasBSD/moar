@@ -593,7 +593,7 @@ func pagerFromArgs(
 
 	pager := internal.NewPager(readerImpls...)
 	pager.WrapLongLines = *wrap
-	pager.ShowLineNumbers = !*noLineNumbers
+	pager.ShowLineNumbersPreference = !*noLineNumbers
 	pager.ShowStatusBar = !*noStatusBar
 	pager.DeInit = !*noClearOnExit
 	pager.DeInitFalseMargin = *noClearOnExitMargin

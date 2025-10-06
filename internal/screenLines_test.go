@@ -28,7 +28,8 @@ func renderedToString(row []textstyles.CellWithMetadata) string {
 
 func testHorizontalCropping(t *testing.T, contents string, firstVisibleColumn int, lastVisibleColumn int, expected string) {
 	pager := NewPager(nil)
-	pager.ShowLineNumbers = false
+	pager.ShowLineNumbersPreference = false
+	pager.showLineNumbers = false
 
 	pager.screen = twin.NewFakeScreen(1+lastVisibleColumn-firstVisibleColumn, 99)
 	pager.leftColumnZeroBased = firstVisibleColumn
@@ -199,7 +200,8 @@ func TestWrapping(t *testing.T) {
 	pager.screen = twin.NewFakeScreen(40, 40)
 
 	pager.WrapLongLines = true
-	pager.ShowLineNumbers = false
+	pager.ShowLineNumbersPreference = false
+	pager.showLineNumbers = false
 
 	assert.NilError(t, reader.Wait())
 

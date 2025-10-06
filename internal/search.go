@@ -124,7 +124,7 @@ func (p *Pager) scrollRightToSearchHits() bool {
 	// Line column:   5678901234
 	maxLeftmostColumn := longestLineLength - screenWidth
 
-	restoreShowLineNumbers := p.ShowLineNumbers
+	restoreShowLineNumbers := p.showLineNumbers
 	restoreLeftColumn := p.leftColumnZeroBased
 
 	for p.leftColumnZeroBased < maxLeftmostColumn {
@@ -138,7 +138,7 @@ func (p *Pager) scrollRightToSearchHits() bool {
 		firstNotVisibleColumn := p.leftColumnZeroBased + screenWidth - rendered.numberPrefixWidth - 1
 		if firstNotVisibleColumn < 0 {
 			log.Info("Screen is narrower than number prefix length, not scrolling right for search hits")
-			p.ShowLineNumbers = restoreShowLineNumbers
+			p.showLineNumbers = restoreShowLineNumbers
 			p.leftColumnZeroBased = restoreLeftColumn
 			return false
 		}
@@ -148,7 +148,7 @@ func (p *Pager) scrollRightToSearchHits() bool {
 			scrollToColumn = maxLeftmostColumn
 		}
 
-		p.ShowLineNumbers = false
+		p.showLineNumbers = false
 		p.leftColumnZeroBased = scrollToColumn
 
 		if p.searchHitIsVisible() {
@@ -158,7 +158,7 @@ func (p *Pager) scrollRightToSearchHits() bool {
 	}
 
 	// Can't scroll right, pretend nothing happened
-	p.ShowLineNumbers = restoreShowLineNumbers
+	p.showLineNumbers = restoreShowLineNumbers
 	p.leftColumnZeroBased = restoreLeftColumn
 	return false
 
