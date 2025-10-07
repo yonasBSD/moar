@@ -50,7 +50,8 @@ type scrollPositionCanonical struct {
 }
 
 func canonicalFromPager(pager *Pager) scrollPositionCanonical {
-	width, height := pager.screen.Size()
+	width, _ := pager.screen.Size()
+	height := pager.visibleHeight()
 	return scrollPositionCanonical{
 		width:           width,
 		height:          height,

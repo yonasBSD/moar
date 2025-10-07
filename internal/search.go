@@ -75,14 +75,6 @@ func (p *Pager) searchHitIsVisible() bool {
 		return false
 	}
 
-	// Only the viewing mode cares about the status bar setting
-	_, isViewing := p.mode.(PagerModeViewing)
-	hasStatusBar := (isViewing && p.ShowStatusBar) || !isViewing
-	if hasStatusBar {
-		// Don't include the status bar line
-		contentLines = contentLines[:len(contentLines)-1]
-	}
-
 	for _, row := range contentLines {
 		for _, cell := range row.cells {
 			if cell.StartsSearchHit {

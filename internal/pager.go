@@ -239,9 +239,15 @@ func NewPager(readers ...*reader.ReaderImpl) *Pager {
 // not the status bar is visible.
 func (p *Pager) visibleHeight() int {
 	_, height := p.screen.Size()
-	if p.ShowStatusBar {
+
+	// Only the viewing mode cares about the status bar setting
+	_, isViewing := p.mode.(PagerModeViewing)
+	hasStatusBar := (isViewing && p.ShowStatusBar) || !isViewing
+
+	if hasStatusBar {
 		return height - 1
 	}
+
 	return height
 }
 

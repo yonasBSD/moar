@@ -272,6 +272,11 @@ func TestShortenedInput(t *testing.T) {
 
 		scrollPosition: newScrollPosition("TestShortenedInput"),
 	}
+
+	// Hide the status bar for this test
+	pager.mode = PagerModeViewing{&pager}
+	pager.ShowStatusBar = false
+
 	pager.filteringReader = FilteringReader{
 		BackingReader: pager.readers[pager.currentReader],
 		FilterPattern: &pager.filterPattern,
@@ -309,27 +314,28 @@ func TestShortenedInputManyLines(t *testing.T) {
 		readers:        []*reader.ReaderImpl{reader.NewFromTextForTesting("test", strings.Join(lines, "\n"))},
 		scrollPosition: newScrollPosition("TestShortenedInputManyLines"),
 	}
+
 	pager.filteringReader = FilteringReader{
 		BackingReader: pager.readers[pager.currentReader],
 		FilterPattern: &pager.filterPattern,
 	}
 
 	pager.scrollToEnd()
-	assert.Equal(t, pager.lineIndex().Index(), 990, "Should be at the last line before filtering")
+	assert.Equal(t, pager.lineIndex().Index(), 991, "Should be at the last line before filtering")
 
 	pager.mode = NewPagerModeFilter(&pager)
 	pager.filterPattern = regexp.MustCompile(`^match`)
 
 	rendered := pager.renderLines()
-	assert.Equal(t, len(rendered.lines), 10, "Should have rendered 10 lines")
+	assert.Equal(t, len(rendered.lines), 9, "Should have rendered 9 lines (10 minus one status bar)")
 
 	expectedLines := []string{}
-	for i := 90; i < 100; i++ {
+	for i := 91; i < 100; i++ {
 		expectedLines = append(expectedLines, "match "+strconv.Itoa(i))
 	}
 	for i, row := range rendered.lines {
 		assert.Equal(t, renderedToString(row.cells), expectedLines[i], "Line %d mismatch", i)
 	}
-	assert.Equal(t, pager.lineIndex().Index(), 90, "The last lines should now be visible")
+	assert.Equal(t, pager.lineIndex().Index(), 91, "The last lines should now be visible")
 	assert.Equal(t, "match 99", renderedToString(rendered.lines[len(rendered.lines)-1].cells))
 }
