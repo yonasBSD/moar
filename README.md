@@ -255,16 +255,13 @@ Execute `release.sh` and follow instructions.
 
 # TODO
 
-- Enable exiting using ^c (without restoring the screen).
-
-- Start at a certain line if run as `moor file.txt:42`
-
 - Handle search hits to the right of the right screen edge when searching
   backwards. Searching backwards should move first left, then up and to the
   rightmost hit.
 
-- Support viewing multiple files by pushing them in reverse order on the view
-  stack.
+- Enable exiting using ^c (without restoring the screen).
+
+- Enable suspending using ^z, followed by resuming using `fg`.
 
 - Retain the search string when pressing / to search a second time.
 
