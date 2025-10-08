@@ -100,6 +100,10 @@ func toPattern(compileMe string) *regexp.Regexp {
 }
 
 func (m PagerModeSearch) onKey(key twin.KeyCode) {
+	if m.inputBox.handleKey(key) {
+		return
+	}
+
 	switch key {
 	case twin.KeyEnter:
 		m.pager.mode = PagerModeViewing{pager: m.pager}
@@ -112,29 +116,11 @@ func (m PagerModeSearch) onKey(key twin.KeyCode) {
 		m.pager.mode = PagerModeViewing{pager: m.pager}
 		m.pager.mode.onKey(key)
 
-	case twin.KeyHome:
-		m.inputBox.moveCursorHome()
-
-	case twin.KeyEnd:
-		m.inputBox.moveCursorEnd()
-
-	case twin.KeyLeft:
-		m.inputBox.moveCursorLeft()
-
-	case twin.KeyRight:
-		m.inputBox.moveCursorRight()
-
-	case twin.KeyBackspace:
-		m.inputBox.backspace()
-
-	case twin.KeyDelete:
-		m.inputBox.delete()
-
 	default:
 		log.Debugf("Unhandled search key event %v", key)
 	}
 }
 
 func (m PagerModeSearch) onRune(char rune) {
-	m.inputBox.insertRune(char)
+	m.inputBox.handleRune(char)
 }

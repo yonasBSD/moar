@@ -11,9 +11,9 @@ func TestInsertAndBackspace(t *testing.T) {
 	screen := twin.NewFakeScreen(40, 2)
 	b := &InputBox{accept: INPUTBOX_ACCEPT_ALL}
 
-	assert.Assert(t, b.insertRune('a'))
-	assert.Assert(t, b.insertRune('b'))
-	assert.Assert(t, b.insertRune('c'))
+	assert.Assert(t, b.handleRune('a'))
+	assert.Assert(t, b.handleRune('b'))
+	assert.Assert(t, b.handleRune('c'))
 	assert.Equal(t, "abc", b.text)
 
 	// Backspace
@@ -29,15 +29,15 @@ func TestInsertAndBackspace(t *testing.T) {
 func TestCursorMovementAndInsertDelete(t *testing.T) {
 	screen := twin.NewFakeScreen(80, 2)
 	b := &InputBox{accept: INPUTBOX_ACCEPT_ALL}
-	b.insertRune('a')
-	b.insertRune('b')
-	b.insertRune('c')
+	b.handleRune('a')
+	b.handleRune('b')
+	b.handleRune('c')
 	assert.Equal(t, "abc", b.text)
 
 	// Move left twice, insert 'X' between a and b
 	b.moveCursorLeft()
 	b.moveCursorLeft()
-	assert.Assert(t, b.insertRune('X'))
+	assert.Assert(t, b.handleRune('X'))
 	assert.Equal(t, "aXbc", b.text)
 
 	// Delete at cursor (cursor is after X)
@@ -46,12 +46,12 @@ func TestCursorMovementAndInsertDelete(t *testing.T) {
 
 	// Move home and insert
 	b.moveCursorHome()
-	assert.Assert(t, b.insertRune('S'))
+	assert.Assert(t, b.handleRune('S'))
 	assert.Equal(t, "SaXc", b.text)
 
 	// Move end and append
 	b.moveCursorEnd()
-	assert.Assert(t, b.insertRune('E'))
+	assert.Assert(t, b.handleRune('E'))
 	assert.Equal(t, "SaXcE", b.text)
 
 	b.draw(screen, "G: ")
@@ -61,9 +61,9 @@ func TestCursorMovementAndInsertDelete(t *testing.T) {
 
 func TestAcceptPositiveNumbers(t *testing.T) {
 	b := &InputBox{accept: INPUTBOX_ACCEPT_POSITIVE_NUMBERS}
-	assert.Assert(t, b.insertRune('1'))
-	assert.Assert(t, !b.insertRune('a'))
-	assert.Assert(t, b.insertRune('2'))
+	assert.Assert(t, b.handleRune('1'))
+	assert.Assert(t, !b.handleRune('a'))
+	assert.Assert(t, b.handleRune('2'))
 	assert.Equal(t, "12", b.text)
 }
 
@@ -71,8 +71,8 @@ func TestUnicodeRunes(t *testing.T) {
 	screen := twin.NewFakeScreen(80, 2)
 	b := &InputBox{accept: INPUTBOX_ACCEPT_ALL}
 	// Insert a CJK char and an emoji
-	assert.Assert(t, b.insertRune('午'))
-	assert.Assert(t, b.insertRune('🧐'))
+	assert.Assert(t, b.handleRune('午'))
+	assert.Assert(t, b.handleRune('🧐'))
 	assert.Equal(t, "午🧐", b.text)
 
 	// Backspace should remove the emoji
@@ -81,7 +81,7 @@ func TestUnicodeRunes(t *testing.T) {
 
 	// Insert another wide char at start
 	b.moveCursorHome()
-	assert.Assert(t, b.insertRune('你'))
+	assert.Assert(t, b.handleRune('你'))
 	assert.Equal(t, "你午", b.text)
 
 	b.draw(screen, "U: ")

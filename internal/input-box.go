@@ -79,13 +79,24 @@ func (b *InputBox) draw(screen twin.Screen, prompt string) {
 	}
 }
 
-// insertRune appends runes to the text of the InputBox and returns if those have been processed.
+// handleRune appends runes to the text of the InputBox and returns if those have been processed.
 // (Some keyboards send 0x08 instead of backspace, so we support it here too).
-func (b *InputBox) insertRune(char rune) bool {
+func (b *InputBox) handleRune(char rune) bool {
 	if char == '\x08' {
 		b.backspace()
 		return true
 	}
+	if char == '\x01' {
+		// Ctrl-A, move cursor to start
+		b.moveCursorHome()
+		return true
+	}
+	if char == '\x05' {
+		// Ctrl-E, move cursor to end
+		b.moveCursorEnd()
+		return true
+	}
+
 	// If configured to accept numbers only, drop any non-digit rune.
 	if b.accept == INPUTBOX_ACCEPT_POSITIVE_NUMBERS {
 		if !unicode.IsDigit(char) {
@@ -117,6 +128,38 @@ func (b *InputBox) insertRune(char rune) bool {
 		b.onTextChanged(b.text)
 	}
 	return true
+}
+
+// handleKey processes special keys like backspace, delete, arrow keys, home and end.
+// Returns true if the key was processed, false otherwise.
+func (b *InputBox) handleKey(key twin.KeyCode) bool {
+	switch key {
+	case twin.KeyLeft:
+		b.moveCursorLeft()
+		return true
+
+	case twin.KeyRight:
+		b.moveCursorRight()
+		return true
+
+	case twin.KeyHome:
+		b.moveCursorHome()
+		return true
+
+	case twin.KeyEnd:
+		b.moveCursorEnd()
+		return true
+
+	case twin.KeyBackspace:
+		b.backspace()
+		return true
+
+	case twin.KeyDelete:
+		b.delete()
+		return true
+	}
+
+	return false
 }
 
 // moveCursorLeft moves the cursor one rune to the left.

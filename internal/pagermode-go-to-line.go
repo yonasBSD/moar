@@ -47,6 +47,10 @@ func (m *PagerModeGotoLine) updateLineNumber(text string) {
 }
 
 func (m *PagerModeGotoLine) onKey(key twin.KeyCode) {
+	if m.inputBox.handleKey(key) {
+		return
+	}
+
 	switch key {
 	case twin.KeyEnter:
 		m.updateLineNumber(m.inputBox.text)
@@ -54,24 +58,6 @@ func (m *PagerModeGotoLine) onKey(key twin.KeyCode) {
 
 	case twin.KeyEscape:
 		m.pager.mode = PagerModeViewing{pager: m.pager}
-
-	case twin.KeyHome:
-		m.inputBox.moveCursorHome()
-
-	case twin.KeyEnd:
-		m.inputBox.moveCursorEnd()
-
-	case twin.KeyLeft:
-		m.inputBox.moveCursorLeft()
-
-	case twin.KeyRight:
-		m.inputBox.moveCursorRight()
-
-	case twin.KeyBackspace:
-		m.inputBox.backspace()
-
-	case twin.KeyDelete:
-		m.inputBox.delete()
 
 	default:
 		log.Tracef("Unhandled goto key event %v, treating as a viewing key event", key)
@@ -95,5 +81,5 @@ func (m *PagerModeGotoLine) onRune(char rune) {
 		return
 	}
 
-	m.inputBox.insertRune(char)
+	m.inputBox.handleRune(char)
 }

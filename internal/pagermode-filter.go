@@ -34,6 +34,10 @@ func (m *PagerModeFilter) updateFilterPattern(text string) {
 }
 
 func (m *PagerModeFilter) onKey(key twin.KeyCode) {
+	if m.inputBox.handleKey(key) {
+		return
+	}
+
 	switch key {
 	case twin.KeyEnter:
 		m.pager.mode = PagerModeViewing{pager: m.pager}
@@ -48,29 +52,11 @@ func (m *PagerModeFilter) onKey(key twin.KeyCode) {
 		viewing := PagerModeViewing{pager: m.pager}
 		viewing.onKey(key)
 
-	case twin.KeyHome:
-		m.inputBox.moveCursorHome()
-
-	case twin.KeyEnd:
-		m.inputBox.moveCursorEnd()
-
-	case twin.KeyLeft:
-		m.inputBox.moveCursorLeft()
-
-	case twin.KeyRight:
-		m.inputBox.moveCursorRight()
-
-	case twin.KeyBackspace:
-		m.inputBox.backspace()
-
-	case twin.KeyDelete:
-		m.inputBox.delete()
-
 	default:
 		log.Debugf("Unhandled filter key event %v", key)
 	}
 }
 
 func (m *PagerModeFilter) onRune(char rune) {
-	m.inputBox.insertRune(char)
+	m.inputBox.handleRune(char)
 }
