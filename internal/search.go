@@ -459,6 +459,82 @@ func (p *Pager) scrollRightToSearchHits() bool {
 	return false
 }
 
+// Scroll left looking for search hits. Return true if we found any.
+func (p *Pager) scrollLeftToSearchHits() bool {
+	if p.WrapLongLines {
+		// No horizontal scrolling when wrapping
+		return false
+	}
+
+	restoreLeftColumn := p.leftColumnZeroBased
+	restoreShowLineNumbers := p.showLineNumbers
+
+	screenWidth, _ := p.screen.Size()
+	// If the screen width is 2, we have columns 0 and 1. The rightmost column can be covered by
+	// scroll-right markers, so the first not-visible column when fully scrolled left is 0, or
+	// "2 - 2".
+	fullLeftRightmostVisibleColumn := screenWidth - 2
+	if p.ShowLineNumbers {
+		// If we show line numbers, the rightmost visible column when fully
+		// scrolled left is reduced by the number prefix width.
+		p.showLineNumbers = p.ShowLineNumbers
+		p.leftColumnZeroBased = 0
+		rendered := p.renderLines()
+		fullLeftRightmostVisibleColumn -= rendered.numberPrefixWidth
+
+		p.leftColumnZeroBased = restoreLeftColumn
+		p.showLineNumbers = restoreShowLineNumbers
+	}
+
+	// FIXME: Handle fullLeftRightmostVisibleColumn <= 0?
+
+	// Keep scrolling left until we either find a search hit, or reach the
+	// leftmost column with line numbers shown or not based on the user's
+	// preference.
+	for p.leftColumnZeroBased > 0 || (p.showLineNumbers != p.ShowLineNumbers) {
+		// FIXME: Rather than scrolling left one screen at a time, we should
+		// consider scanning all lines for search hits and scrolling directly to the
+		// first one that is off-screen to the left.
+
+		// Pretend the current leftmost column is not visible, since it could be
+		// covered by scroll-left markers.
+		lastNotVisibleColumn := p.leftColumnZeroBased
+
+		// Go left
+		if lastNotVisibleColumn <= fullLeftRightmostVisibleColumn {
+			// Going max left will show the column we want
+			p.showLineNumbers = p.ShowLineNumbers
+			p.leftColumnZeroBased = 0
+		} else {
+			// Scroll left one screen.
+			//
+			// If the screen width is 3, and we want column 5 to be visible, we
+			// should be showing columns 3, 4, and 5. So we want to set the
+			// leftmost column to 3, which is "5 - 3 + 1"
+			scrollToColumn := lastNotVisibleColumn - screenWidth + 1
+			if scrollToColumn < 0 {
+				scrollToColumn = 0
+			}
+
+			p.leftColumnZeroBased = scrollToColumn
+
+			// If showing line numbers was possible we should have ended up in
+			// the other if branch ^
+			p.showLineNumbers = false
+		}
+
+		if p.searchHitIsVisible() {
+			// Found it!
+			return true
+		}
+	}
+
+	// Scrolling left didn't find anything, pretend nothing happened
+	p.showLineNumbers = restoreShowLineNumbers
+	p.leftColumnZeroBased = restoreLeftColumn
+	return false
+}
+
 func (p *Pager) isViewing() bool {
 	_, isViewing := p.mode.(PagerModeViewing)
 	return isViewing
