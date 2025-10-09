@@ -470,17 +470,17 @@ func (p *Pager) scrollLeftToSearchHits() bool {
 	restoreShowLineNumbers := p.showLineNumbers
 
 	screenWidth, _ := p.screen.Size()
-	// If the screen width is 2, we have columns 0 and 1. The rightmost column can be covered by
-	// scroll-right markers, so the first not-visible column when fully scrolled left is 0, or
-	// "2 - 2".
-	fullLeftRightmostVisibleColumn := screenWidth - 2
-	if p.ShowLineNumbers {
-		// If we show line numbers, the rightmost visible column when fully
-		// scrolled left is reduced by the number prefix width.
+
+	// If we go max left, which column will be the rightmost visible one?
+	var fullLeftRightmostVisibleColumn int
+	{
 		p.showLineNumbers = p.ShowLineNumbers
 		p.leftColumnZeroBased = 0
 		rendered := p.renderLines()
-		fullLeftRightmostVisibleColumn -= rendered.numberPrefixWidth
+		// If the screen width is 2, we have columns 0 and 1. The rightmost column can be covered by
+		// scroll-right markers, so the first not-visible column when fully scrolled left is 0, or
+		// "2 - 2".
+		fullLeftRightmostVisibleColumn = screenWidth - 2 - rendered.numberPrefixWidth
 
 		p.leftColumnZeroBased = restoreLeftColumn
 		p.showLineNumbers = restoreShowLineNumbers
