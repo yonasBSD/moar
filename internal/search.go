@@ -61,7 +61,7 @@ func (p *Pager) scrollToSearchHits() {
 	}
 }
 
-// Scroll to the next search hit, after the user presses 'n'.
+// Scroll to the next search hit, when the user presses 'n'.
 func (p *Pager) scrollToNextSearchHit() {
 	if p.searchPattern == nil {
 		// Nothing to search for, never mind
@@ -137,6 +137,16 @@ func (p *Pager) scrollToSearchHitsBackwards() {
 		return
 	}
 
+	if p.searchHitIsVisible() {
+		// Already on-screen
+		return
+	}
+
+	if p.scrollLeftToSearchHits() {
+		// Found it to the left, done!
+		return
+	}
+
 	firstHitIndex := p.findFirstHit(*lineIndex, nil, true)
 	if firstHitIndex == nil {
 		lastLineIndex := linemetadata.IndexFromLength(p.Reader().GetLineCount())
@@ -162,15 +172,16 @@ func (p *Pager) scrollToSearchHitsBackwards() {
 
 	firstHitPosition := NewScrollPositionFromIndex(*firstHitIndex, "scrollToSearchHitsBackwards")
 
-	if firstHitPosition.isVisible(p) {
-		// Already on-screen, never mind
-		return
-	}
-
 	// Scroll so that the first hit is at the bottom of the screen
 	p.scrollPosition = firstHitPosition.PreviousLine(p.visibleHeight() - 1)
+
+	p.scrollMaxRight()
+	if !p.searchHitIsVisible() {
+		p.scrollLeftToSearchHits()
+	}
 }
 
+// Scroll backwards to the previous search hit, when the user presses 'N'.
 func (p *Pager) scrollToPreviousSearchHit() {
 	if p.searchPattern == nil {
 		// Nothing to search for, never mind
