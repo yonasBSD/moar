@@ -486,7 +486,10 @@ func (p *Pager) scrollLeftToSearchHits() bool {
 		p.showLineNumbers = restoreShowLineNumbers
 	}
 
-	// FIXME: Handle fullLeftRightmostVisibleColumn <= 0?
+	if fullLeftRightmostVisibleColumn < 0 {
+		log.Info("Screen too narrow (%d) to scroll left for search hits, skipping", screenWidth)
+		return false
+	}
 
 	// Keep scrolling left until we either find a search hit, or reach the
 	// leftmost column with line numbers shown or not based on the user's
