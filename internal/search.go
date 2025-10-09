@@ -392,6 +392,49 @@ func (p *Pager) searchHitIsVisible() bool {
 	return false
 }
 
+// If we are too far right, this function will scroll left
+func (p *Pager) scrollMaxRight() {
+	if p.WrapLongLines {
+		// No horizontal scrolling when wrapping
+		return
+	}
+
+	// First, render a screen scrolled to the far left so we know how much space
+	// line numbers take.
+	p.leftColumnZeroBased = 0
+	p.showLineNumbers = p.ShowLineNumbers
+	rendered := p.renderLines()
+
+	// Find the widest line, in screen cells. Some runes are double-width.
+	widestLineWidth := 0
+	for _, inputLine := range rendered.inputLines {
+		lineLength := inputLine.DisplayWidth()
+		if lineLength > widestLineWidth {
+			widestLineWidth = lineLength
+		}
+	}
+
+	screenWidth, _ := p.screen.Size()
+
+	availableWidth := screenWidth - rendered.numberPrefixWidth
+	if widestLineWidth <= availableWidth {
+		// All lines fit on screen, this means we're now max scrolled right
+		return
+	}
+
+	p.showLineNumbers = false
+	availableWidth += rendered.numberPrefixWidth
+	if widestLineWidth <= availableWidth {
+		// All lines fit on screen with line numbers off, this means we're now
+		// max scrolled right
+		return
+	}
+
+	// If the line width is 10 and the available width is also 10, we should
+	// start at column 0.
+	p.leftColumnZeroBased = widestLineWidth - availableWidth
+}
+
 // Scroll right looking for search hits. Return true if we found any.
 func (p *Pager) scrollRightToSearchHits() bool {
 	if p.WrapLongLines {
@@ -404,12 +447,12 @@ func (p *Pager) scrollRightToSearchHits() bool {
 	// - Length of longest visible line
 	screenWidth, _ := p.screen.Size()
 
-	longestLineLength := 0 // In screen cells, some runes are double-width
+	widestLineWidth := 0 // In screen cells, some runes are double-width
 	rendered := p.renderLines()
 	for _, inputLine := range rendered.inputLines {
 		lineLength := inputLine.DisplayWidth()
-		if lineLength > longestLineLength {
-			longestLineLength = lineLength
+		if lineLength > widestLineWidth {
+			widestLineWidth = lineLength
 		}
 	}
 
@@ -418,7 +461,7 @@ func (p *Pager) scrollRightToSearchHits() bool {
 	//
 	// Screen column: 0123456789
 	// Line column:   5678901234
-	maxLeftmostColumn := longestLineLength - screenWidth
+	maxLeftmostColumn := widestLineWidth - screenWidth
 
 	restoreShowLineNumbers := p.showLineNumbers
 	restoreLeftColumn := p.leftColumnZeroBased
@@ -487,7 +530,7 @@ func (p *Pager) scrollLeftToSearchHits() bool {
 	}
 
 	if fullLeftRightmostVisibleColumn < 0 {
-		log.Info("Screen too narrow (%d) to scroll left for search hits, skipping", screenWidth)
+		log.Info("Screen too narrow ({}) to scroll left for search hits, skipping", screenWidth)
 		return false
 	}
 
