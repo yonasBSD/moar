@@ -19,12 +19,6 @@ func (p *Pager) scrollToSearchHits() {
 		return
 	}
 
-	lineIndex := p.scrollPosition.lineIndex(p)
-	if lineIndex == nil {
-		// No lines to search
-		return
-	}
-
 	if p.searchHitIsVisible() {
 		// Already on-screen
 		return
@@ -32,6 +26,12 @@ func (p *Pager) scrollToSearchHits() {
 
 	if p.scrollRightToSearchHits() {
 		// Found it to the right, done!
+		return
+	}
+
+	lineIndex := p.scrollPosition.lineIndex(p)
+	if lineIndex == nil {
+		// No lines to search
 		return
 	}
 
@@ -125,18 +125,6 @@ func (p *Pager) scrollToSearchHitsBackwards() {
 		return
 	}
 
-	// Start at the bottom of the currently visible screen
-	lastVisiblePosition := p.getLastVisiblePosition()
-	if lastVisiblePosition == nil {
-		// No lines to search
-		return
-	}
-	lineIndex := lastVisiblePosition.lineIndex(p)
-	if lineIndex == nil {
-		log.Warn("No line number to search even though we have a last visible position")
-		return
-	}
-
 	if p.searchHitIsVisible() {
 		// Already on-screen
 		return
@@ -147,33 +135,39 @@ func (p *Pager) scrollToSearchHitsBackwards() {
 		return
 	}
 
+	// Start at the top visible line
+	lineIndex := p.scrollPosition.lineIndex(p)
+
 	firstHitIndex := p.findFirstHit(*lineIndex, nil, true)
 	if firstHitIndex == nil {
-		lastLineIndex := linemetadata.IndexFromLength(p.Reader().GetLineCount())
-		if lastLineIndex == nil {
+		lastReaderLineIndex := linemetadata.IndexFromLength(p.Reader().GetLineCount())
+		if lastReaderLineIndex == nil {
 			// In the first part of the search we had some lines to search.
 			// Lines should never go away, so this should never happen.
 			log.Error("Wrapped backwards search had no lines to search")
 			return
 		}
-		canWrap := (*lineIndex != *lastLineIndex)
+
+		lastVisibleLineIndex := p.getLastVisiblePosition().lineIndex(p)
+		canWrap := (*lineIndex != *lastVisibleLineIndex)
 		if !canWrap {
 			// No match, can't wrap, give up
 			return
 		}
 
 		// Try again from the bottom
-		firstHitIndex = p.findFirstHit(*lastLineIndex, lineIndex, true)
+		firstHitIndex = p.findFirstHit(*lastReaderLineIndex, lineIndex, true)
 	}
 	if firstHitIndex == nil {
 		// No match, give up
 		return
 	}
 
-	firstHitPosition := NewScrollPositionFromIndex(*firstHitIndex, "scrollToSearchHitsBackwards")
+	hitPosition := NewScrollPositionFromIndex(*firstHitIndex, "scrollToSearchHitsBackwards")
 
-	// Scroll so that the first hit is at the bottom of the screen
-	p.scrollPosition = firstHitPosition.PreviousLine(p.visibleHeight() - 1)
+	// Scroll so that the first hit is at the bottom of the screen. If the
+	// visible height is 1, we should scroll 0 steps.
+	p.scrollPosition = hitPosition.PreviousLine(p.visibleHeight() - 1)
 
 	p.scrollMaxRight()
 	if !p.searchHitIsVisible() {
@@ -392,8 +386,12 @@ func (p *Pager) searchHitIsVisible() bool {
 	return false
 }
 
-// If we are too far right, this function will scroll left
+// If we are alredy too far right when you call this method, it will scroll
+// left.
 func (p *Pager) scrollMaxRight() {
+
+	FIXME: Skriv tester för den här funktionen!
+
 	if p.WrapLongLines {
 		// No horizontal scrolling when wrapping
 		return
