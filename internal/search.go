@@ -389,9 +389,6 @@ func (p *Pager) searchHitIsVisible() bool {
 // If we are alredy too far right when you call this method, it will scroll
 // left.
 func (p *Pager) scrollMaxRight() {
-
-	FIXME: Skriv tester för den här funktionen!
-
 	if p.WrapLongLines {
 		// No horizontal scrolling when wrapping
 		return

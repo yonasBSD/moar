@@ -1,12 +1,81 @@
 package internal
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/walles/moor/v2/internal/reader"
 	"github.com/walles/moor/v2/twin"
 	"gotest.tools/v3/assert"
 )
+
+func TestScrollMaxRight_AllLinesFitWithLineNumbers(t *testing.T) {
+	// Case 2: All lines fit with line numbers
+	screenWidth := 20
+	widestLineWidth := 16 // Just below available width
+	line := strings.Repeat("x", widestLineWidth)
+	reader := reader.NewFromTextForTesting("test", line)
+	screen := twin.NewFakeScreen(screenWidth, 5)
+	pager := NewPager(reader)
+	pager.screen = screen
+	pager.ShowLineNumbers = true
+	pager.WrapLongLines = false
+
+	pager.scrollMaxRight()
+	assert.Equal(t, 0, pager.leftColumnZeroBased)
+	assert.Equal(t, true, pager.showLineNumbers)
+}
+
+func TestScrollMaxRight_AllLinesFitWithoutLineNumbers1(t *testing.T) {
+	// Case 2: All lines fit with line numbers
+	screenWidth := 20
+	widestLineWidth := 17 // Just above available width with line numbers
+	line := strings.Repeat("x", widestLineWidth)
+	reader := reader.NewFromTextForTesting("test", line)
+	screen := twin.NewFakeScreen(screenWidth, 5)
+	pager := NewPager(reader)
+	pager.screen = screen
+	pager.ShowLineNumbers = true
+	pager.WrapLongLines = false
+
+	pager.scrollMaxRight()
+	assert.Equal(t, 0, pager.leftColumnZeroBased)
+	assert.Equal(t, false, pager.showLineNumbers)
+}
+
+func TestScrollMaxRight_AllLinesFitWithoutLineNumbers2(t *testing.T) {
+	// Case 3: All lines fit only if line numbers are hidden, just at the edge
+	screenWidth := 20
+	widestLineWidth := 20 // Above available with line numbers, just below without
+	line := strings.Repeat("x", widestLineWidth)
+	reader := reader.NewFromTextForTesting("test", line)
+	screen := twin.NewFakeScreen(screenWidth, 5)
+	pager := NewPager(reader)
+	pager.screen = screen
+	pager.ShowLineNumbers = true
+	pager.WrapLongLines = false
+
+	pager.scrollMaxRight()
+	assert.Equal(t, 0, pager.leftColumnZeroBased)
+	assert.Equal(t, false, pager.showLineNumbers)
+}
+
+func TestScrollMaxRight_WidestLineExceedsScreenWidth_Edge(t *testing.T) {
+	// Case 4: Widest line just exceeds available width even without line numbers
+	screenWidth := 20
+	widestLineWidth := 21 // Just above available width without line numbers
+	line := strings.Repeat("x", widestLineWidth)
+	reader := reader.NewFromTextForTesting("test", line)
+	screen := twin.NewFakeScreen(screenWidth, 5)
+	pager := NewPager(reader)
+	pager.screen = screen
+	pager.ShowLineNumbers = true
+	pager.WrapLongLines = false
+
+	pager.scrollMaxRight()
+	assert.Equal(t, 1, pager.leftColumnZeroBased)
+	assert.Equal(t, false, pager.showLineNumbers)
+}
 
 func modeName(pager *Pager) string {
 	switch pager.mode.(type) {
