@@ -187,6 +187,11 @@ func (p *Pager) scrollToPreviousSearchHit() {
 		return
 	}
 
+	if p.scrollLeftToSearchHits() {
+		// Found it to the left, done!
+		return
+	}
+
 	var firstSearchIndex linemetadata.Index
 
 	switch {
@@ -204,15 +209,21 @@ func (p *Pager) scrollToPreviousSearchHit() {
 		panic(fmt.Sprint("Unknown search mode when finding previous: ", p.mode))
 	}
 
-	firstHitIndex := p.findFirstHit(firstSearchIndex, nil, true)
-	if firstHitIndex == nil {
+	hitIndex := p.findFirstHit(firstSearchIndex, nil, true)
+	if hitIndex == nil {
 		p.mode = PagerModeNotFound{pager: p}
 		return
 	}
-	p.scrollPosition = *scrollPositionFromIndex("scrollToPreviousSearchHit", *firstHitIndex)
+	p.scrollPosition = *scrollPositionFromIndex("scrollToPreviousSearchHit", *hitIndex)
 
 	// Don't let any search hit scroll out of sight
 	p.setTargetLine(nil)
+
+	// Prefer hits to the right
+	p.scrollMaxRight()
+	if !p.searchHitIsVisible() {
+		p.scrollLeftToSearchHits()
+	}
 }
 
 // Search input lines. Not screen lines!
