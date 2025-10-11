@@ -294,18 +294,19 @@ func TestScrollRightToSearchHits_HiddenByScrollMarker(t *testing.T) {
 }
 
 func TestScrollRightToSearchHits_LastCharHit(t *testing.T) {
-	reader := reader.NewFromTextForTesting("", "x0123456789a")
+	const line = "x0123456789a"
+	reader := reader.NewFromTextForTesting("", line)
 	screen := twin.NewFakeScreen(10, 5)
 	pager := NewPager(reader)
 	pager.screen = screen
 	pager.ShowLineNumbers = false
 	pager.showLineNumbers = false
-	pager.searchString = "g"
-	pager.searchPattern = toPattern("g")
+	pager.searchString = "a"
+	pager.searchPattern = toPattern("a")
 	pager.leftColumnZeroBased = 0
 
 	pager.scrollRightToSearchHits()
 	width, _ := screen.Size()
 	lastCol := pager.leftColumnZeroBased + width - 1
-	assert.Equal(t, 16, lastCol, "Search hit should be in the last screen column")
+	assert.Equal(t, strings.Index(line, "a"), lastCol, "Search hit should be in the last screen column")
 }
