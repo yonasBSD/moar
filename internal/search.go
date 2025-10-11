@@ -494,7 +494,9 @@ func (p *Pager) scrollRightToSearchHits() bool {
 			return false
 		}
 
-		scrollToColumn := firstNotVisibleColumn
+		// Minus one to account for the scroll-left marker that will cover the
+		// first column after scrolling.
+		scrollToColumn := firstNotVisibleColumn - 1
 		if scrollToColumn > maxLeftmostColumn {
 			scrollToColumn = maxLeftmostColumn
 		}
