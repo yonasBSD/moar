@@ -560,10 +560,13 @@ func (p *Pager) scrollLeftToSearchHits() bool {
 		} else {
 			// Scroll left one screen.
 			//
-			// If the screen width is 3, and we want column 5 to be visible, we
-			// should be showing columns 3, 4, and 5. So we want to set the
-			// leftmost column to 3, which is "5 - 3 + 1"
-			scrollToColumn := lastNotVisibleColumn - screenWidth + 1
+			// If the screen width is 3, and we want column 5 to be visible, and
+			// there can be both scroll-left and scroll-right markers, we should
+			// start at colum 4 (covered by a scroll-left marker), so that
+			// column 5 is visible next to it.
+			//
+			// Set the leftmost column to 4, which is "5 - 3 + 2".
+			scrollToColumn := lastNotVisibleColumn - screenWidth + 2
 			if scrollToColumn < 0 {
 				scrollToColumn = 0
 			}

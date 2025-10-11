@@ -203,7 +203,7 @@ func Test152(t *testing.T) {
 }
 
 // This test used to provoke a panic
-func TestScrollRightToSearchHitsNarrowScreen(t *testing.T) {
+func TestScrollRightToSearchHits_NarrowScreen(t *testing.T) {
 	reader := reader.NewFromTextForTesting("", "abcdefg")
 	screen := twin.NewFakeScreen(1, 5)
 	pager := NewPager(reader)
@@ -211,4 +211,53 @@ func TestScrollRightToSearchHitsNarrowScreen(t *testing.T) {
 
 	// We just want this to not crash
 	pager.scrollRightToSearchHits()
+}
+
+func TestScrollLeftToSearchHits_NoLineNumbers(t *testing.T) {
+	reader := reader.NewFromTextForTesting("", "a234567890")
+	screen := twin.NewFakeScreen(10, 5)
+	pager := NewPager(reader)
+	pager.screen = screen
+	pager.ShowLineNumbers = false
+	pager.showLineNumbers = false
+	pager.searchString = "a"
+	pager.searchPattern = toPattern("a")
+	pager.leftColumnZeroBased = 1
+
+	pager.scrollLeftToSearchHits()
+	assert.Equal(t, 0, pager.leftColumnZeroBased)
+	assert.Equal(t, false, pager.showLineNumbers)
+}
+
+func TestScrollLeftToSearchHits_WithLineNumbers(t *testing.T) {
+	reader := reader.NewFromTextForTesting("", "a234567890")
+	screen := twin.NewFakeScreen(10, 5)
+	pager := NewPager(reader)
+	pager.screen = screen
+	pager.ShowLineNumbers = true
+	pager.showLineNumbers = false
+	pager.searchString = "a"
+	pager.searchPattern = toPattern("a")
+	pager.leftColumnZeroBased = 1
+
+	pager.scrollLeftToSearchHits()
+	assert.Equal(t, 0, pager.leftColumnZeroBased)
+	assert.Equal(t, true, pager.showLineNumbers)
+}
+
+func TestScrollLeftToSearchHits_ScrollOneScreen(t *testing.T) {
+	reader := reader.NewFromTextForTesting("", "01234567890a234567890123456789")
+	screen := twin.NewFakeScreen(10, 5)
+	pager := NewPager(reader)
+	pager.screen = screen
+	pager.ShowLineNumbers = true
+	pager.showLineNumbers = false
+	pager.searchString = "a"
+	pager.searchPattern = toPattern("a")
+	pager.leftColumnZeroBased = 20
+
+	pager.scrollLeftToSearchHits()
+	assert.Equal(t, 4, pager.leftColumnZeroBased,
+		"We started at 20, screen is 10 wide, each scroll moves 8 to compensate for scroll markers, and 20-8-8=4")
+	assert.Equal(t, false, pager.showLineNumbers)
 }
