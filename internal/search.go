@@ -478,6 +478,15 @@ func (p *Pager) scrollRightToSearchHits() bool {
 	restoreShowLineNumbers := p.showLineNumbers
 	restoreLeftColumn := p.leftColumnZeroBased
 
+	if p.showLineNumbers {
+		// Try disabling them and see if something turns up
+		p.showLineNumbers = false
+		if p.searchHitIsVisible() {
+			return true
+		}
+		p.showLineNumbers = restoreShowLineNumbers
+	}
+
 	for p.leftColumnZeroBased < maxLeftmostColumn {
 		// FIXME: Rather than scrolling right one screen at a time, we should
 		// consider scanning all lines for search hits and scrolling directly to the

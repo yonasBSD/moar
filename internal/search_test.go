@@ -273,7 +273,7 @@ func TestScrollRightToSearchHits_DisableLineNumbersToSeeHit(t *testing.T) {
 	pager.searchPattern = toPattern("a")
 	pager.leftColumnZeroBased = 0
 
-	pager.scrollRightToSearchHits()
+	assert.Equal(t, true, pager.scrollRightToSearchHits())
 	assert.Equal(t, 0, pager.leftColumnZeroBased, "Should scroll right to bring 'a' into view")
 	assert.Equal(t, false, pager.showLineNumbers, "Should disable line numbers to fit search hit")
 }
@@ -289,7 +289,7 @@ func TestScrollRightToSearchHits_HiddenByScrollMarker(t *testing.T) {
 	pager.searchPattern = toPattern("a")
 	pager.leftColumnZeroBased = 0
 
-	pager.scrollRightToSearchHits()
+	assert.Equal(t, true, pager.scrollRightToSearchHits())
 	assert.Equal(t, 8, pager.leftColumnZeroBased, "Should scroll right to bring 'a' into view from behind scroll marker")
 }
 
@@ -305,7 +305,7 @@ func TestScrollRightToSearchHits_LastCharHit(t *testing.T) {
 	pager.searchPattern = toPattern("a")
 	pager.leftColumnZeroBased = 0
 
-	pager.scrollRightToSearchHits()
+	assert.Equal(t, true, pager.scrollRightToSearchHits())
 	width, _ := screen.Size()
 	lastCol := pager.leftColumnZeroBased + width - 1
 	assert.Equal(t, strings.Index(line, "a"), lastCol, "Search hit should be in the last screen column")
