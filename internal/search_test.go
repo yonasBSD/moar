@@ -251,15 +251,35 @@ func TestScrollLeftToSearchHits_ScrollOneScreen(t *testing.T) {
 	assert.Equal(t, false, pager.showLineNumbers)
 }
 
-// This test used to provoke a panic
+// If the screen is too narrow for line numbers, there's no point in scrolling.
+// This test has provoked some panics.
 func TestScrollRightToSearchHits_NarrowScreen(t *testing.T) {
 	reader := reader.NewFromTextForTesting("", "abcdefg")
 	screen := twin.NewFakeScreen(1, 5)
 	pager := NewPager(reader)
 	pager.screen = screen
 
-	// We just want this to not crash
-	pager.scrollRightToSearchHits()
+	pager.showLineNumbers = false
+	assert.Equal(t, pager.scrollRightToSearchHits(), false)
+
+	pager.showLineNumbers = true
+	assert.Equal(t, pager.scrollRightToSearchHits(), false)
+}
+
+func TestScrollRightToSearchHits_DisableLineNumbersToSeeHit0(t *testing.T) {
+	reader := reader.NewFromTextForTesting("", "12345a")
+	screen := twin.NewFakeScreen(10, 5)
+	pager := NewPager(reader)
+	pager.screen = screen
+	pager.ShowLineNumbers = true
+	pager.showLineNumbers = true
+	pager.searchString = "a"
+	pager.searchPattern = toPattern("a")
+	pager.leftColumnZeroBased = 0
+
+	assert.Equal(t, true, pager.scrollRightToSearchHits())
+	assert.Equal(t, 0, pager.leftColumnZeroBased, "Should scroll right to bring 'a' into view")
+	assert.Equal(t, false, pager.showLineNumbers, "Should disable line numbers to fit search hit")
 }
 
 func TestScrollRightToSearchHits_DisableLineNumbersToSeeHit(t *testing.T) {

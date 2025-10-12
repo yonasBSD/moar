@@ -383,14 +383,7 @@ func _findFirstHit(reader reader.Reader, startPosition linemetadata.Index, patte
 // it may be off-screen to the right. If that happens, the user can scroll right
 // manually to see the rest of the hit.
 func (p *Pager) searchHitIsVisible() bool {
-	rendered := p.renderLines()
-	contentLines := rendered.lines
-	if len(contentLines) == 0 {
-		// No lines on screen, no hits
-		return false
-	}
-
-	for _, row := range contentLines {
+	for _, row := range p.renderLines().lines {
 		for _, cell := range row.cells {
 			if cell.StartsSearchHit {
 				// Found a search hit on screen!
@@ -454,6 +447,9 @@ func (p *Pager) scrollRightToSearchHits() bool {
 		return false
 	}
 
+	restoreShowLineNumbers := p.showLineNumbers
+	restoreLeftColumn := p.leftColumnZeroBased
+
 	// Check how far right we can scroll at most. Factors involved:
 	// - Screen width
 	// - Length of longest visible line
@@ -475,14 +471,30 @@ func (p *Pager) scrollRightToSearchHits() bool {
 	// Line column:   5678901234
 	maxLeftmostColumn := widestLineWidth - screenWidth
 
-	restoreShowLineNumbers := p.showLineNumbers
-	restoreLeftColumn := p.leftColumnZeroBased
+	// If we have line numbers and disable them, do any new hits appear?
+	if rendered.numberPrefixWidth > 0 {
+		// If the number prefix width is 4, and the screen width is 10, then 6 should be
+		// the first newly revealed column index (10-4):
+		//
+		// Screen column: 0123456789
+		// New cells:     ______1234
+		//
+		// But since the rightmost column can be covered by scroll-right we need to subtract
+		// one more and get to 5.
+		firstJustRevealedColumn := screenWidth - rendered.numberPrefixWidth - 1
+		if firstJustRevealedColumn <= 0 {
+			log.Info("Screen too narrow ({}) to disable line numbers for search hits, skipping", screenWidth)
+			return false
+		}
 
-	if p.showLineNumbers {
-		// Try disabling them and see if something turns up
 		p.showLineNumbers = false
-		if p.searchHitIsVisible() {
-			return true
+		for _, row := range p.renderLines().lines {
+			for column := firstJustRevealedColumn; column < len(row.cells); column++ {
+				if row.cells[column].StartsSearchHit {
+					// Found a search hit on screen!
+					return true
+				}
+			}
 		}
 		p.showLineNumbers = restoreShowLineNumbers
 	}
@@ -496,7 +508,7 @@ func (p *Pager) scrollRightToSearchHits() bool {
 		// could be 1. But since the last column could be covered by scroll-right
 		// markers, we'll say 0.
 		firstNotVisibleColumn := p.leftColumnZeroBased + screenWidth - rendered.numberPrefixWidth - 1
-		if firstNotVisibleColumn < 0 {
+		if firstNotVisibleColumn < 1 {
 			log.Info("Screen is narrower than number prefix length, not scrolling right for search hits")
 			p.showLineNumbers = restoreShowLineNumbers
 			p.leftColumnZeroBased = restoreLeftColumn
