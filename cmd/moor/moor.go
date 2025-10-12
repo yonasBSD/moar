@@ -330,6 +330,14 @@ func noLineNumbersDefault() bool {
 		return true
 	}
 
+	if os.Getenv("GIT_EXEC_PATH") != "" {
+		// Set by "git".
+
+		// Neither logs nor diffs are helped by line numbers, turn them off by
+		// default.
+		return true
+	}
+
 	// Default to not skipping line numbers
 	return false
 }
