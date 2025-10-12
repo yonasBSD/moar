@@ -1,12 +1,81 @@
 package internal
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/walles/moor/v2/internal/reader"
 	"github.com/walles/moor/v2/twin"
 	"gotest.tools/v3/assert"
 )
+
+func TestScrollMaxRight_AllLinesFitWithLineNumbers(t *testing.T) {
+	// Case 2: All lines fit with line numbers
+	screenWidth := 20
+	widestLineWidth := 16 // Just below available width
+	line := strings.Repeat("x", widestLineWidth)
+	reader := reader.NewFromTextForTesting("test", line)
+	screen := twin.NewFakeScreen(screenWidth, 5)
+	pager := NewPager(reader)
+	pager.screen = screen
+	pager.ShowLineNumbers = true
+	pager.WrapLongLines = false
+
+	pager.scrollMaxRight()
+	assert.Equal(t, 0, pager.leftColumnZeroBased)
+	assert.Equal(t, true, pager.showLineNumbers)
+}
+
+func TestScrollMaxRight_AllLinesFitWithoutLineNumbers1(t *testing.T) {
+	// Case 2: All lines fit with line numbers
+	screenWidth := 20
+	widestLineWidth := 17 // Just above available width with line numbers
+	line := strings.Repeat("x", widestLineWidth)
+	reader := reader.NewFromTextForTesting("test", line)
+	screen := twin.NewFakeScreen(screenWidth, 5)
+	pager := NewPager(reader)
+	pager.screen = screen
+	pager.ShowLineNumbers = true
+	pager.WrapLongLines = false
+
+	pager.scrollMaxRight()
+	assert.Equal(t, 0, pager.leftColumnZeroBased)
+	assert.Equal(t, false, pager.showLineNumbers)
+}
+
+func TestScrollMaxRight_AllLinesFitWithoutLineNumbers2(t *testing.T) {
+	// Case 3: All lines fit only if line numbers are hidden, just at the edge
+	screenWidth := 20
+	widestLineWidth := 20 // Above available with line numbers, just below without
+	line := strings.Repeat("x", widestLineWidth)
+	reader := reader.NewFromTextForTesting("test", line)
+	screen := twin.NewFakeScreen(screenWidth, 5)
+	pager := NewPager(reader)
+	pager.screen = screen
+	pager.ShowLineNumbers = true
+	pager.WrapLongLines = false
+
+	pager.scrollMaxRight()
+	assert.Equal(t, 0, pager.leftColumnZeroBased)
+	assert.Equal(t, false, pager.showLineNumbers)
+}
+
+func TestScrollMaxRight_WidestLineExceedsScreenWidth_Edge(t *testing.T) {
+	// Case 4: Widest line just exceeds available width even without line numbers
+	screenWidth := 20
+	widestLineWidth := 21 // Just above available width without line numbers
+	line := strings.Repeat("x", widestLineWidth)
+	reader := reader.NewFromTextForTesting("test", line)
+	screen := twin.NewFakeScreen(screenWidth, 5)
+	pager := NewPager(reader)
+	pager.screen = screen
+	pager.ShowLineNumbers = true
+	pager.WrapLongLines = false
+
+	pager.scrollMaxRight()
+	assert.Equal(t, 1, pager.leftColumnZeroBased)
+	assert.Equal(t, false, pager.showLineNumbers)
+}
 
 func modeName(pager *Pager) string {
 	switch pager.mode.(type) {
@@ -133,13 +202,131 @@ func Test152(t *testing.T) {
 	assert.Equal(t, 2, pager.lineIndex().Index())
 }
 
-// This test used to provoke a panic
-func TestScrollRightToSearchHitsNarrowScreen(t *testing.T) {
+func TestScrollLeftToSearchHits_NoLineNumbers(t *testing.T) {
+	reader := reader.NewFromTextForTesting("", "a234567890")
+	screen := twin.NewFakeScreen(10, 5)
+	pager := NewPager(reader)
+	pager.screen = screen
+	pager.ShowLineNumbers = false
+	pager.showLineNumbers = false
+	pager.searchString = "a"
+	pager.searchPattern = toPattern("a")
+	pager.leftColumnZeroBased = 1
+
+	assert.Equal(t, true, pager.scrollLeftToSearchHits())
+	assert.Equal(t, 0, pager.leftColumnZeroBased)
+	assert.Equal(t, false, pager.showLineNumbers)
+}
+
+func TestScrollLeftToSearchHits_WithLineNumbers(t *testing.T) {
+	reader := reader.NewFromTextForTesting("", "a234567890")
+	screen := twin.NewFakeScreen(10, 5)
+	pager := NewPager(reader)
+	pager.screen = screen
+	pager.ShowLineNumbers = true
+	pager.showLineNumbers = false
+	pager.searchString = "a"
+	pager.searchPattern = toPattern("a")
+	pager.leftColumnZeroBased = 1
+
+	assert.Equal(t, true, pager.scrollLeftToSearchHits())
+	assert.Equal(t, 0, pager.leftColumnZeroBased)
+	assert.Equal(t, true, pager.showLineNumbers)
+}
+
+func TestScrollLeftToSearchHits_ScrollOneScreen(t *testing.T) {
+	reader := reader.NewFromTextForTesting("", "01234567890a234567890123456789")
+	screen := twin.NewFakeScreen(10, 5)
+	pager := NewPager(reader)
+	pager.screen = screen
+	pager.ShowLineNumbers = true
+	pager.showLineNumbers = false
+	pager.searchString = "a"
+	pager.searchPattern = toPattern("a")
+	pager.leftColumnZeroBased = 20
+
+	assert.Equal(t, true, pager.scrollLeftToSearchHits())
+	assert.Equal(t, 4, pager.leftColumnZeroBased,
+		"We started at 20, screen is 10 wide, each scroll moves 8 to compensate for scroll markers, and 20-8-8=4")
+	assert.Equal(t, false, pager.showLineNumbers)
+}
+
+// If the screen is too narrow for line numbers, there's no point in scrolling.
+// This test has provoked some panics.
+func TestScrollRightToSearchHits_NarrowScreen(t *testing.T) {
 	reader := reader.NewFromTextForTesting("", "abcdefg")
 	screen := twin.NewFakeScreen(1, 5)
 	pager := NewPager(reader)
 	pager.screen = screen
 
-	// We just want this to not crash
-	pager.scrollRightToSearchHits()
+	pager.showLineNumbers = false
+	assert.Equal(t, pager.scrollRightToSearchHits(), false)
+
+	pager.showLineNumbers = true
+	assert.Equal(t, pager.scrollRightToSearchHits(), false)
+}
+
+func TestScrollRightToSearchHits_DisableLineNumbersToSeeHit0(t *testing.T) {
+	reader := reader.NewFromTextForTesting("", "12345a")
+	screen := twin.NewFakeScreen(10, 5)
+	pager := NewPager(reader)
+	pager.screen = screen
+	pager.ShowLineNumbers = true
+	pager.showLineNumbers = true
+	pager.searchString = "a"
+	pager.searchPattern = toPattern("a")
+	pager.leftColumnZeroBased = 0
+
+	assert.Equal(t, true, pager.scrollRightToSearchHits())
+	assert.Equal(t, 0, pager.leftColumnZeroBased, "Should scroll right to bring 'a' into view")
+	assert.Equal(t, false, pager.showLineNumbers, "Should disable line numbers to fit search hit")
+}
+
+func TestScrollRightToSearchHits_DisableLineNumbersToSeeHit(t *testing.T) {
+	reader := reader.NewFromTextForTesting("", "123456789a")
+	screen := twin.NewFakeScreen(10, 5)
+	pager := NewPager(reader)
+	pager.screen = screen
+	pager.ShowLineNumbers = true
+	pager.showLineNumbers = true
+	pager.searchString = "a"
+	pager.searchPattern = toPattern("a")
+	pager.leftColumnZeroBased = 0
+
+	assert.Equal(t, true, pager.scrollRightToSearchHits())
+	assert.Equal(t, 0, pager.leftColumnZeroBased, "Should scroll right to bring 'a' into view")
+	assert.Equal(t, false, pager.showLineNumbers, "Should disable line numbers to fit search hit")
+}
+
+func TestScrollRightToSearchHits_HiddenByScrollMarker(t *testing.T) {
+	reader := reader.NewFromTextForTesting("", "123456789a234567890")
+	screen := twin.NewFakeScreen(10, 5)
+	pager := NewPager(reader)
+	pager.screen = screen
+	pager.ShowLineNumbers = false
+	pager.showLineNumbers = false
+	pager.searchString = "a"
+	pager.searchPattern = toPattern("a")
+	pager.leftColumnZeroBased = 0
+
+	assert.Equal(t, true, pager.scrollRightToSearchHits())
+	assert.Equal(t, 8, pager.leftColumnZeroBased, "Should scroll right to bring 'a' into view from behind scroll marker")
+}
+
+func TestScrollRightToSearchHits_LastCharHit(t *testing.T) {
+	const line = "x0123456789a"
+	reader := reader.NewFromTextForTesting("", line)
+	screen := twin.NewFakeScreen(10, 5)
+	pager := NewPager(reader)
+	pager.screen = screen
+	pager.ShowLineNumbers = false
+	pager.showLineNumbers = false
+	pager.searchString = "a"
+	pager.searchPattern = toPattern("a")
+	pager.leftColumnZeroBased = 0
+
+	assert.Equal(t, true, pager.scrollRightToSearchHits())
+	width, _ := screen.Size()
+	lastCol := pager.leftColumnZeroBased + width - 1
+	assert.Equal(t, strings.Index(line, "a"), lastCol, "Search hit should be in the last screen column")
 }

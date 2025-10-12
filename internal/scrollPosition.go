@@ -215,33 +215,6 @@ func (si *scrollPositionInternal) isCanonical(pager *Pager) bool {
 	return false
 }
 
-// Is the given position visible on screen?
-func (sp scrollPosition) isVisible(pager *Pager) bool {
-	if sp.internalDontTouch.deltaScreenLines < 0 {
-		panic(fmt.Errorf("Negative incoming deltaScreenLines: %#v", sp.internalDontTouch))
-	}
-
-	if sp.internalDontTouch.lineIndex.IsBefore(*pager.lineIndex()) {
-		// Line number too low, not visible
-		return false
-	}
-
-	lastVisiblePosition := pager.getLastVisiblePosition()
-	if sp.internalDontTouch.lineIndex.IsAfter(*lastVisiblePosition.lineIndex(pager)) {
-		// Line number too high, not visible
-		return false
-	}
-
-	// Line number is within range, now check the sub-line number
-
-	if sp.internalDontTouch.deltaScreenLines > lastVisiblePosition.deltaScreenLines(pager) {
-		// Sub-line-number too high, not visible
-		return false
-	}
-
-	return true
-}
-
 // Only to be called from the scrollPosition getters!!
 //
 // Canonicalize the scroll position vs the given pager. A canonical position can
@@ -312,14 +285,6 @@ func (sp *scrollPosition) lineIndex(pager *Pager) *linemetadata.Index {
 func (p *Pager) deltaScreenLines() int {
 	p.scrollPosition.internalDontTouch.canonicalize(p)
 	return p.scrollPosition.internalDontTouch.deltaScreenLines
-}
-
-// Scroll this many screen lines before rendering
-//
-// Always >= 0.
-func (sp *scrollPosition) deltaScreenLines(pager *Pager) int {
-	sp.internalDontTouch.canonicalize(pager)
-	return sp.internalDontTouch.deltaScreenLines
 }
 
 func (p *Pager) scrollToEnd() {

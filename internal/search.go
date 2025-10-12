@@ -19,12 +19,6 @@ func (p *Pager) scrollToSearchHits() {
 		return
 	}
 
-	lineIndex := p.scrollPosition.lineIndex(p)
-	if lineIndex == nil {
-		// No lines to search
-		return
-	}
-
 	if p.searchHitIsVisible() {
 		// Already on-screen
 		return
@@ -32,6 +26,12 @@ func (p *Pager) scrollToSearchHits() {
 
 	if p.scrollRightToSearchHits() {
 		// Found it to the right, done!
+		return
+	}
+
+	lineIndex := p.scrollPosition.lineIndex(p)
+	if lineIndex == nil {
+		// No lines to search
 		return
 	}
 
@@ -61,7 +61,7 @@ func (p *Pager) scrollToSearchHits() {
 	}
 }
 
-// Scroll to the next search hit, after the user presses 'n'.
+// Scroll to the next search hit, when the user presses 'n'.
 func (p *Pager) scrollToNextSearchHit() {
 	if p.searchPattern == nil {
 		// Nothing to search for, never mind
@@ -125,52 +125,57 @@ func (p *Pager) scrollToSearchHitsBackwards() {
 		return
 	}
 
-	// Start at the bottom of the currently visible screen
-	lastVisiblePosition := p.getLastVisiblePosition()
-	if lastVisiblePosition == nil {
-		// No lines to search
-		return
-	}
-	lineIndex := lastVisiblePosition.lineIndex(p)
-	if lineIndex == nil {
-		log.Warn("No line number to search even though we have a last visible position")
+	if p.searchHitIsVisible() {
+		// Already on-screen
 		return
 	}
 
+	if p.scrollLeftToSearchHits() {
+		// Found it to the left, done!
+		return
+	}
+
+	// Start at the top visible line
+	lineIndex := p.scrollPosition.lineIndex(p)
+
 	firstHitIndex := p.findFirstHit(*lineIndex, nil, true)
 	if firstHitIndex == nil {
-		lastLineIndex := linemetadata.IndexFromLength(p.Reader().GetLineCount())
-		if lastLineIndex == nil {
+		lastReaderLineIndex := linemetadata.IndexFromLength(p.Reader().GetLineCount())
+		if lastReaderLineIndex == nil {
 			// In the first part of the search we had some lines to search.
 			// Lines should never go away, so this should never happen.
 			log.Error("Wrapped backwards search had no lines to search")
 			return
 		}
-		canWrap := (*lineIndex != *lastLineIndex)
+
+		lastVisibleLineIndex := p.getLastVisiblePosition().lineIndex(p)
+		canWrap := (*lineIndex != *lastVisibleLineIndex)
 		if !canWrap {
 			// No match, can't wrap, give up
 			return
 		}
 
 		// Try again from the bottom
-		firstHitIndex = p.findFirstHit(*lastLineIndex, lineIndex, true)
+		firstHitIndex = p.findFirstHit(*lastReaderLineIndex, lineIndex, true)
 	}
 	if firstHitIndex == nil {
 		// No match, give up
 		return
 	}
 
-	firstHitPosition := NewScrollPositionFromIndex(*firstHitIndex, "scrollToSearchHitsBackwards")
+	hitPosition := NewScrollPositionFromIndex(*firstHitIndex, "scrollToSearchHitsBackwards")
 
-	if firstHitPosition.isVisible(p) {
-		// Already on-screen, never mind
-		return
+	// Scroll so that the first hit is at the bottom of the screen. If the
+	// visible height is 1, we should scroll 0 steps.
+	p.scrollPosition = hitPosition.PreviousLine(p.visibleHeight() - 1)
+
+	p.scrollMaxRight()
+	if !p.searchHitIsVisible() {
+		p.scrollLeftToSearchHits()
 	}
-
-	// Scroll so that the first hit is at the bottom of the screen
-	p.scrollPosition = firstHitPosition.PreviousLine(p.visibleHeight() - 1)
 }
 
+// Scroll backwards to the previous search hit, when the user presses 'N'.
 func (p *Pager) scrollToPreviousSearchHit() {
 	if p.searchPattern == nil {
 		// Nothing to search for, never mind
@@ -182,10 +187,21 @@ func (p *Pager) scrollToPreviousSearchHit() {
 		return
 	}
 
+	if p.scrollLeftToSearchHits() {
+		// Found it to the left, done!
+		return
+	}
+
 	var firstSearchIndex linemetadata.Index
 
 	switch {
 	case p.isViewing():
+		if p.scrollPosition.lineIndex(p).Index() == 0 {
+			// Already at the top, can't go further up
+			p.mode = PagerModeNotFound{pager: p}
+			return
+		}
+
 		// Start searching on the first line above the top of the screen
 		position := p.scrollPosition.PreviousLine(1)
 		firstSearchIndex = *position.lineIndex(p)
@@ -199,15 +215,21 @@ func (p *Pager) scrollToPreviousSearchHit() {
 		panic(fmt.Sprint("Unknown search mode when finding previous: ", p.mode))
 	}
 
-	firstHitIndex := p.findFirstHit(firstSearchIndex, nil, true)
-	if firstHitIndex == nil {
+	hitIndex := p.findFirstHit(firstSearchIndex, nil, true)
+	if hitIndex == nil {
 		p.mode = PagerModeNotFound{pager: p}
 		return
 	}
-	p.scrollPosition = *scrollPositionFromIndex("scrollToPreviousSearchHit", *firstHitIndex)
+	p.scrollPosition = *scrollPositionFromIndex("scrollToPreviousSearchHit", *hitIndex)
 
 	// Don't let any search hit scroll out of sight
 	p.setTargetLine(nil)
+
+	// Prefer hits to the right
+	p.scrollMaxRight()
+	if !p.searchHitIsVisible() {
+		p.scrollLeftToSearchHits()
+	}
 }
 
 // Search input lines. Not screen lines!
@@ -361,14 +383,7 @@ func _findFirstHit(reader reader.Reader, startPosition linemetadata.Index, patte
 // it may be off-screen to the right. If that happens, the user can scroll right
 // manually to see the rest of the hit.
 func (p *Pager) searchHitIsVisible() bool {
-	rendered := p.renderLines()
-	contentLines := rendered.lines
-	if len(contentLines) == 0 {
-		// No lines on screen, no hits
-		return false
-	}
-
-	for _, row := range contentLines {
+	for _, row := range p.renderLines().lines {
 		for _, cell := range row.cells {
 			if cell.StartsSearchHit {
 				// Found a search hit on screen!
@@ -381,6 +396,50 @@ func (p *Pager) searchHitIsVisible() bool {
 	return false
 }
 
+// If we are alredy too far right when you call this method, it will scroll
+// left.
+func (p *Pager) scrollMaxRight() {
+	if p.WrapLongLines {
+		// No horizontal scrolling when wrapping
+		return
+	}
+
+	// First, render a screen scrolled to the far left so we know how much space
+	// line numbers take.
+	p.leftColumnZeroBased = 0
+	p.showLineNumbers = p.ShowLineNumbers
+	rendered := p.renderLines()
+
+	// Find the widest line, in screen cells. Some runes are double-width.
+	widestLineWidth := 0
+	for _, inputLine := range rendered.inputLines {
+		lineLength := inputLine.DisplayWidth()
+		if lineLength > widestLineWidth {
+			widestLineWidth = lineLength
+		}
+	}
+
+	screenWidth, _ := p.screen.Size()
+
+	availableWidth := screenWidth - rendered.numberPrefixWidth
+	if widestLineWidth <= availableWidth {
+		// All lines fit on screen, this means we're now max scrolled right
+		return
+	}
+
+	p.showLineNumbers = false
+	availableWidth += rendered.numberPrefixWidth
+	if widestLineWidth <= availableWidth {
+		// All lines fit on screen with line numbers off, this means we're now
+		// max scrolled right
+		return
+	}
+
+	// If the line width is 10 and the available width is also 10, we should
+	// start at column 0.
+	p.leftColumnZeroBased = widestLineWidth - availableWidth
+}
+
 // Scroll right looking for search hits. Return true if we found any.
 func (p *Pager) scrollRightToSearchHits() bool {
 	if p.WrapLongLines {
@@ -388,17 +447,20 @@ func (p *Pager) scrollRightToSearchHits() bool {
 		return false
 	}
 
+	restoreShowLineNumbers := p.showLineNumbers
+	restoreLeftColumn := p.leftColumnZeroBased
+
 	// Check how far right we can scroll at most. Factors involved:
 	// - Screen width
 	// - Length of longest visible line
 	screenWidth, _ := p.screen.Size()
 
-	longestLineLength := 0 // In screen cells, some runes are double-width
+	widestLineWidth := 0 // In screen cells, some runes are double-width
 	rendered := p.renderLines()
 	for _, inputLine := range rendered.inputLines {
 		lineLength := inputLine.DisplayWidth()
-		if lineLength > longestLineLength {
-			longestLineLength = lineLength
+		if lineLength > widestLineWidth {
+			widestLineWidth = lineLength
 		}
 	}
 
@@ -407,10 +469,35 @@ func (p *Pager) scrollRightToSearchHits() bool {
 	//
 	// Screen column: 0123456789
 	// Line column:   5678901234
-	maxLeftmostColumn := longestLineLength - screenWidth
+	maxLeftmostColumn := widestLineWidth - screenWidth
 
-	restoreShowLineNumbers := p.showLineNumbers
-	restoreLeftColumn := p.leftColumnZeroBased
+	// If we have line numbers and disable them, do any new hits appear?
+	if rendered.numberPrefixWidth > 0 {
+		// If the number prefix width is 4, and the screen width is 10, then 6 should be
+		// the first newly revealed column index (10-4):
+		//
+		// Screen column: 0123456789
+		// New cells:     ______1234
+		//
+		// But since the rightmost column can be covered by scroll-right we need to subtract
+		// one more and get to 5.
+		firstJustRevealedColumn := screenWidth - rendered.numberPrefixWidth - 1
+		if firstJustRevealedColumn <= 0 {
+			log.Info("Screen too narrow ({}) to disable line numbers for search hits, skipping", screenWidth)
+			return false
+		}
+
+		p.showLineNumbers = false
+		for _, row := range p.renderLines().lines {
+			for column := firstJustRevealedColumn; column < len(row.cells); column++ {
+				if row.cells[column].StartsSearchHit {
+					// Found a search hit on screen!
+					return true
+				}
+			}
+		}
+		p.showLineNumbers = restoreShowLineNumbers
+	}
 
 	for p.leftColumnZeroBased < maxLeftmostColumn {
 		// FIXME: Rather than scrolling right one screen at a time, we should
@@ -421,14 +508,16 @@ func (p *Pager) scrollRightToSearchHits() bool {
 		// could be 1. But since the last column could be covered by scroll-right
 		// markers, we'll say 0.
 		firstNotVisibleColumn := p.leftColumnZeroBased + screenWidth - rendered.numberPrefixWidth - 1
-		if firstNotVisibleColumn < 0 {
+		if firstNotVisibleColumn < 1 {
 			log.Info("Screen is narrower than number prefix length, not scrolling right for search hits")
 			p.showLineNumbers = restoreShowLineNumbers
 			p.leftColumnZeroBased = restoreLeftColumn
 			return false
 		}
 
-		scrollToColumn := firstNotVisibleColumn
+		// Minus one to account for the scroll-left marker that will cover the
+		// first column after scrolling.
+		scrollToColumn := firstNotVisibleColumn - 1
 		if scrollToColumn > maxLeftmostColumn {
 			scrollToColumn = maxLeftmostColumn
 		}
@@ -443,6 +532,88 @@ func (p *Pager) scrollRightToSearchHits() bool {
 	}
 
 	// Can't scroll right, pretend nothing happened
+	p.showLineNumbers = restoreShowLineNumbers
+	p.leftColumnZeroBased = restoreLeftColumn
+	return false
+}
+
+// Scroll left looking for search hits. Return true if we found any.
+func (p *Pager) scrollLeftToSearchHits() bool {
+	if p.WrapLongLines {
+		// No horizontal scrolling when wrapping
+		return false
+	}
+
+	restoreLeftColumn := p.leftColumnZeroBased
+	restoreShowLineNumbers := p.showLineNumbers
+
+	screenWidth, _ := p.screen.Size()
+
+	// If we go max left, which column will be the rightmost visible one?
+	var fullLeftRightmostVisibleColumn int
+	{
+		p.showLineNumbers = p.ShowLineNumbers
+		p.leftColumnZeroBased = 0
+		rendered := p.renderLines()
+		// If the screen width is 2, we have columns 0 and 1. The rightmost column can be covered by
+		// scroll-right markers, so the first not-visible column when fully scrolled left is 0, or
+		// "2 - 2".
+		fullLeftRightmostVisibleColumn = screenWidth - 2 - rendered.numberPrefixWidth
+
+		p.leftColumnZeroBased = restoreLeftColumn
+		p.showLineNumbers = restoreShowLineNumbers
+	}
+
+	if fullLeftRightmostVisibleColumn < 0 {
+		log.Info("Screen too narrow ({}) to scroll left for search hits, skipping", screenWidth)
+		return false
+	}
+
+	// Keep scrolling left until we either find a search hit, or reach the
+	// leftmost column with line numbers shown or not based on the user's
+	// preference.
+	for p.leftColumnZeroBased > 0 || (p.showLineNumbers != p.ShowLineNumbers) {
+		// FIXME: Rather than scrolling left one screen at a time, we should
+		// consider scanning all lines for search hits and scrolling directly to the
+		// first one that is off-screen to the left.
+
+		// Pretend the current leftmost column is not visible, since it could be
+		// covered by scroll-left markers.
+		lastNotVisibleColumn := p.leftColumnZeroBased
+
+		// Go left
+		if lastNotVisibleColumn <= fullLeftRightmostVisibleColumn {
+			// Going max left will show the column we want
+			p.showLineNumbers = p.ShowLineNumbers
+			p.leftColumnZeroBased = 0
+		} else {
+			// Scroll left one screen.
+			//
+			// If the screen width is 3, and we want column 5 to be visible, and
+			// there can be both scroll-left and scroll-right markers, we should
+			// start at colum 4 (covered by a scroll-left marker), so that
+			// column 5 is visible next to it.
+			//
+			// Set the leftmost column to 4, which is "5 - 3 + 2".
+			scrollToColumn := lastNotVisibleColumn - screenWidth + 2
+			if scrollToColumn < 0 {
+				scrollToColumn = 0
+			}
+
+			p.leftColumnZeroBased = scrollToColumn
+
+			// If showing line numbers was possible we should have ended up in
+			// the other if branch ^
+			p.showLineNumbers = false
+		}
+
+		if p.searchHitIsVisible() {
+			// Found it!
+			return true
+		}
+	}
+
+	// Scrolling left didn't find anything, pretend nothing happened
 	p.showLineNumbers = restoreShowLineNumbers
 	p.leftColumnZeroBased = restoreLeftColumn
 	return false
