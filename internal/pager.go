@@ -443,6 +443,7 @@ func (p *Pager) StartPaging(screen twin.Screen, chromaStyle *chroma.Style, chrom
 		spinnerFrames := [...]string{"/.\\", "-o-", "\\O/", "| |"}
 		spinnerIndex := 0
 		spinnerTicker := time.NewTicker(200 * time.Millisecond)
+		lastSpinnerFrame := "UNSET" // Track the last spinner frame to avoid unnecessary redraws
 
 		// Support throttling of more-lines-available reads, see below
 		p.readerLock.Lock()
@@ -470,6 +471,9 @@ func (p *Pager) StartPaging(screen twin.Screen, chromaStyle *chroma.Style, chrom
 				throttledMoreLines = r.MoreLinesAdded
 				reenable = nil
 
+				// Reset spinner for new reader so that we show it again if needed
+				lastSpinnerFrame = "UNSET"
+
 				// Tell the viewer to replace the view
 				screen.Events() <- eventMoreLinesAvailable{}
 
@@ -487,15 +491,24 @@ func (p *Pager) StartPaging(screen twin.Screen, chromaStyle *chroma.Style, chrom
 				reenable = nil
 
 			case <-spinnerTicker.C:
-				currentFrame := spinnerFrames[spinnerIndex]
+				currentSpinnerFrame := spinnerFrames[spinnerIndex]
 				if r.Done.Load() {
-					currentFrame = ""
+					// We're done, clear the spinner
+					currentSpinnerFrame = ""
 				}
+
 				spinnerIndex++
 				if spinnerIndex >= len(spinnerFrames) {
 					spinnerIndex = 0
 				}
-				screen.Events() <- eventSpinnerUpdate{currentFrame}
+
+				if currentSpinnerFrame == lastSpinnerFrame {
+					// Prevent unnecessary redraws
+					continue
+				}
+
+				screen.Events() <- eventSpinnerUpdate{currentSpinnerFrame}
+				lastSpinnerFrame = currentSpinnerFrame
 
 			case <-r.MaybeDone:
 				screen.Events() <- eventMaybeDone{}

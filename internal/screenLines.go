@@ -3,6 +3,7 @@ package internal
 import (
 	"fmt"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/walles/moor/v2/internal/linemetadata"
 	"github.com/walles/moor/v2/internal/reader"
 	"github.com/walles/moor/v2/internal/textstyles"
@@ -37,6 +38,7 @@ type renderedScreen struct {
 // Refresh the whole pager display, both contents lines and the status line at
 // the bottom
 func (p *Pager) redraw(spinner string) {
+	log.Trace("redraw called")
 	p.screen.Clear()
 	p.longestLineLength = 0
 
