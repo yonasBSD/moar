@@ -255,10 +255,6 @@ Execute `release.sh` and follow instructions.
 
 # TODO
 
-- Handle search hits to the right of the right screen edge when searching
-  backwards. Searching backwards should move first left, then up and to the
-  rightmost hit.
-
 - Enable exiting using ^c (without restoring the screen).
 
 - Enable suspending using ^z, followed by resuming using `fg`.
@@ -314,3 +310,7 @@ Execute `release.sh` and follow instructions.
 - Handle search hits to the right of the right screen edge when searching
   forwards. Searching forwards now moves first right, then to the left edge
   and down.
+
+- Handle search hits to the right of the right screen edge when searching
+  backwards. Searching backwards should move first left, then up and to the
+  rightmost hit.
