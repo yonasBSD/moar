@@ -40,7 +40,6 @@ If your favorite terminal is missing, feel free to add it.
 | -------- | -------- |
 | Contour | [Use <kbd>Shift</kbd>](https://github.com/contour-terminal/contour/blob/cf434eaae4b428228413039624231ad0a4e6839b/docs/configuration/advanced/mouse.md) when selecting with mouse.<br>*Cred to @postsolar for this tip.* |
 | Foot | [Use <kbd>Shift</kbd>](https://codeberg.org/dnkl/foot/wiki#i-can-t-use-the-mouse-to-select-text) when selecting with mouse.<br>*Cred to @postsolar for this tip.* |
-| iTerm | Go to `Preferences / Profiles / Default / Terminal / ` and uncheck "Report mouse clicks & drags". |
 | Terminal on macOS | On a laptop: Hold down the <kbd>fn</kbd> key when selecting with mouse. |
 
 # `less`' screen initialization sequence

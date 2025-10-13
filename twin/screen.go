@@ -245,7 +245,14 @@ func (screen *UnixScreen) setAlternateScreenMode(enable bool) {
 	// Ref: https://stackoverflow.com/a/11024208/473672
 	if enable {
 		screen.write("\x1b[?1049h")
+
+		// Enable alternateScroll mode. This makes the mouse wheel work without
+		// blocking selection.
+		//
+		// Ref: https://github.com/walles/moor/issues/53#issuecomment-3392572761
+		screen.write("\x1b[?1007h")
 	} else {
+		screen.write("\x1b[?1007l")
 		screen.write("\x1b[?1049l")
 	}
 }
@@ -292,9 +299,9 @@ func (screen *UnixScreen) onWindowResized() {
 // See also: https://github.com/walles/moor/issues/53
 func terminalHasArrowKeysEmulation() bool {
 	// Better off with mouse tracking:
-	// * iTerm2 (macOS)
 	// * Terminal.app (macOS)
 	// * Contour, thanks to @postsolar (GitHub username) for testing, 2023-12-18
+	// * Foot, thanks to @postsolar (GitHub username) for testing, 2023-12-19
 
 	// Hyper, tested on macOS, December 14th 2023
 	if os.Getenv("TERM_PROGRAM") == "Hyper" {
@@ -386,6 +393,20 @@ func terminalHasArrowKeysEmulation() bool {
 	// https://github.com/walles/moor/issues/53#issuecomment-3276404279
 	if os.Getenv("WT_SESSION") != "" {
 		log.Info("Windows Terminal detected, assuming arrow keys emulation active")
+		return true
+	}
+
+	// iTerm2, supports alternateScroll mode, and therefore works with "select"
+	if os.Getenv("TERM_PROGRAM") == "iTerm.app" {
+		log.Info("iTerm2 terminal detected, gets arrow keys emulation through alternateScroll mode")
+		return true
+	}
+
+	// In ssh sessions we can't detect the terminal, but most terminals support
+	// "select" mode, especially now that we activate alternateScroll as well.
+	// Go for select.
+	if os.Getenv("SSH_CONNECTION") != "" || os.Getenv("SSH_CLIENT") != "" || os.Getenv("SSH_TTY") != "" {
+		log.Info("SSH session detected, assuming arrow keys emulation active since most terminals support it, especially with alternateScroll mode active")
 		return true
 	}
 
