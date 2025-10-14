@@ -16,6 +16,23 @@ type CellWithMetadata struct {
 	StartsSearchHit bool // True if this cell is the first cell of a search hit
 }
 
+// Required for some tests to pass
+func (r CellWithMetadata) Equal(b CellWithMetadata) bool {
+	if r.Rune != b.Rune {
+		return false
+	}
+
+	if r.Style != b.Style {
+		return false
+	}
+
+	if r.StartsSearchHit != b.StartsSearchHit {
+		return false
+	}
+
+	return true
+}
+
 func (r CellWithMetadata) ToStyledRune() twin.StyledRune {
 	return twin.NewStyledRune(r.Rune, r.Style)
 }
