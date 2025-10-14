@@ -37,6 +37,32 @@ type Style struct {
 
 var StyleDefault Style
 
+func (style Style) Equal(other Style) bool {
+	if style.fg != other.fg {
+		return false
+	}
+	if style.bg != other.bg {
+		return false
+	}
+	if style.underlineColor != other.underlineColor {
+		return false
+	}
+	if style.attrs != other.attrs {
+		return false
+	}
+
+	// Now only the hyperlink is left to compare
+	if style.hyperlinkURL == nil && other.hyperlinkURL == nil {
+		return true
+	}
+	if style.hyperlinkURL != nil && other.hyperlinkURL != nil {
+		return *style.hyperlinkURL == *other.hyperlinkURL
+	}
+
+	// Hyperlinks have different nil-ness
+	return false
+}
+
 func (style Style) String() string {
 	undelineSuffix := ""
 	if style.underlineColor != ColorDefault {

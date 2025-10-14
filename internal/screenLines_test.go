@@ -339,3 +339,20 @@ func TestShortenedInputManyLines(t *testing.T) {
 	assert.Equal(t, pager.lineIndex().Index(), 91, "The last lines should now be visible")
 	assert.Equal(t, "match 99", renderedToString(rendered.lines[len(rendered.lines)-1].cells))
 }
+
+func BenchmarkRenderLines(b *testing.B) {
+	input := reader.NewFromTextForTesting(
+		"BenchmarkRenderLine()",
+		strings.Repeat("This is a line with text and some more text to make it long enough.\n", 100))
+	pager := NewPager(input)
+	pager.screen = twin.NewFakeScreen(80, 25)
+
+	assert.NilError(b, input.Wait())
+
+	pager.renderLines() // Warm up
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		pager.renderLines()
+	}
+}

@@ -231,7 +231,13 @@ Profiling `BenchmarkPlainTextSearch()`. Try replacing `-alloc_objects` with
 `-alloc_space` or change the `-focus` function:
 
 ```bash
-go test -memprofilerate 1 -memprofile profile.out -benchmem -run='^$' -bench '^BenchmarkPlainTextSearch$' github.com/walles/moor/internal && go tool pprof -alloc_objects -focus findFirstHit -relative_percentages -web profile.out
+go test -memprofilerate=1 -memprofile=profile.out -benchmem -run='^$' -bench '^BenchmarkPlainTextSearch$' ./internal && go tool pprof -alloc_objects -focus findFirstHit -relative_percentages -web profile.out
+```
+
+Or to get a CPU profile:
+
+```bash
+go test -cpuprofile=profile.out -benchmem -run='^$' -bench '^BenchmarkRenderLines$' ./internal && go tool pprof -focus renderLines -relative_percentages -web profile.out
 ```
 
 Build + run:
