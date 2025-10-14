@@ -1,7 +1,6 @@
 package internal
 
 import (
-	"reflect"
 	"testing"
 
 	"gotest.tools/v3/assert"
@@ -42,7 +41,18 @@ func assertWrap(t *testing.T, input string, widthInScreenCells int, wrappedLines
 		expected = append(expected, tokenize(wrappedLine))
 	}
 
-	if reflect.DeepEqual(actual, expected) {
+	equal := true
+	if len(actual) != len(expected) {
+		equal = false
+	} else {
+		for i := range actual {
+			if !actual[i].Equals(expected[i]) {
+				equal = false
+				break
+			}
+		}
+	}
+	if equal {
 		return
 	}
 

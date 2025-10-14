@@ -50,6 +50,20 @@ func (r *CellWithMetadata) Width() int {
 
 type CellWithMetadataSlice []CellWithMetadata
 
+func (runes CellWithMetadataSlice) Equals(other CellWithMetadataSlice) bool {
+	if len(runes) != len(other) {
+		return false
+	}
+
+	for i := range runes {
+		if !runes[i].Equal(other[i]) {
+			return false
+		}
+	}
+
+	return true
+}
+
 // Returns a copy of the slice with leading whitespace removed
 func (runes CellWithMetadataSlice) WithoutSpaceLeft() CellWithMetadataSlice {
 	for i := range runes {
