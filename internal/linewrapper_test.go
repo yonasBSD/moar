@@ -46,7 +46,7 @@ func assertWrap(t *testing.T, input string, widthInScreenCells int, wrappedLines
 		equal = false
 	} else {
 		for i := range actual {
-			if !actual[i].Equals(expected[i]) {
+			if !actual[i].Equal(expected[i]) {
 				equal = false
 				break
 			}

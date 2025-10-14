@@ -50,7 +50,7 @@ func (r *CellWithMetadata) Width() int {
 
 type CellWithMetadataSlice []CellWithMetadata
 
-func (runes CellWithMetadataSlice) Equals(other CellWithMetadataSlice) bool {
+func (runes CellWithMetadataSlice) Equal(other CellWithMetadataSlice) bool {
 	if len(runes) != len(other) {
 		return false
 	}
