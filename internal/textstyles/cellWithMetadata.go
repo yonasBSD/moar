@@ -11,6 +11,8 @@ type CellWithMetadata struct {
 	Rune  rune
 	Style twin.Style
 
+	cachedWidth *int
+
 	StartsSearchHit bool // True if this cell is the first cell of a search hit
 }
 
@@ -18,8 +20,15 @@ func (r CellWithMetadata) ToStyledRune() twin.StyledRune {
 	return twin.NewStyledRune(r.Rune, r.Style)
 }
 
-func (r CellWithMetadata) Width() int {
-	return r.ToStyledRune().Width()
+func (r *CellWithMetadata) Width() int {
+	if r.cachedWidth != nil {
+		return *r.cachedWidth
+	}
+
+	// Cache it
+	w := r.ToStyledRune().Width()
+	r.cachedWidth = &w
+	return w
 }
 
 type CellWithMetadataSlice []CellWithMetadata
