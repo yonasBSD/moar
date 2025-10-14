@@ -22,7 +22,7 @@ func (r CellWithMetadata) Equal(b CellWithMetadata) bool {
 		return false
 	}
 
-	if r.Style != b.Style {
+	if !r.Style.Equal(b.Style) {
 		return false
 	}
 

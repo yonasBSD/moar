@@ -269,7 +269,8 @@ func TestHyperlink_escBackslash(t *testing.T) {
 		{Rune: 'b', Style: twin.StyleDefault.WithHyperlink(&url)},
 		{Rune: 'c', Style: twin.StyleDefault.WithHyperlink(&url)},
 		{Rune: 'd', Style: twin.StyleDefault},
-	}, cmp.AllowUnexported(twin.Style{}))
+	},
+		cmp.Comparer(func(a, b CellWithMetadata) bool { return a.Equal(b) }))
 }
 
 // Test with the not-recommended terminator BELL (ASCII 7).
@@ -285,7 +286,8 @@ func TestHyperlink_bell(t *testing.T) {
 		{Rune: 'b', Style: twin.StyleDefault.WithHyperlink(&url)},
 		{Rune: 'c', Style: twin.StyleDefault.WithHyperlink(&url)},
 		{Rune: 'd', Style: twin.StyleDefault},
-	}, cmp.AllowUnexported(twin.Style{}))
+	},
+		cmp.Comparer(func(a, b CellWithMetadata) bool { return a.Equal(b) }))
 }
 
 // Test with some other ESC sequence than ESC-backslash
