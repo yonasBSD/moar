@@ -424,16 +424,19 @@ func (p *Pager) centerSearchHitsVertically() {
 			return
 		}
 
-		centerHitRow := (firstHitRow + lastHitRow) / 2
+		// If the visible height is 1, the center screen row is 0.
+		centerScreenRowDoubled := p.visibleHeight() - 1
 
-		// If the visible height is 1, the center screen row is 0
-		centerScreenRow := (p.visibleHeight() - 1) / 2
+		centerHitRowDoubled := firstHitRow + lastHitRow
 
-		// Scroll so that the center hit row is at the center screen row. If the
-		// center screen row is 1 (3 lines visible), and the center hit row is 2
-		// (last screen line), we need to arrow down once.
-		newScrollPosition := p.scrollPosition.NextLine(centerHitRow - centerScreenRow)
+		// Divide by 2 here to get the amount of rows we need to scroll. We
+		// postponed the division by 2 until now to avoid rounding errors.
+		//
+		// If the center screen row is 1 (3 lines visible), and the center hit
+		// row is 2 (last screen line), we need to arrow down once.
+		deltaRows := (centerHitRowDoubled - centerScreenRowDoubled) / 2
 
+		newScrollPosition := p.scrollPosition.NextLine(deltaRows)
 		if p.ScrollPositionsEqual(p.scrollPosition, newScrollPosition) {
 			// No change, done!
 			return
