@@ -88,6 +88,29 @@ func (sp scrollPosition) NextLine(scrollDistance int) scrollPosition {
 	}
 }
 
+func (p *Pager) ScrollPositionsEqual(a, b scrollPosition) bool {
+	a.internalDontTouch.canonicalize(p)
+	b.internalDontTouch.canonicalize(p)
+	if a.internalDontTouch.deltaScreenLines != b.internalDontTouch.deltaScreenLines {
+		return false
+	}
+
+	if (a.internalDontTouch.lineIndex == nil) != (b.internalDontTouch.lineIndex == nil) {
+		// One line index is nil, the other is not
+		return false
+	}
+
+	if a.internalDontTouch.lineIndex != nil && b.internalDontTouch.lineIndex != nil {
+		// Both line indexes are non-nil...
+		if *a.internalDontTouch.lineIndex != *b.internalDontTouch.lineIndex {
+			// ... but they point to different lines.
+			return false
+		}
+	}
+
+	return true
+}
+
 // Create a new position, scrolled to the given line number
 //
 //revive:disable-next-line:unexported-return
