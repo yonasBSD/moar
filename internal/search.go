@@ -59,6 +59,7 @@ func (p *Pager) scrollToSearchHits() {
 	if !p.searchHitIsVisible() {
 		p.scrollRightToSearchHits()
 	}
+	p.centerSearchHitsVertically()
 }
 
 // Scroll to the next search hit, when the user presses 'n'.
@@ -115,6 +116,7 @@ func (p *Pager) scrollToNextSearchHit() {
 	if !p.searchHitIsVisible() {
 		p.scrollRightToSearchHits()
 	}
+	p.centerSearchHitsVertically()
 }
 
 // Scroll backwards to the previous search hit, while the user is typing the
@@ -173,6 +175,7 @@ func (p *Pager) scrollToSearchHitsBackwards() {
 	if !p.searchHitIsVisible() {
 		p.scrollLeftToSearchHits()
 	}
+	p.centerSearchHitsVertically()
 }
 
 // Scroll backwards to the previous search hit, when the user presses 'N'.
@@ -230,6 +233,7 @@ func (p *Pager) scrollToPreviousSearchHit() {
 	if !p.searchHitIsVisible() {
 		p.scrollLeftToSearchHits()
 	}
+	p.centerSearchHitsVertically()
 }
 
 // Search input lines. Not screen lines!
@@ -394,6 +398,15 @@ func (p *Pager) searchHitIsVisible() bool {
 
 	// No search hits found
 	return false
+}
+
+func (p *Pager) centerSearchHitsVertically() {
+	if p.WrapLongLines {
+		// FIXME: Centering is not supported when wrapping, future improvement!
+		return
+	}
+
+	FIXME: Implement me!
 }
 
 // If we are alredy too far right when you call this method, it will scroll
