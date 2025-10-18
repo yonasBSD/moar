@@ -709,10 +709,7 @@ func startPaging(pager *internal.Pager, screen twin.Screen, chromaStyle *chroma.
 		}
 
 		if !pager.DeInit {
-			err := pager.ReprintAfterExit()
-			if err != nil {
-				log.Error("Failed reprinting pager view after exit: ", err)
-			}
+			pager.ReprintAfterExit()
 		}
 
 		if pager.AfterExit != nil {

@@ -18,8 +18,8 @@ import (
 
 const logLevel = log.WarnLevel
 
-// If you feel some option is missing, request more options at
-// https://github.com/walles/moor/issues.
+// If you feel some option is missing, make PRs at
+// https://github.com/walles/moor/pulls open an issue.
 type Options struct {
 	// Name displayed in the bottom left corner of the pager.
 	//
@@ -31,9 +31,19 @@ type Options struct {
 	// auto formatting.
 	NoAutoFormat bool
 
-	// Long lines are truncated by default. Set this to true to wrap them.
-	// Users can toggle wrapping on / off using the 'w' key while paging.
+	// The default is to truncate long lines, and let the user press right-arrow
+	// to see more of them. Set this to true to wrap long lines instead. Users
+	// can toggle wrapping on / off using the 'w' key while paging.
 	WrapLongLines bool
+
+	// The default is to show line numbers. Set this to true to disable line
+	// numbers. The user can toggle line numbers on by pressing the left-arrow
+	// key while paging.
+	NoLineNumbers bool
+
+	// The default is to always start the pager. If this is set to true, short
+	// input will just be printed, and no paging will happen.
+	QuitIfOneScreen bool
 }
 
 // If stdout is not a terminal, the stream contents will just be printed to
@@ -95,7 +105,7 @@ func PageFromFile(name string, options Options) error {
 // stdout.
 func PageFromString(text string, options Options) error {
 	// NOTE: Pager froze when I tried to use internalReader.NewFromText() here.
-	// If you want to try that again, make sure to test it using some externa
+	// If you want to try that again, make sure to test it using some external
 	// test program!
 	return PageFromStream(strings.NewReader(text), options)
 }
@@ -143,6 +153,8 @@ func getColorFormatter() chroma.Formatter {
 func pageFromReader(reader *internalReader.ReaderImpl, options Options) error {
 	pager := internal.NewPager(reader)
 	pager.WrapLongLines = options.WrapLongLines
+	pager.ShowLineNumbers = !options.NoLineNumbers
+	pager.QuitIfOneScreen = options.QuitIfOneScreen
 
 	screen, e := twin.NewScreen()
 	if e != nil {
@@ -157,5 +169,10 @@ func pageFromReader(reader *internalReader.ReaderImpl, options Options) error {
 
 	pager.StartPaging(screen, &style, &formatter)
 	screen.Close()
+
+	if !pager.DeInit {
+		pager.ReprintAfterExit()
+	}
+
 	return nil
 }

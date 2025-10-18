@@ -697,7 +697,7 @@ func (p *Pager) fitsOnOneScreen() bool {
 // After the pager has exited and the normal screen has been restored, you can
 // call this method to print the pager contents to screen again, faking
 // "leaving" pager contents on screen after exit.
-func (p *Pager) ReprintAfterExit() error {
+func (p *Pager) ReprintAfterExit() {
 	// Figure out how many screen lines are used by pager contents
 	renderedScreen := p.renderLines()
 	screenLinesCount := len(renderedScreen.lines)
@@ -712,6 +712,4 @@ func (p *Pager) ReprintAfterExit() error {
 		p.screen.ShowNLines(screenLinesCount)
 		fmt.Println()
 	}
-
-	return nil
 }
