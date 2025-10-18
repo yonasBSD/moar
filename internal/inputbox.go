@@ -96,6 +96,26 @@ func (b *InputBox) handleRune(char rune) bool {
 		b.moveCursorEnd()
 		return true
 	}
+	if char == '\x02' {
+		// Ctrl-B, move cursor left
+		b.moveCursorLeft()
+		return true
+	}
+	if char == '\x06' {
+		// Ctrl-F, move cursor right
+		b.moveCursorRight()
+		return true
+	}
+	if char == '\x0b' {
+		// Ctrl-K, delete to end of line
+		b.deleteToEnd()
+		return true
+	}
+	if char == '\x15' {
+		// Ctrl-U, delete to start of line
+		b.deleteToStart()
+		return true
+	}
 
 	// If configured to accept numbers only, drop any non-digit rune.
 	if b.accept == INPUTBOX_ACCEPT_POSITIVE_NUMBERS {
@@ -184,6 +204,21 @@ func (b *InputBox) moveCursorHome() {
 // moveCursorEnd moves the cursor to the end of the text.
 func (b *InputBox) moveCursorEnd() {
 	b.cursorPos = len([]rune(b.text))
+}
+
+func (b *InputBox) deleteToEnd() {
+	b.text = string([]rune(b.text)[:b.cursorPos])
+	if b.onTextChanged != nil {
+		b.onTextChanged(b.text)
+	}
+}
+
+func (b *InputBox) deleteToStart() {
+	b.text = string([]rune(b.text)[b.cursorPos:])
+	b.cursorPos = 0
+	if b.onTextChanged != nil {
+		b.onTextChanged(b.text)
+	}
 }
 
 // backspace removes the rune before the cursor and moves the cursor left.
