@@ -300,6 +300,11 @@ func isValidURLChar(char rune) bool {
 		return true
 	}
 
+	if char == '#' {
+		// Fragment identifier
+		return true
+	}
+
 	// ASCII alphanumerics
 	if char >= '0' && char <= '9' {
 		return true
