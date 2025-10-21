@@ -27,7 +27,7 @@ var ManPageBold = twin.StyleDefault.WithAttr(twin.AttrBold)
 var ManPageUnderline = twin.StyleDefault.WithAttr(twin.AttrUnderline)
 var ManPageHeading = twin.StyleDefault.WithAttr(twin.AttrBold)
 
-// This is what less (checked 581.2 on macOS) defaults to
+// This is what less (version 581.2 on macOS) defaults to
 var TabSize = 8
 
 const BACKSPACE = '\b'

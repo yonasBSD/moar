@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	log "github.com/sirupsen/logrus"
+	"github.com/walles/moor/v2/internal/textstyles"
 	"github.com/walles/moor/v2/twin"
 )
 
@@ -202,7 +203,24 @@ func (m PagerModeViewing) onRune(char rune) {
 	case 'w':
 		p.WrapLongLines = !p.WrapLongLines
 
+	case '\x14': // CTRL-t
+		p.cycleTabSize()
+
 	default:
 		log.Debugf("Unhandled rune keypress '%s'/0x%08x", string(char), int32(char))
 	}
+}
+
+func (p *Pager) cycleTabSize() {
+	switch p.TabSize {
+	case 8:
+		p.TabSize = 4
+	default:
+		// We really want to toggle betwewen 4 and 8, but if we start out
+		// somewhere else let's just go for 8. That's less' default tab size.
+		p.TabSize = 8
+	}
+	textstyles.TabSize = p.TabSize
+
+	p.mode = PagerModeInfo{pager: p, text: fmt.Sprintf("Tab size set to %d", p.TabSize)}
 }

@@ -141,6 +141,7 @@ Miscellaneous
 * Press 'w' to toggle wrapping of long lines
 * Press '=' to toggle showing the status bar at the bottom
 * Press 'v' to edit the file in your favorite editor
+* Press CTRL-t to change the tab size
 
 Moving around
 -------------
