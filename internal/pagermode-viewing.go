@@ -206,6 +206,13 @@ func (m PagerModeViewing) onRune(char rune) {
 	case '\x14': // CTRL-t
 		p.cycleTabSize()
 
+	case '\x01': // CTRL-a
+		p.leftColumnZeroBased = 0
+		if !p.showLineNumbers {
+			// Line numbers not visible, turn them on if the user wants them.
+			p.showLineNumbers = p.ShowLineNumbers
+		}
+
 	default:
 		log.Debugf("Unhandled rune keypress '%s'/0x%08x", string(char), int32(char))
 	}

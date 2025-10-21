@@ -159,6 +159,7 @@ Moving around
 * < / 'gg' to go to the start of the document
 * > / 'G' to go to the end of the document
 * Half page 'u'p / 'd'own, or CTRL-u / CTRL-d
+* CTRL-a moves to the leftmost position
 * RETURN moves down one line
 
 Switching files (if you opened multiple files)
