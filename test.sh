@@ -102,7 +102,7 @@ echo Test --version...
 diff -u <(./moor --version) <(git describe --tags --dirty --always)
 
 echo Test that the man page and --help document the same set of options...
-MAN_OPTIONS="$(grep -E '^\\fB\\-' moor.1 | cut -d\\ -f4- | sed 's/fR.*//' | sed 's/\\//g')"
+MAN_OPTIONS="$(grep -A1 '^\.TP$' moor.1 | grep -E '^\\fB\\-' | cut -d\\ -f4- | sed 's/fR.*//' | sed 's/\\//g')"
 MOOR_OPTIONS="$(./moor --help | grep -E '^  -' | cut -d' ' -f3 | grep -v -- -version)"
 diff -u <(echo "${MAN_OPTIONS}") <(echo "${MOOR_OPTIONS}")
 
