@@ -139,18 +139,23 @@ func getOppositeColor(base twin.Color) twin.Color {
 }
 
 func styleUI(terminalBackground *twin.Color, chromaStyle *chroma.Style, chromaFormatter *chroma.Formatter, statusbarOption StatusBarOption, withTerminalFg bool) {
+	// Set defaults
+	plainTextStyle = twin.StyleDefault
+	textstyles.ManPageHeading = twin.StyleDefault.WithAttr(twin.AttrBold)
+	lineNumbersStyle = twin.StyleDefault.WithAttr(twin.AttrDim)
+
 	if chromaStyle == nil || chromaFormatter == nil {
 		return
 	}
 
 	headingStyle := twinStyleFromChroma(terminalBackground, chromaStyle, chromaFormatter, chroma.GenericHeading, true)
-	if headingStyle != nil {
+	if headingStyle != nil && !withTerminalFg {
 		log.Trace("Heading style set from Chroma: ", *headingStyle)
 		textstyles.ManPageHeading = *headingStyle
 	}
 
 	chromaLineNumbers := twinStyleFromChroma(terminalBackground, chromaStyle, chromaFormatter, chroma.LineNumbers, true)
-	if chromaLineNumbers != nil {
+	if chromaLineNumbers != nil && !withTerminalFg {
 		// NOTE: We used to dim line numbers here, but Johan found them too hard
 		// to read. If line numbers should look some other way for some Chroma
 		// style, go fix that in Chroma!
@@ -158,15 +163,10 @@ func styleUI(terminalBackground *twin.Color, chromaStyle *chroma.Style, chromaFo
 		lineNumbersStyle = *chromaLineNumbers
 	}
 
-	if withTerminalFg {
-		plainTextStyle = twin.StyleDefault
-		lineNumbersStyle = twin.StyleDefault.WithAttr(twin.AttrDim)
-	} else {
-		plainText := twinStyleFromChroma(terminalBackground, chromaStyle, chromaFormatter, chroma.None, false)
-		if plainText != nil {
-			log.Trace("Plain text style set from Chroma: ", *plainText)
-			plainTextStyle = *plainText
-		}
+	plainText := twinStyleFromChroma(terminalBackground, chromaStyle, chromaFormatter, chroma.None, false)
+	if plainText != nil && !withTerminalFg {
+		log.Trace("Plain text style set from Chroma: ", *plainText)
+		plainTextStyle = *plainText
 	}
 
 	if standoutStyle != nil {
