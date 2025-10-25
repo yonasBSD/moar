@@ -70,7 +70,10 @@ func renderPagerEnvVar(name string, colors twin.ColorCount) string {
 		return ""
 	}
 
-	absEnvValue, err := absLookPath(value)
+	// You can actually set MANPAGER to "moor --trace", so we want to look at
+	// only the first word to find out whether it's pointing to the right place.
+	firstWord := strings.Fields(value)[0]
+	absEnvValue, err := absLookPath(firstWord)
 	if err != nil {
 		// This can happen if this is set to some outdated value
 		absEnvValue = value
