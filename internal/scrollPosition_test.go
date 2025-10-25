@@ -67,10 +67,9 @@ func TestCanonicalize1000WithoutStatusBar(t *testing.T) {
 	}
 }
 
-// Repro for https://github.com/walles/moor/issues/313: Rapid scroll
-// (deltaScreenLines > 0) crossing from 3 to 4 digits must not panic due to
-// too-short number prefix length.
-func TestFastScrollAcross1000DoesNotPanic(t *testing.T) {
+// Try scrolling between two points, on a 80 x screenHeight screen with 1492
+// lines of input.
+func tryScrollAmount(t *testing.T, scrollFrom linemetadata.Index, scrollDistance int) {
 	// Create 1492 lines of single-char content
 	pager := Pager{}
 	pager.screen = twin.NewFakeScreen(80, screenHeight)
@@ -82,19 +81,52 @@ func TestFastScrollAcross1000DoesNotPanic(t *testing.T) {
 	pager.ShowLineNumbers = true
 	pager.showLineNumbers = true
 
-	// Start more than one screen height before the line numbers get longer...
-	start := linemetadata.IndexFromZeroBased(900)
 	pager.scrollPosition = scrollPosition{
 		internalDontTouch: scrollPositionInternal{
 			name:             "TestFastScrollAcross1000DoesNotPanic",
-			lineIndex:        &start,
-			deltaScreenLines: 200, // ... and jump to after the line numbers get longer
+			lineIndex:        &scrollFrom,
+			deltaScreenLines: scrollDistance,
 		},
 	}
 
 	// Trigger rendering (and canonicalization). If the prefix is miscomputed
 	// this would previously panic inside createLinePrefix().
 	rendered := pager.renderLines()
-	assert.Assert(t, rendered.lines != nil) // sanity
-	_ = rendered.statusText                 // not asserted here; we only care about not panicking
+
+	// Sanity check the result
+	assert.Assert(t, rendered.lines != nil)
+	assert.Assert(t, len(rendered.lines) == pager.visibleHeight())
+}
+
+// Repro for https://github.com/walles/moor/issues/313: Rapid scroll
+// (deltaScreenLines > 0) crossing from 3 to 4 digits must not panic due to
+// too-short number prefix length.
+func TestFastScrollAcross1000DoesNotPanic(t *testing.T) {
+	tryScrollAmount(t, linemetadata.IndexFromZeroBased(900), 200)
+}
+
+func TestMultipleScrollStartsAcross1000DoNotPanic(t *testing.T) {
+	for scrollFrom := 1000 - screenHeight - 10; scrollFrom <= 1000; scrollFrom++ {
+		tryScrollAmount(t, linemetadata.IndexFromZeroBased(scrollFrom), screenHeight)
+	}
+}
+
+func TestMultipleScrollDistancesAcross1000DoNotPanic(t *testing.T) {
+	scrollFrom := 1000 - screenHeight - 10
+	for scrollDistance := 0; scrollDistance <= 3*screenHeight; scrollDistance++ {
+		tryScrollAmount(t, linemetadata.IndexFromZeroBased(scrollFrom), scrollDistance)
+	}
+}
+
+func TestMultipleBackwardsScrollStartsAcross1000DoNotPanic(t *testing.T) {
+	for scrollFrom := 1000 + screenHeight + 10; scrollFrom >= 1000; scrollFrom-- {
+		tryScrollAmount(t, linemetadata.IndexFromZeroBased(scrollFrom), -screenHeight)
+	}
+}
+
+func TestMultipleBackwardsScrollDistancesAcross1000DoNotPanic(t *testing.T) {
+	scrollFrom := 1000 + screenHeight + 10
+	for scrollDistance := 0; scrollDistance <= 3*screenHeight; scrollDistance++ {
+		tryScrollAmount(t, linemetadata.IndexFromZeroBased(scrollFrom), -scrollDistance)
+	}
 }
