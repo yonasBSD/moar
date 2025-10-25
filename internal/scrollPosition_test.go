@@ -83,7 +83,7 @@ func tryScrollAmount(t *testing.T, scrollFrom linemetadata.Index, scrollDistance
 
 	pager.scrollPosition = scrollPosition{
 		internalDontTouch: scrollPositionInternal{
-			name:             "TestFastScrollAcross1000DoesNotPanic",
+			name:             "tryScrollAmount",
 			lineIndex:        &scrollFrom,
 			deltaScreenLines: scrollDistance,
 		},
@@ -95,7 +95,8 @@ func tryScrollAmount(t *testing.T, scrollFrom linemetadata.Index, scrollDistance
 
 	// Sanity check the result
 	assert.Assert(t, rendered.lines != nil)
-	assert.Assert(t, len(rendered.lines) == pager.visibleHeight())
+	assert.Equal(t, len(rendered.lines), pager.visibleHeight())
+	assert.Equal(t, rendered.lines[0].inputLineIndex, scrollFrom.NonWrappingAdd(scrollDistance))
 }
 
 // Repro for https://github.com/walles/moor/issues/313: Rapid scroll
