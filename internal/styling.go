@@ -160,6 +160,7 @@ func styleUI(terminalBackground *twin.Color, chromaStyle *chroma.Style, chromaFo
 
 	if withTerminalFg {
 		plainTextStyle = twin.StyleDefault
+		lineNumbersStyle = twin.StyleDefault.WithAttr(twin.AttrDim)
 	} else {
 		plainText := twinStyleFromChroma(terminalBackground, chromaStyle, chromaFormatter, chroma.None, false)
 		if plainText != nil {
