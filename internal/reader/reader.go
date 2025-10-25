@@ -80,9 +80,10 @@ type ReaderImpl struct {
 
 	// Display name for the buffer. If not set, no buffer name will be shown.
 	//
-	// For files, this will be the file name. For our help text, this will be
-	// "Help". For streams this will generally not be set.
-	Name *string
+	// For files, this will be the basename of the file. For our help text, this
+	// will be "Help". For streams this will generally not be set, but may come
+	// from the $PAGER_LABEL environment variable.
+	DisplayName *string
 
 	// If this is set, it will point out the file we are reading from. If this
 	// is not set, we are not reading from a file.
@@ -390,23 +391,23 @@ func (reader *ReaderImpl) tailFile() error {
 
 // NewFromStream creates a new stream reader
 //
-// The name can be an empty string ("").
+// The display name can be an empty string ("").
 //
 // If non-empty, the name will be displayed by the pager in the bottom left
 // corner to help the user keep track of what is being paged.
 //
 // Note that you must call reader.SetStyleForHighlighting() after this to get
 // highlighting.
-func NewFromStream(name string, reader io.Reader, formatter chroma.Formatter, options ReaderOptions) (*ReaderImpl, error) {
+func NewFromStream(displayName string, reader io.Reader, formatter chroma.Formatter, options ReaderOptions) (*ReaderImpl, error) {
 	zReader, err := ZReader(reader)
 	if err != nil {
 		return nil, err
 	}
 	mReader := newReaderFromStream(zReader, nil, formatter, options)
 
-	if len(name) > 0 {
+	if len(displayName) > 0 {
 		mReader.Lock()
-		mReader.Name = &name
+		mReader.DisplayName = &displayName
 		mReader.Unlock()
 	}
 
@@ -446,12 +447,14 @@ func newReaderFromStream(reader io.Reader, originalFileName *string, formatter c
 	if options.PauseAfterLines != nil {
 		pauseAfterLines = *options.PauseAfterLines
 	}
+	var displayFileName *string
+	if originalFileName != nil {
+		basename := filepath.Base(*originalFileName)
+		displayFileName = &basename
+	}
 	returnMe := ReaderImpl{
-		// This needs to be size 1. If it would be 0, and we add more
-		// lines while the pager is processing, the pager would miss
-		// the lines added while it was processing.
-		FileName: originalFileName,
-		Name:     originalFileName,
+		FileName:    originalFileName,
+		DisplayName: displayFileName,
 
 		pauseAfterLines:        pauseAfterLines,
 		pauseAfterLinesUpdated: make(chan bool, 1),
@@ -506,7 +509,7 @@ func NewFromTextForTesting(name string, text string) *ReaderImpl {
 		doneWaitingForFirstByte: make(chan bool, 1),
 	}
 	if name != "" {
-		returnMe.Name = &name
+		returnMe.DisplayName = &name
 	}
 
 	return returnMe
@@ -754,15 +757,15 @@ func highlightFromMemory(reader *ReaderImpl, formatter chroma.Formatter, options
 
 // createStatusUnlocked() assumes that its caller is holding the lock
 func (reader *ReaderImpl) createStatusUnlocked(lastLine linemetadata.Index) string {
-	filename := ""
-	if reader.Name != nil {
-		filename = filepath.Base(*reader.Name)
+	displayName := ""
+	if reader.DisplayName != nil {
+		displayName = *reader.DisplayName
 	}
 
 	if len(reader.lines) == 0 {
 		empty := "<empty>"
-		if len(filename) > 0 {
-			return filename + ": " + empty
+		if len(displayName) > 0 {
+			return displayName + ": " + empty
 		}
 		return empty
 	}
@@ -783,12 +786,12 @@ func (reader *ReaderImpl) createStatusUnlocked(lastLine linemetadata.Index) stri
 	}
 
 	return_me := ""
-	if len(filename) > 0 {
-		return_me = filename
+	if len(displayName) > 0 {
+		return_me = displayName
 	}
 
 	if len(linesCount) > 0 {
-		if len(filename) > 0 {
+		if len(displayName) > 0 {
 			return_me += ": "
 		}
 		return_me += linesCount

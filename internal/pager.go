@@ -206,10 +206,10 @@ func NewPager(readers ...*reader.ReaderImpl) *Pager {
 	}
 
 	var name string
-	if readers[0] == nil || readers[0].Name == nil || len(*readers[0].Name) == 0 {
+	if readers[0] == nil || readers[0].DisplayName == nil || len(*readers[0].DisplayName) == 0 {
 		name = "Pager"
 	} else {
-		name = "Pager " + *readers[0].Name
+		name = "Pager " + *readers[0].DisplayName
 	}
 
 	pager := Pager{

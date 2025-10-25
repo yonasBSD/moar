@@ -95,7 +95,7 @@ func PageFromFile(name string, options Options) error {
 	}
 
 	if options.Title != "" {
-		pagerReader.Name = &options.Title
+		pagerReader.DisplayName = &options.Title
 	}
 
 	return pageFromReader(pagerReader, options)

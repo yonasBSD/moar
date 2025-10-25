@@ -27,35 +27,35 @@ func init() {
 }
 
 func testGetLineCount(t *testing.T, reader *ReaderImpl) {
-	if strings.Contains(*reader.Name, "compressed") {
+	if strings.Contains(*reader.DisplayName, "compressed") {
 		// We are no good at counting lines of compressed files, never mind
 		return
 	}
 
-	cmd := exec.Command("wc", "-l", *reader.Name)
+	cmd := exec.Command("wc", "-l", *reader.FileName)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		t.Error("Error calling wc -l to count lines of", *reader.Name, err)
+		t.Error("Error calling wc -l to count lines of", *reader.FileName, err)
 	}
 
 	wcNumberString := strings.Split(strings.TrimSpace(string(output)), " ")[0]
 	wcLineCount, err := strconv.Atoi(wcNumberString)
 	if err != nil {
-		t.Error("Error counting lines of", *reader.Name, err)
+		t.Error("Error counting lines of", *reader.FileName, err)
 	}
 
 	// wc -l under-counts by 1 if the file doesn't end in a newline
-	rawBytes, err := os.ReadFile(*reader.Name)
+	rawBytes, err := os.ReadFile(*reader.FileName)
 	if err == nil && len(rawBytes) > 0 && rawBytes[len(rawBytes)-1] != '\n' {
 		wcLineCount++
 	}
 
 	if reader.GetLineCount() != wcLineCount {
 		t.Errorf("Got %d lines from the reader but %d lines from wc -l: <%s>",
-			reader.GetLineCount(), wcLineCount, *reader.Name)
+			reader.GetLineCount(), wcLineCount, *reader.FileName)
 	}
 
-	countLinesCount, err := countLines(*reader.Name)
+	countLinesCount, err := countLines(*reader.FileName)
 	assert.NilError(t, err)
 	if countLinesCount != uint64(wcLineCount) {
 		t.Errorf("Got %d lines from wc -l, but %d lines from our countLines() function", wcLineCount, countLinesCount)
