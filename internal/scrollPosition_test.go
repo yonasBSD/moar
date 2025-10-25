@@ -106,6 +106,11 @@ func TestFastScrollAcross1000DoesNotPanic(t *testing.T) {
 	tryScrollAmount(t, linemetadata.IndexFromZeroBased(900), 200)
 }
 
+// Repro for https://github.com/walles/moor/issues/338
+func TestIssue338(t *testing.T) {
+	tryScrollAmount(t, linemetadata.IndexFromZeroBased(1000), -60)
+}
+
 func TestMultipleScrollStartsAcross1000DoNotPanic(t *testing.T) {
 	for scrollFrom := 1000 - screenHeight - 10; scrollFrom <= 1000; scrollFrom++ {
 		tryScrollAmount(t, linemetadata.IndexFromZeroBased(scrollFrom), screenHeight)
