@@ -35,3 +35,11 @@ func TestSetStyle(t *testing.T) {
 
 	assert.Equal(t, style, twin.StyleDefault.WithAttr(twin.AttrBold).WithForeground(twin.NewColor16(1)))
 }
+
+// Regression test for https://github.com/walles/moor/issues/339
+//
+// We used to crash doing this.
+func TestConfigureHighlighting_No24BitColors(t *testing.T) {
+	searchHitStyle = twin.StyleDefault.WithForeground(twin.NewColor16(3))
+	configureHighlighting(nil)
+}

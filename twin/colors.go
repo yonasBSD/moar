@@ -248,9 +248,12 @@ func (color Color) downsampleTo(terminalColorCount ColorCount) Color {
 // The result from this function has been scaled to 0.0-1.0, where 1.0 is the
 // distance between black and white.
 func (color Color) Distance(other Color) float64 {
-	if color.ColorCount() != ColorCount24bit {
-		panic(fmt.Errorf("contrast only supported for 24 bit colors, got %s vs %s", color.String(), other.String()))
+	if color == ColorDefault || other == ColorDefault {
+		panic(fmt.Errorf("calculating distance to or from default color not supported, %s <-> %s", color.String(), other.String()))
 	}
+
+	color = color.to24Bit()
+	other = other.to24Bit()
 
 	baseColor := chroma.NewColour(
 		uint8(color.colorValue()>>16&0xff),

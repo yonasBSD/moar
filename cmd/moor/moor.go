@@ -64,6 +64,25 @@ func printProblemsHeader() {
 	fmt.Fprintln(os.Stderr, "EDITOR       :", os.Getenv("EDITOR"))
 	fmt.Fprintln(os.Stderr, "TERM_PROGRAM :", os.Getenv("TERM_PROGRAM"))
 	fmt.Fprintln(os.Stderr)
+
+	lessenv_section := ""
+	lessTermcapVars := []string{
+		"LESS_TERMCAP_md",
+		"LESS_TERMCAP_us",
+		"LESS_TERMCAP_so",
+	}
+	for _, varName := range lessTermcapVars {
+		value := os.Getenv(varName)
+		if value == "" {
+			continue
+		}
+
+		lessenv_section += varName + " : " + strings.ReplaceAll(value, "\x1b", "ESC") + "\n"
+	}
+	if lessenv_section != "" {
+		fmt.Fprintln(os.Stderr, lessenv_section)
+	}
+
 	fmt.Fprintln(os.Stderr, "GOOS    :", runtime.GOOS)
 	fmt.Fprintln(os.Stderr, "GOARCH  :", runtime.GOARCH)
 	fmt.Fprintln(os.Stderr, "Compiler:", runtime.Compiler)
