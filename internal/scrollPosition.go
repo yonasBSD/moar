@@ -394,8 +394,18 @@ func (si *scrollPositionInternal) getMaxNumberPrefixLength(pager *Pager) int {
 	if si.lineIndex != nil {
 		index = *si.lineIndex
 	}
+
+	// Not going back when computing the max number prefix length prevents
+	// https://github.com/walles/moor/issues/338.
+	//
+	// FIXME: Is there something better we should be doing instead?
+	positiveDeltaScreenLines := si.deltaScreenLines
+	if positiveDeltaScreenLines < 0 {
+		positiveDeltaScreenLines = 0
+	}
+
 	maxVisibleIndex := index.NonWrappingAdd(
-		si.deltaScreenLines +
+		positiveDeltaScreenLines +
 			pager.visibleHeight() - 1)
 	if maxVisibleIndex.IsAfter(maxPossibleIndex) {
 		maxVisibleIndex = maxPossibleIndex
