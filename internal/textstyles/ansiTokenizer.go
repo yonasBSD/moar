@@ -23,6 +23,7 @@ const (
 
 var UnprintableStyle UnprintableStyleT
 
+// These three styles will be configured from styling.go
 var ManPageBold = twin.StyleDefault.WithAttr(twin.AttrBold)
 var ManPageUnderline = twin.StyleDefault.WithAttr(twin.AttrUnderline)
 var ManPageHeading = twin.StyleDefault.WithAttr(twin.AttrBold)
