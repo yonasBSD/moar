@@ -114,10 +114,6 @@ func TestSearchHighlight(t *testing.T) {
 		screen:        twin.NewFakeScreen(100, 10),
 		searchPattern: regexp.MustCompile("\""),
 	}
-	// FIXME: Try removing this line and see if the test still passes. The
-	// filtering reader was set up with empty values anyway, and I'm not sure
-	// whether it's needed at all.
-	pager.filteringReader = FilteringReader{}
 
 	numberedLine := reader.NumberedLine{
 		Line: &line,
@@ -338,6 +334,91 @@ func TestShortenedInputManyLines(t *testing.T) {
 	}
 	assert.Equal(t, pager.lineIndex().Index(), 91, "The last lines should now be visible")
 	assert.Equal(t, "match 99", renderedToString(rendered.lines[len(rendered.lines)-1].cells))
+}
+
+// Text lines are fewer than the number of screen lines. All lines have search
+// hits.
+//
+// Expected: No search hit line highlighting, since highlighting all lines is
+// sort of like highlighting no lines but with an uglier background.
+func TestRenderLines_FewLinesAllWithSearchHits(t *testing.T) {
+	r := reader.NewFromTextForTesting("test", "ja")
+	pager := Pager{
+		screen:  twin.NewFakeScreen(10, 3),
+		readers: []*reader.ReaderImpl{r},
+
+		scrollPosition: newScrollPosition("TestRenderLines_FewLinesAllWithSearchHits"),
+	}
+	pager.filteringReader = FilteringReader{
+		BackingReader: pager.readers[pager.currentReader],
+		FilterPattern: &pager.filterPattern,
+	}
+	pager.searchPattern = regexp.MustCompile("ja")
+	pager.ShowStatusBar = false
+	pager.mode = PagerModeViewing{&pager}
+	pager.showLineNumbers = false
+	assert.NilError(t, r.Wait())
+
+	rendered := pager.renderLines()
+	assert.Equal(t, len(rendered.lines), 1)
+	assert.Equal(t, rendered.lines[0].cells[0].Style, plainTextStyle)
+}
+
+// Text lines are more than the number of screen lines. All lines on screen have
+// search hits.
+//
+// Expected: No search hit line highlighting, since highlighting all lines is
+// sort of like highlighting no lines but with an uglier background.
+func TestRenderLines_ManyLinesAllWithSearchHits(t *testing.T) {
+	r := reader.NewFromTextForTesting("test", "ja1\nja2\nja3\nja4")
+	pager := Pager{
+		screen:  twin.NewFakeScreen(10, 3),
+		readers: []*reader.ReaderImpl{r},
+
+		scrollPosition: newScrollPosition("TestRenderLines_ManyLinesAllWithSearchHits"),
+	}
+	pager.filteringReader = FilteringReader{
+		BackingReader: pager.readers[pager.currentReader],
+		FilterPattern: &pager.filterPattern,
+	}
+	pager.searchPattern = regexp.MustCompile("ja")
+	pager.ShowStatusBar = false
+	pager.mode = PagerModeViewing{&pager}
+	pager.showLineNumbers = false
+	assert.NilError(t, r.Wait())
+
+	rendered := pager.renderLines()
+	assert.Equal(t, len(rendered.lines), 3)
+	assert.Equal(t, rendered.lines[0].cells[0].Style, plainTextStyle)
+	assert.Equal(t, rendered.lines[1].cells[0].Style, plainTextStyle)
+	assert.Equal(t, rendered.lines[2].cells[0].Style, plainTextStyle)
+}
+
+// Some lines with search hits and one line without. The ones with search hits
+// should be line highlighted.
+func TestRenderLines_OneLineWithoutSearchHit(t *testing.T) {
+	r := reader.NewFromTextForTesting("test", "ja1\nNEJ2\nja3\nja4")
+	pager := Pager{
+		screen:  twin.NewFakeScreen(10, 3),
+		readers: []*reader.ReaderImpl{r},
+
+		scrollPosition: newScrollPosition("TestRenderLines_OneLineWithoutSearchHit"),
+	}
+	pager.filteringReader = FilteringReader{
+		BackingReader: pager.readers[pager.currentReader],
+		FilterPattern: &pager.filterPattern,
+	}
+	pager.searchPattern = regexp.MustCompile("ja")
+	pager.ShowStatusBar = false
+	pager.mode = PagerModeViewing{&pager}
+	pager.showLineNumbers = false
+	assert.NilError(t, r.Wait())
+
+	rendered := pager.renderLines()
+	assert.Equal(t, len(rendered.lines), 3)
+	assert.Equal(t, rendered.lines[0].cells[0].Style, searchHitStyle)
+	assert.Equal(t, rendered.lines[1].cells[0].Style, plainTextStyle)
+	assert.Equal(t, rendered.lines[2].cells[0].Style, searchHitStyle)
 }
 
 func BenchmarkRenderLines(b *testing.B) {
