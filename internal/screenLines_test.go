@@ -415,11 +415,14 @@ func TestRenderLines_OneLineWithoutSearchHit(t *testing.T) {
 	pager.showLineNumbers = false
 	assert.NilError(t, r.Wait())
 
+	red := twin.NewColor24Bit(0xff, 0, 0)
+	searchHitLineBackground = &red
+
 	rendered := pager.renderLines()
 	assert.Equal(t, len(rendered.lines), 3)
-	assert.Equal(t, rendered.lines[0].cells[0].Style, searchHitStyle)
+	assert.Equal(t, rendered.lines[0].cells[0].Style.Background(), red)
 	assert.Equal(t, rendered.lines[1].cells[0].Style, plainTextStyle)
-	assert.Equal(t, rendered.lines[2].cells[0].Style, searchHitStyle)
+	assert.Equal(t, rendered.lines[2].cells[0].Style.Background(), red)
 }
 
 func BenchmarkRenderLines(b *testing.B) {
