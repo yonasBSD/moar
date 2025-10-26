@@ -19,6 +19,8 @@ type renderedLine struct {
 	// will have a wrapIndex of 1.
 	wrapIndex int
 
+	containsSearchHit bool
+
 	cells textstyles.CellWithMetadataSlice
 
 	// Used for rendering clear-to-end-of-line control sequences:
@@ -81,6 +83,27 @@ func (p *Pager) redraw(spinner string) {
 // height. If the status line is visible, you'll get at most one less than the
 // screen height from this method.
 func (p *Pager) renderLines() renderedScreen {
+	rendered := p.internalRenderLines(true)
+	hasSearchHitLines := false
+	hasNonSearchHitLines := false
+	for _, line := range rendered.lines {
+		if line.containsSearchHit {
+			hasSearchHitLines = true
+		} else {
+			hasNonSearchHitLines = true
+		}
+	}
+
+	if hasSearchHitLines && !hasNonSearchHitLines {
+		// All lines have search hits, don't highlight any lines
+		// Ref: https://github.com/walles/moor/issues/335
+		rendered = p.internalRenderLines(false)
+	}
+
+	return rendered
+}
+
+func (p *Pager) internalRenderLines(highlightSearchHitLines bool) renderedScreen {
 	var lineIndex linemetadata.Index
 	if p.lineIndex() != nil {
 		lineIndex = *p.lineIndex()
@@ -96,7 +119,7 @@ func (p *Pager) renderLines() renderedScreen {
 
 	allLines := make([]renderedLine, 0)
 	for _, line := range inputLines.Lines {
-		rendering := p.renderLine(line, numberPrefixLength)
+		rendering := p.renderLine(line, numberPrefixLength, highlightSearchHitLines)
 
 		var onScreenLength int
 		for i := range rendering {
@@ -176,8 +199,13 @@ func (p *Pager) renderLines() renderedScreen {
 //
 // lineNumber and numberPrefixLength are required for knowing how much to
 // indent, and to (optionally) render the line number.
-func (p *Pager) renderLine(line *reader.NumberedLine, numberPrefixLength int) []renderedLine {
-	highlighted := line.HighlightedTokens(plainTextStyle, searchHitStyle, searchHitLineBackground, p.searchPattern)
+func (p *Pager) renderLine(line *reader.NumberedLine, numberPrefixLength int, highlightSearchHitLines bool) []renderedLine {
+	localSearchHitLineBackground := searchHitLineBackground
+	if !highlightSearchHitLines {
+		localSearchHitLineBackground = nil
+	}
+
+	highlighted := line.HighlightedTokens(plainTextStyle, searchHitStyle, localSearchHitLineBackground, p.searchPattern)
 	var wrapped []textstyles.CellWithMetadataSlice
 	if p.WrapLongLines {
 		width, _ := p.screen.Size()
@@ -198,9 +226,10 @@ func (p *Pager) renderLine(line *reader.NumberedLine, numberPrefixLength int) []
 		decorated := p.decorateLine(visibleLineNumber, numberPrefixLength, inputLinePart)
 
 		rendered = append(rendered, renderedLine{
-			inputLineIndex: line.Index,
-			wrapIndex:      wrapIndex,
-			cells:          decorated,
+			inputLineIndex:    line.Index,
+			wrapIndex:         wrapIndex,
+			cells:             decorated,
+			containsSearchHit: highlighted.ContainsSearchHit,
 		})
 	}
 
