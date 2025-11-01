@@ -66,8 +66,9 @@ func (line *Line) HighlightedTokens(
 	}
 
 	return textstyles.StyledRunesWithTrailer{
-		StyledRunes: returnRunes,
-		Trailer:     trailer,
+		StyledRunes:       returnRunes,
+		Trailer:           trailer,
+		ContainsSearchHit: !matchRanges.Empty(),
 	}
 }
 

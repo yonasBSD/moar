@@ -34,8 +34,9 @@ var TabSize = 8
 const BACKSPACE = '\b'
 
 type StyledRunesWithTrailer struct {
-	StyledRunes []CellWithMetadata
-	Trailer     twin.Style
+	StyledRunes       []CellWithMetadata
+	Trailer           twin.Style
+	ContainsSearchHit bool
 }
 
 func isPlain(s string) bool {
@@ -193,6 +194,10 @@ func StyledRunesFromString(plainTextStyle twin.Style, s string, lineIndex *linem
 	return StyledRunesWithTrailer{
 		StyledRunes: cells,
 		Trailer:     trailer,
+
+		// Populated in Line.HighlightedTokens(), where the search hit
+		// highlighting happens
+		ContainsSearchHit: false,
 	}
 }
 

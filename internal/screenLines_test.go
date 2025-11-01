@@ -39,7 +39,7 @@ func testHorizontalCropping(t *testing.T, contents string, firstVisibleColumn in
 	numberedLine := reader.NumberedLine{
 		Line: &lineContents,
 	}
-	screenLine := pager.renderLine(&numberedLine, pager.getLineNumberPrefixLength(numberedLine.Number))
+	screenLine := pager.renderLine(&numberedLine, pager.getLineNumberPrefixLength(numberedLine.Number), true)
 	assert.Equal(t, renderedToString(screenLine[0].cells), expected)
 }
 
@@ -114,19 +114,16 @@ func TestSearchHighlight(t *testing.T) {
 		screen:        twin.NewFakeScreen(100, 10),
 		searchPattern: regexp.MustCompile("\""),
 	}
-	// FIXME: Try removing this line and see if the test still passes. The
-	// filtering reader was set up with empty values anyway, and I'm not sure
-	// whether it's needed at all.
-	pager.filteringReader = FilteringReader{}
 
 	numberedLine := reader.NumberedLine{
 		Line: &line,
 	}
-	rendered := pager.renderLine(&numberedLine, pager.getLineNumberPrefixLength(numberedLine.Number))
+	rendered := pager.renderLine(&numberedLine, pager.getLineNumberPrefixLength(numberedLine.Number), true)
 	assert.DeepEqual(t, []renderedLine{
 		{
-			inputLineIndex: linemetadata.Index{},
-			wrapIndex:      0,
+			inputLineIndex:    linemetadata.Index{},
+			wrapIndex:         0,
+			containsSearchHit: true,
 			cells: []textstyles.CellWithMetadata{
 				{Rune: 'x', Style: twin.StyleDefault},
 				{Rune: '"', Style: twin.StyleDefault.WithAttr(twin.AttrReverse), StartsSearchHit: true},
@@ -338,6 +335,77 @@ func TestShortenedInputManyLines(t *testing.T) {
 	}
 	assert.Equal(t, pager.lineIndex().Index(), 91, "The last lines should now be visible")
 	assert.Equal(t, "match 99", renderedToString(rendered.lines[len(rendered.lines)-1].cells))
+}
+
+// Text lines are fewer than the number of screen lines. All lines have search
+// hits.
+//
+// Expected: No search hit line highlighting, since highlighting all lines is
+// sort of like highlighting no lines but with an uglier background.
+func TestRenderLines_FewLinesAllWithSearchHits(t *testing.T) {
+	testRenderLinesWithSearchHits(t,
+		"1xxx",
+		[]twin.Color{twin.ColorDefault},
+		"TestRenderLines_FewLinesAllWithSearchHits",
+	)
+}
+
+// Text lines are more than the number of screen lines. All lines on screen have
+// search hits.
+//
+// Expected: No search hit line highlighting, since highlighting all lines is
+// sort of like highlighting no lines but with an uglier background.
+func TestRenderLines_ManyLinesAllWithSearchHits(t *testing.T) {
+	testRenderLinesWithSearchHits(t,
+		"1xxx\n2xxx\n3xxx\n4xxx",
+		[]twin.Color{twin.ColorDefault, twin.ColorDefault, twin.ColorDefault},
+		"TestRenderLines_ManyLinesAllWithSearchHits",
+	)
+}
+
+// Some lines with search hits and one line without. The ones with search hits
+// should be line highlighted.
+func TestRenderLines_OneLineWithoutSearchHit(t *testing.T) {
+	testRenderLinesWithSearchHits(t,
+		"1xxx\n2miss\n3xxx\n4xxx",
+		[]twin.Color{red, twin.ColorDefault, red},
+		"TestRenderLines_OneLineWithoutSearchHit",
+	)
+}
+
+var red = twin.NewColor24Bit(0xff, 0x00, 0x00)
+
+// Helper for search hit line highlight tests.
+//
+// Search pattern is always "xxx", because "x" marks the spot. The
+// expectedBackgrounds are the expected background colors for the first (always
+// unmatched) letter on each line.
+//
+// The screen being rendered to is always 10 columns wide and 3 rows high.
+func testRenderLinesWithSearchHits(t *testing.T, input string, expectedBackgrounds []twin.Color, scrollPositionName string) {
+	r := reader.NewFromTextForTesting("test", input)
+	pager := Pager{
+		screen:         twin.NewFakeScreen(10, 3),
+		readers:        []*reader.ReaderImpl{r},
+		scrollPosition: newScrollPosition(scrollPositionName),
+	}
+	pager.filteringReader = FilteringReader{
+		BackingReader: pager.readers[pager.currentReader],
+		FilterPattern: &pager.filterPattern,
+	}
+	pager.searchPattern = regexp.MustCompile("xxx")
+	pager.ShowStatusBar = false
+	pager.mode = PagerModeViewing{&pager}
+	pager.showLineNumbers = false
+	assert.NilError(t, r.Wait())
+
+	searchHitLineBackground = &red
+
+	rendered := pager.renderLines()
+	assert.Equal(t, len(rendered.lines), len(expectedBackgrounds))
+	for i := range expectedBackgrounds {
+		assert.Equal(t, rendered.lines[i].cells[0].Style.Background(), expectedBackgrounds[i])
+	}
 }
 
 func BenchmarkRenderLines(b *testing.B) {
