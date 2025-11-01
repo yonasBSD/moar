@@ -196,7 +196,7 @@ func StyledRunesFromString(plainTextStyle twin.Style, s string, lineIndex *linem
 		Trailer:     trailer,
 
 		// Populated in Line.HighlightedTokens(), where the search hit
-		// highlighing happens
+		// highlighting happens
 		ContainsSearchHit: false,
 	}
 }
