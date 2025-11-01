@@ -557,10 +557,10 @@ func pagerFromArgs(
 
 	stdinName := ""
 	if os.Getenv("PAGER_LABEL") != "" {
-		stdinName = "[stdin] " + os.Getenv("PAGER_LABEL")
+		stdinName = os.Getenv("PAGER_LABEL")
 	} else if os.Getenv("MAN_PN") != "" {
 		// MAN_PN is set by GNU man. Example value: "printf(1)"
-		stdinName = "[stdin] " + os.Getenv("MAN_PN")
+		stdinName = os.Getenv("MAN_PN")
 	}
 
 	// Display the input file(s) contents
