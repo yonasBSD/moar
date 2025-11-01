@@ -55,6 +55,11 @@ uses the formats declared in these environment variables if present:
 - `LESS_TERMCAP_us`: Man page <u>underline</u>
 - `LESS_TERMCAP_so`: [Status bar and search hits](https://github.com/walles/moor/issues/114)
 
+Setting `LESSSECURE` to `1` will prevent `moor` from launching external programs
+or opening new files [as required by `systemctl(1)`][systemctlLessSecure]. In
+secure mode, the <kbd>v</kbd> command for opening the current file in an editor
+is disabled.
+
 For configurability reasons, `moor` reads extra command line options from the
 `MOOR` environment variable.
 
@@ -320,3 +325,6 @@ Execute `release.sh` and follow instructions.
 - Handle search hits to the right of the right screen edge when searching
   backwards. Searching backwards should move first left, then up and to the
   rightmost hit.
+
+
+[systemctlLessSecure]: https://github.com/systemd/systemd/blob/ee3cd7890d81744efa9513b739e5ff03c9e7649b/man/common-variables.xml#L193-L194

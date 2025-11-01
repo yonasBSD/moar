@@ -138,16 +138,21 @@ Immediately scroll to line
 .B 1234
 .SH ENVIRONMENT
 .TP
-.B PAGER
-If set to "moor", many programs will use
-.B
-moor
-as their pager.
+.B LESSSECURE
+Setting this to "1" prevents moor from opening new files or launching external programs, as required by
+.B systemctl(1)\&.
+In secure mode, the "v" command for opening the current file in an editor is disabled.
 .TP
 .B MOOR
 Additional options are read from this variable if it is set, just as if those same
 options had been manually added to each moor invocation. Try setting it to
 \fB\-\-reformat\fR to have JSON input automatically reformatted!
+.TP
+.B PAGER
+If set to "moor", many programs will use
+.B
+moor
+as their pager.
 .TP
 .B PAGER_LABEL
 Other programs can set this to tell moor what name to show for stdin input.
