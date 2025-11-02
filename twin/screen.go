@@ -933,15 +933,9 @@ func createLastRenderedSnapshot(width int, height int, cells [][]StyledRune) las
 	}
 }
 
-// If only a few lines changed, update just those lines.
-//
-// Returns true if delta rendering was done, false if a full render is needed.
-func (screen *UnixScreen) showNLinesDelta(width int, height int) bool {
-	if screen.lastRendered.width != width || screen.lastRendered.height != height {
-		return false
-	}
-
-	// Map from line number to line contents
+// Map updated lines
+func (screen *UnixScreen) findUpdatedLines() map[int][]StyledRune {
+	height := len(screen.cells)
 	updatedLines := make(map[int][]StyledRune, height)
 	for row := range height {
 		newLine := screen.cells[row]
@@ -952,7 +946,7 @@ func (screen *UnixScreen) showNLinesDelta(width int, height int) bool {
 			continue
 		}
 
-		for col := 0; col < len(newLine); col++ {
+		for col := range newLine {
 			if !newLine[col].Equal(cachedLine[col]) {
 				updatedLines[row] = newLine
 				break
@@ -960,9 +954,24 @@ func (screen *UnixScreen) showNLinesDelta(width int, height int) bool {
 		}
 	}
 
+	return updatedLines
+}
+
+// If only a few lines changed, update just those lines.
+//
+// Returns true if delta rendering was done, false if a full render is needed.
+func (screen *UnixScreen) showNLinesDelta(width int, height int) bool {
+	if screen.lastRendered.width != width || screen.lastRendered.height != height {
+		return false
+	}
+
+	// Map from line number to line contents
+	updatedLines := screen.findUpdatedLines()
+
 	// We have two spinners, those two should be able to spin without updating
 	// the whole screen.
 	if len(updatedLines) > 2 {
+		// Nah, do the full render
 		return false
 	}
 
