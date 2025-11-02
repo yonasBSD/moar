@@ -80,6 +80,12 @@ type interruptableReader interface {
 	Interrupt()
 }
 
+type lastRendered struct {
+	width  int
+	height int
+	cells  [][]StyledRune
+}
+
 type UnixScreen struct {
 	widthAccessFromSizeOnly  int // Access from Size() method only
 	heightAccessFromSizeOnly int // Access from Size() method only
@@ -88,7 +94,8 @@ type UnixScreen struct {
 	terminalBackgroundQuery *time.Time // When we asked for the terminal background color
 	terminalBackgroundLock  sync.Mutex
 
-	cells [][]StyledRune
+	cells        [][]StyledRune
+	lastRendered lastRendered
 
 	// Note that the type here doesn't matter, we only want to know whether or
 	// not this channel has been signalled
@@ -171,13 +178,14 @@ func NewScreenWithMouseModeAndColorCount(mouseMode MouseMode, terminalColorCount
 
 	screen.setAlternateScreenMode(true)
 
-	if mouseMode == MouseModeAuto {
+	switch mouseMode {
+	case MouseModeAuto:
 		screen.enableMouseTracking(!terminalHasArrowKeysEmulation())
-	} else if mouseMode == MouseModeSelect {
+	case MouseModeSelect:
 		screen.enableMouseTracking(false)
-	} else if mouseMode == MouseModeScroll {
+	case MouseModeScroll:
 		screen.enableMouseTracking(true)
-	} else {
+	default:
 		panic(fmt.Errorf("unknown mouse mode: %d", mouseMode))
 	}
 
@@ -652,9 +660,6 @@ func (screen *UnixScreen) Size() (width int, height int) {
 		newCells[rowNumber] = make([]StyledRune, width)
 	}
 
-	// FIXME: Copy any existing contents over to the new, resized screen array
-	// FIXME: Fill any non-initialized cells with whitespace
-
 	screen.widthAccessFromSizeOnly = width
 	screen.heightAccessFromSizeOnly = height
 	screen.cells = newCells
@@ -914,7 +919,101 @@ func (screen *UnixScreen) ShowNLines(height int) {
 	screen.showNLines(width, height, false)
 }
 
+func createLastRenderedSnapshot(width int, height int, cells [][]StyledRune) lastRendered {
+	snapshotCells := make([][]StyledRune, height)
+	for row := 0; row < height; row++ {
+		snapshotCells[row] = make([]StyledRune, width)
+		copy(snapshotCells[row], cells[row][0:width])
+	}
+
+	return lastRendered{
+		width:  width,
+		height: height,
+		cells:  snapshotCells,
+	}
+}
+
+// Map updated lines
+func (screen *UnixScreen) findUpdatedLines() map[int][]StyledRune {
+	height := len(screen.cells)
+	updatedLines := make(map[int][]StyledRune, height)
+	for row := range height {
+		newLine := screen.cells[row]
+		cachedLine := screen.lastRendered.cells[row]
+
+		if len(newLine) != len(cachedLine) {
+			updatedLines[row] = newLine
+			continue
+		}
+
+		for col := range newLine {
+			if !newLine[col].Equal(cachedLine[col]) {
+				updatedLines[row] = newLine
+				break
+			}
+		}
+	}
+
+	return updatedLines
+}
+
+// Renders a single line and appends a newline if needed (except for last line)
+func renderWithNewline(builder *strings.Builder, line []StyledRune, width int, terminalColorCount ColorCount, isLastLine bool) {
+	rendered, lineLength := renderLine(line, width, terminalColorCount)
+	builder.WriteString(rendered)
+
+	// NOTE: This <= should *really* be <= and nothing else. Otherwise, if
+	// one line precisely as long as the terminal window goes before one
+	// empty line, the empty line will never be rendered.
+	//
+	// Can be demonstrated using "moor m/pager.go", scroll right once to
+	// make the line numbers go away, then make the window narrower until
+	// some line before an empty line is just as wide as the window.
+	//
+	// With the wrong comparison here, then the empty line just disappears.
+	if lineLength <= len(line) && !isLastLine {
+		builder.WriteString("\r\n")
+	}
+}
+
+// If only a few lines changed, update just those lines.
+//
+// Returns true if delta rendering was done, false if a full render is needed.
+func (screen *UnixScreen) showNLinesDelta(width int, height int) bool {
+	if screen.lastRendered.width != width || screen.lastRendered.height != height {
+		return false
+	}
+
+	// Map from line number to line contents
+	updatedLines := screen.findUpdatedLines()
+
+	// We have two spinners, those two should be able to spin without updating
+	// the whole screen.
+	if len(updatedLines) > 2 {
+		// Nah, do the full render
+		return false
+	}
+
+	var builder strings.Builder
+	for row, line := range updatedLines {
+		// Move cursor to the start of the line
+		builder.WriteString(fmt.Sprintf("\x1b[%d;1H", row+1))
+
+		renderWithNewline(&builder, line, width, screen.terminalColorCount, row == (height-1))
+	}
+
+	// Write out what we have
+	screen.write(builder.String())
+	screen.lastRendered = createLastRenderedSnapshot(width, height, screen.cells)
+
+	return true
+}
+
 func (screen *UnixScreen) showNLines(width int, height int, clearFirst bool) {
+	if clearFirst && screen.showNLinesDelta(width, height) {
+		return
+	}
+
 	var builder strings.Builder
 
 	if clearFirst {
@@ -924,25 +1023,10 @@ func (screen *UnixScreen) showNLines(width int, height int, clearFirst bool) {
 	}
 
 	for row := range height {
-		rendered, lineLength := renderLine(screen.cells[row], width, screen.terminalColorCount)
-		builder.WriteString(rendered)
-
-		wasLastLine := row == (height - 1)
-
-		// NOTE: This <= should *really* be <= and nothing else. Otherwise, if
-		// one line precisely as long as the terminal window goes before one
-		// empty line, the empty line will never be rendered.
-		//
-		// Can be demonstrated using "moor m/pager.go", scroll right once to
-		// make the line numbers go away, then make the window narrower until
-		// some line before an empty line is just as wide as the window.
-		//
-		// With the wrong comparison here, then the empty line just disappears.
-		if lineLength <= len(screen.cells[row]) && !wasLastLine {
-			builder.WriteString("\r\n")
-		}
+		renderWithNewline(&builder, screen.cells[row], width, screen.terminalColorCount, row == (height-1))
 	}
 
 	// Write out what we have
 	screen.write(builder.String())
+	screen.lastRendered = createLastRenderedSnapshot(width, height, screen.cells)
 }

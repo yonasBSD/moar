@@ -32,6 +32,10 @@ func (styledRune StyledRune) Width() int {
 	return uniseg.StringWidth(string(styledRune.Rune))
 }
 
+func (styledRune StyledRune) Equal(other StyledRune) bool {
+	return styledRune.Rune == other.Rune && styledRune.Style.Equal(other.Style)
+}
+
 // Returns a slice of cells with trailing whitespace cells removed
 func TrimSpaceRight(runes []StyledRune) []StyledRune {
 	for i := len(runes) - 1; i >= 0; i-- {
