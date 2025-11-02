@@ -957,6 +957,25 @@ func (screen *UnixScreen) findUpdatedLines() map[int][]StyledRune {
 	return updatedLines
 }
 
+// Renders a single line and appends a newline if needed (except for last line)
+func renderWithNewline(builder *strings.Builder, line []StyledRune, width int, terminalColorCount ColorCount, isLastLine bool) {
+	rendered, lineLength := renderLine(line, width, terminalColorCount)
+	builder.WriteString(rendered)
+
+	// NOTE: This <= should *really* be <= and nothing else. Otherwise, if
+	// one line precisely as long as the terminal window goes before one
+	// empty line, the empty line will never be rendered.
+	//
+	// Can be demonstrated using "moor m/pager.go", scroll right once to
+	// make the line numbers go away, then make the window narrower until
+	// some line before an empty line is just as wide as the window.
+	//
+	// With the wrong comparison here, then the empty line just disappears.
+	if lineLength <= len(line) && !isLastLine {
+		builder.WriteString("\r\n")
+	}
+}
+
 // If only a few lines changed, update just those lines.
 //
 // Returns true if delta rendering was done, false if a full render is needed.
@@ -978,23 +997,15 @@ func (screen *UnixScreen) showNLinesDelta(width int, height int) bool {
 	var builder strings.Builder
 	for row, line := range updatedLines {
 		// Move cursor to the start of the line
-		// https://en.wikipedia.org/wiki/ANSI_escape_code#CSI_(Control_Sequence_Introducer)_sequences
 		builder.WriteString(fmt.Sprintf("\x1b[%d;1H", row+1))
 
-		rendered, lineLength := renderLine(line, width, screen.terminalColorCount)
-		builder.WriteString(rendered)
-
-		wasLastLine := row == (height - 1)
-
-		if lineLength <= len(line) && !wasLastLine {
-			builder.WriteString("\r\n")
-		}
+		renderWithNewline(&builder, line, width, screen.terminalColorCount, row == (height-1))
 	}
 
 	// Write out what we have
 	screen.write(builder.String())
-
 	screen.lastRendered = createLastRenderedSnapshot(width, height, screen.cells)
+
 	return true
 }
 
@@ -1002,8 +1013,6 @@ func (screen *UnixScreen) showNLines(width int, height int, clearFirst bool) {
 	if clearFirst && screen.showNLinesDelta(width, height) {
 		return
 	}
-
-	screen.lastRendered = createLastRenderedSnapshot(width, height, screen.cells)
 
 	var builder strings.Builder
 
@@ -1014,25 +1023,10 @@ func (screen *UnixScreen) showNLines(width int, height int, clearFirst bool) {
 	}
 
 	for row := range height {
-		rendered, lineLength := renderLine(screen.cells[row], width, screen.terminalColorCount)
-		builder.WriteString(rendered)
-
-		wasLastLine := row == (height - 1)
-
-		// NOTE: This <= should *really* be <= and nothing else. Otherwise, if
-		// one line precisely as long as the terminal window goes before one
-		// empty line, the empty line will never be rendered.
-		//
-		// Can be demonstrated using "moor m/pager.go", scroll right once to
-		// make the line numbers go away, then make the window narrower until
-		// some line before an empty line is just as wide as the window.
-		//
-		// With the wrong comparison here, then the empty line just disappears.
-		if lineLength <= len(screen.cells[row]) && !wasLastLine {
-			builder.WriteString("\r\n")
-		}
+		renderWithNewline(&builder, screen.cells[row], width, screen.terminalColorCount, row == (height-1))
 	}
 
 	// Write out what we have
 	screen.write(builder.String())
+	screen.lastRendered = createLastRenderedSnapshot(width, height, screen.cells)
 }
