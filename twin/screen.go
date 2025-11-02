@@ -178,13 +178,14 @@ func NewScreenWithMouseModeAndColorCount(mouseMode MouseMode, terminalColorCount
 
 	screen.setAlternateScreenMode(true)
 
-	if mouseMode == MouseModeAuto {
+	switch mouseMode {
+	case MouseModeAuto:
 		screen.enableMouseTracking(!terminalHasArrowKeysEmulation())
-	} else if mouseMode == MouseModeSelect {
+	case MouseModeSelect:
 		screen.enableMouseTracking(false)
-	} else if mouseMode == MouseModeScroll {
+	case MouseModeScroll:
 		screen.enableMouseTracking(true)
-	} else {
+	default:
 		panic(fmt.Errorf("unknown mouse mode: %d", mouseMode))
 	}
 
@@ -942,7 +943,7 @@ func (screen *UnixScreen) showNLinesDelta(width int, height int) bool {
 
 	// Map from line number to line contents
 	updatedLines := make(map[int][]StyledRune, height)
-	for row := 0; row < height; row++ {
+	for row := range height {
 		newLine := screen.cells[row]
 		cachedLine := screen.lastRendered.cells[row]
 
