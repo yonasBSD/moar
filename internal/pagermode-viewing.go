@@ -229,5 +229,5 @@ func (p *Pager) cycleTabSize() {
 	}
 	textstyles.TabSize = p.TabSize
 
-	p.mode = PagerModeInfo{pager: p, text: fmt.Sprintf("Tab size set to %d", p.TabSize)}
+	p.mode = &PagerModeInfo{Pager: p, Text: fmt.Sprintf("Tab size set to %d", p.TabSize)}
 }

@@ -2,23 +2,32 @@
 
 package internal
 
-import "github.com/walles/moor/v2/twin"
+import (
+	log "github.com/sirupsen/logrus"
+	"github.com/walles/moor/v2/twin"
+)
 
 type PagerModeInfo struct {
-	pager *Pager
-	text  string
+	Pager  *Pager
+	Text   string
+	logged bool
 }
 
-func (m PagerModeInfo) drawFooter(_ string, _ string) {
-	m.pager.setFooter(m.text, "")
+func (m *PagerModeInfo) drawFooter(_ string, _ string) {
+	if !m.logged {
+		log.Infof("Displaying info message to user: %q", m.Text)
+		m.logged = true
+	}
+
+	m.Pager.setFooter(m.Text, "")
 }
 
-func (m PagerModeInfo) onKey(key twin.KeyCode) {
-	m.pager.mode = PagerModeViewing{m.pager}
-	m.pager.mode.onKey(key)
+func (m *PagerModeInfo) onKey(key twin.KeyCode) {
+	m.Pager.mode = PagerModeViewing{m.Pager}
+	m.Pager.mode.onKey(key)
 }
 
-func (m PagerModeInfo) onRune(char rune) {
-	m.pager.mode = PagerModeViewing{m.pager}
-	m.pager.mode.onRune(char)
+func (m *PagerModeInfo) onRune(char rune) {
+	m.Pager.mode = PagerModeViewing{m.Pager}
+	m.Pager.mode.onRune(char)
 }
