@@ -313,6 +313,22 @@ func TestScrollRightToSearchHits_HiddenByScrollMarker(t *testing.T) {
 	assert.Equal(t, 8, pager.leftColumnZeroBased, "Should scroll right to bring 'a' into view from behind scroll marker")
 }
 
+// Repro case for https://github.com/walles/moor/issues/337.
+func TestScrollRightToSearchHits_Issue337(t *testing.T) {
+	reader := reader.NewFromTextForTesting("", "123456a89012345")
+	screen := twin.NewFakeScreen(10, 5)
+	pager := NewPager(reader)
+	pager.screen = screen
+	pager.ShowLineNumbers = false
+	pager.showLineNumbers = false
+	pager.searchString = "a"
+	pager.searchPattern = toPattern("a")
+	pager.leftColumnZeroBased = 0
+
+	assert.Equal(t, false, pager.scrollRightToSearchHits(), "Search hit was already visible, should not have scrolled")
+	assert.Equal(t, 0, pager.leftColumnZeroBased, "Should not have scrolled")
+}
+
 func TestScrollRightToSearchHits_LastCharHit(t *testing.T) {
 	const line = "x0123456789a"
 	reader := reader.NewFromTextForTesting("", line)

@@ -568,15 +568,16 @@ func (p *Pager) scrollRightToSearchHits() bool {
 		// Minus one to account for the scroll-left marker that will cover the
 		// first column after scrolling.
 		scrollToColumn := firstNotVisibleColumn - 1
-		if scrollToColumn > maxLeftmostColumn {
-			scrollToColumn = maxLeftmostColumn
-		}
 
 		p.showLineNumbers = false
 		p.leftColumnZeroBased = scrollToColumn
 
 		if p.searchHitIsVisible() {
-			// Found it!
+			// A new hit showed up!
+			if p.leftColumnZeroBased > maxLeftmostColumn {
+				// Scrolled beyond max, adjust
+				p.leftColumnZeroBased = maxLeftmostColumn
+			}
 			return true
 		}
 	}
