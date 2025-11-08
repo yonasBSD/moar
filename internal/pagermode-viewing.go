@@ -202,6 +202,11 @@ func (m PagerModeViewing) onRune(char rune) {
 
 	case 'w':
 		p.WrapLongLines = !p.WrapLongLines
+		if p.WrapLongLines {
+			p.mode = &PagerModeInfo{Pager: p, Text: "Word wrapping enabled"}
+		} else {
+			p.mode = &PagerModeInfo{Pager: p, Text: "Word wrapping disabled"}
+		}
 
 	case '\x14': // CTRL-t
 		p.cycleTabSize()
