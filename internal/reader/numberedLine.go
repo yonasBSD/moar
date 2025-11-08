@@ -19,8 +19,8 @@ func (nl *NumberedLine) Plain() string {
 	return nl.Line.Plain(&nl.Index)
 }
 
-func (nl *NumberedLine) HighlightedTokens(plainTextStyle twin.Style, searchHitStyle twin.Style, searchHitLineBackground *twin.Color, search *regexp.Regexp) textstyles.StyledRunesWithTrailer {
-	return nl.Line.HighlightedTokens(plainTextStyle, searchHitStyle, searchHitLineBackground, search, &nl.Index)
+func (nl *NumberedLine) HighlightedTokens(plainTextStyle twin.Style, searchHitStyle twin.Style, search *regexp.Regexp) textstyles.StyledRunesWithTrailer {
+	return nl.Line.HighlightedTokens(plainTextStyle, searchHitStyle, search, &nl.Index)
 }
 
 func (nl *NumberedLine) DisplayWidth() int {

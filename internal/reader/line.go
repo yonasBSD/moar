@@ -30,7 +30,6 @@ func NewLine(raw string) Line {
 func (line *Line) HighlightedTokens(
 	plainTextStyle twin.Style,
 	searchHitStyle twin.Style,
-	searchHitLineBackground *twin.Color,
 	search *regexp.Regexp,
 	lineIndex *linemetadata.Index,
 ) textstyles.StyledRunesWithTrailer {
@@ -46,28 +45,20 @@ func (line *Line) HighlightedTokens(
 		if searchHit {
 			// Highlight the search hit
 			style = searchHitStyle
-		} else if !matchRanges.Empty() && searchHitLineBackground != nil {
-			// Highlight lines that have search hits
-			style = style.WithBackground(*searchHitLineBackground)
 		}
 
 		returnRunes = append(returnRunes, textstyles.CellWithMetadata{
 			Rune:            token.Rune,
 			Style:           style,
+			IsSearchHit:     searchHit,
 			StartsSearchHit: searchHit && !lastWasSearchHit,
 		})
 		lastWasSearchHit = searchHit
 	}
 
-	trailer := fromString.Trailer
-	if !matchRanges.Empty() && searchHitLineBackground != nil {
-		// Highlight to the end of the line
-		trailer = plainTextStyle.WithBackground(*searchHitLineBackground)
-	}
-
 	return textstyles.StyledRunesWithTrailer{
 		StyledRunes:       returnRunes,
-		Trailer:           trailer,
+		Trailer:           fromString.Trailer,
 		ContainsSearchHit: !matchRanges.Empty(),
 	}
 }

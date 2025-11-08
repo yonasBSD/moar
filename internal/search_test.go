@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"regexp"
 	"strings"
 	"testing"
 
@@ -345,4 +346,20 @@ func TestScrollRightToSearchHits_LastCharHit(t *testing.T) {
 	width, _ := screen.Size()
 	lastCol := pager.leftColumnZeroBased + width - 1
 	assert.Equal(t, strings.Index(line, "a"), lastCol, "Search hit should be in the last screen column")
+}
+
+func TestScrollRightToSearchHits_OnlyStartOfHitTriggers(t *testing.T) {
+	// Arrange: create a line with a multi-rune search hit
+	line := "abcDEFGHIJKLMNOPQRSTUVWXYZ"
+	pattern := regexp.MustCompile("DEFGHIJ") // Match starts at index 3
+	readerImpl := reader.NewFromTextForTesting("test", line)
+	screen := twin.NewFakeScreen(5, 2) // Narrow screen to force scrolling
+	pager := NewPager(readerImpl)
+	pager.screen = screen
+	pager.WrapLongLines = false
+	pager.ShowLineNumbers = false
+	pager.showLineNumbers = false
+	pager.searchPattern = pattern
+
+	assert.Assert(t, !pager.scrollRightToSearchHits(), "No more search hit starts to the right, should not scroll")
 }
