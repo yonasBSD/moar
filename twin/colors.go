@@ -99,13 +99,14 @@ func (color Color) colorValue() uint32 {
 // Ref: https://en.wikipedia.org/wiki/ANSI_escape_code#SGR_(Select_Graphic_Rendition)_parameters
 func (color Color) ansiString(cType colorType, terminalColorCount ColorCount) string {
 	var typeMarker string
-	if cType == colorTypeForeground {
+	switch cType {
+	case colorTypeForeground:
 		typeMarker = "3"
-	} else if cType == colorTypeBackground {
+	case colorTypeBackground:
 		typeMarker = "4"
-	} else if cType == colorTypeUnderline {
+	case colorTypeUnderline:
 		typeMarker = "5"
-	} else {
+	default:
 		panic(fmt.Errorf("unhandled color type %d", cType))
 	}
 
