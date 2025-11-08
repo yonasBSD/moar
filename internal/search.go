@@ -387,7 +387,7 @@ func _findFirstHit(reader reader.Reader, startPosition linemetadata.Index, patte
 func (p *Pager) searchHitIsVisible() bool {
 	for _, row := range p.renderLines().lines {
 		for _, cell := range row.cells {
-			if cell.StartsSearchHit {
+			if cell.IsSearchHit {
 				// Found a search hit on screen!
 				return true
 			}
@@ -540,7 +540,7 @@ func (p *Pager) scrollRightToSearchHits() bool {
 		p.showLineNumbers = false
 		for _, row := range p.renderLines().lines {
 			for column := firstJustRevealedColumn; column < len(row.cells); column++ {
-				if row.cells[column].StartsSearchHit {
+				if row.cells[column].IsSearchHit {
 					// Found a search hit on screen!
 					return true
 				}

@@ -13,7 +13,7 @@ type CellWithMetadata struct {
 
 	cachedWidth *int
 
-	StartsSearchHit bool // True if this cell is the first cell of a search hit
+	IsSearchHit bool // True if this cell is part of a search hit
 }
 
 // Required for some tests to pass
@@ -26,7 +26,7 @@ func (r CellWithMetadata) Equal(b CellWithMetadata) bool {
 		return false
 	}
 
-	if r.StartsSearchHit != b.StartsSearchHit {
+	if r.IsSearchHit != b.IsSearchHit {
 		return false
 	}
 
@@ -92,4 +92,14 @@ func (runes CellWithMetadataSlice) WithoutSpaceRight() CellWithMetadataSlice {
 
 	// All whitespace, return empty
 	return CellWithMetadataSlice{}
+}
+
+func (runes CellWithMetadataSlice) ContainsSearchHit() bool {
+	for _, cell := range runes {
+		if cell.IsSearchHit {
+			return true
+		}
+	}
+
+	return false
 }

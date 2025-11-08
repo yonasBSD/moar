@@ -12,7 +12,7 @@ import (
 
 func tokenize(input string) []textstyles.CellWithMetadata {
 	line := reader.NewLine(input)
-	return line.HighlightedTokens(twin.StyleDefault, twin.StyleDefault, nil, nil, nil).StyledRunes
+	return line.HighlightedTokens(twin.StyleDefault, twin.StyleDefault, nil, nil).StyledRunes
 }
 
 func rowsToString(cellLines []textstyles.CellWithMetadataSlice) string {
@@ -34,7 +34,11 @@ func rowsToString(cellLines []textstyles.CellWithMetadataSlice) string {
 
 func assertWrap(t *testing.T, input string, widthInScreenCells int, wrappedLines ...string) {
 	toWrap := tokenize(input)
-	actual := wrapLine(widthInScreenCells, toWrap)
+	wrapped := wrapLine(widthInScreenCells, toWrap)
+	actual := make([]textstyles.CellWithMetadataSlice, len(wrapped))
+	for i, w := range wrapped {
+		actual[i] = w.StyledRunes
+	}
 
 	expected := []textstyles.CellWithMetadataSlice{}
 	for _, wrappedLine := range wrappedLines {

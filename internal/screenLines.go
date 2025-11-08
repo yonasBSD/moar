@@ -200,43 +200,59 @@ func (p *Pager) internalRenderLines(highlightSearchHitLines bool) renderedScreen
 // lineNumber and numberPrefixLength are required for knowing how much to
 // indent, and to (optionally) render the line number.
 func (p *Pager) renderLine(line *reader.NumberedLine, numberPrefixLength int, highlightSearchHitLines bool) []renderedLine {
-	localSearchHitLineBackground := searchHitLineBackground
-	if !highlightSearchHitLines {
-		localSearchHitLineBackground = nil
-	}
-
-	highlighted := line.HighlightedTokens(plainTextStyle, searchHitStyle, localSearchHitLineBackground, p.searchPattern)
-	var wrapped []textstyles.CellWithMetadataSlice
+	highlighted := line.HighlightedTokens(plainTextStyle, searchHitStyle, p.searchPattern)
+	var wrapped []textstyles.StyledRunesWithTrailer
 	if p.WrapLongLines {
 		width, _ := p.screen.Size()
 		wrapped = wrapLine(width-numberPrefixLength, highlighted.StyledRunes)
 	} else {
 		// All on one line
-		wrapped = []textstyles.CellWithMetadataSlice{highlighted.StyledRunes}
+		wrapped = []textstyles.StyledRunesWithTrailer{{
+			StyledRunes:       highlighted.StyledRunes,
+			Trailer:           highlighted.Trailer,
+			ContainsSearchHit: highlighted.ContainsSearchHit,
+		}}
+	}
+
+	if highlightSearchHitLines && searchHitLineBackground != nil {
+		// Highlight any sub lines with search hits
+		for i := range wrapped {
+			line := &wrapped[i] // We need a pointer to modify in place, otherwise setting the trailer won't have any effect
+			if line.ContainsSearchHit {
+				// Highlight this line!
+				for i := range line.StyledRunes {
+					line.StyledRunes[i].Style = line.StyledRunes[i].Style.WithBackground(*searchHitLineBackground)
+				}
+				line.Trailer = line.Trailer.WithBackground(*searchHitLineBackground)
+			}
+		}
 	}
 
 	rendered := make([]renderedLine, 0)
-	for wrapIndex, inputLinePart := range wrapped {
+	for wrapIndex, subLine := range wrapped {
 		lineNumber := line.Number
 		visibleLineNumber := &lineNumber
 		if wrapIndex > 0 {
 			visibleLineNumber = nil
 		}
 
-		decorated := p.decorateLine(visibleLineNumber, numberPrefixLength, inputLinePart)
+		decorated := p.decorateLine(visibleLineNumber, numberPrefixLength, subLine.StyledRunes)
 
 		rendered = append(rendered, renderedLine{
 			inputLineIndex:    line.Index,
 			wrapIndex:         wrapIndex,
 			cells:             decorated,
-			containsSearchHit: highlighted.ContainsSearchHit,
+			containsSearchHit: subLine.ContainsSearchHit,
+			trailer:           subLine.Trailer,
 		})
 	}
 
-	if highlighted.Trailer != twin.StyleDefault {
+	lastRenderedLine := &rendered[len(rendered)-1]
+	lastLineHasSearchHighlight := highlightSearchHitLines && lastRenderedLine.containsSearchHit
+	if highlighted.Trailer != twin.StyleDefault && !lastLineHasSearchHighlight {
 		// In the presence of wrapping, add the trailer to the last of the wrap
 		// lines only. This matches what both iTerm and the macOS Terminal does.
-		rendered[len(rendered)-1].trailer = highlighted.Trailer
+		lastRenderedLine.trailer = highlighted.Trailer
 	}
 
 	return rendered

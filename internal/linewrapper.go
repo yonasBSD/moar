@@ -85,18 +85,21 @@ func getScreenCellCount(runes []textstyles.CellWithMetadata) int {
 	return cellCount
 }
 
-// Wrap one line of text to a maximum width
-func wrapLine(width int, line textstyles.CellWithMetadataSlice) []textstyles.CellWithMetadataSlice {
+// Wrap one line of text to a maximum width.
+//
+// The return value will not contain any trailers, but the ContainsSearchHit
+// field will be correctly set for sub-lines with search hits.
+func wrapLine(width int, line textstyles.CellWithMetadataSlice) []textstyles.StyledRunesWithTrailer {
 	// Trailing space risks showing up by itself on a line, which would just
 	// look weird.
 	line = line.WithoutSpaceRight()
 
 	screenCellCount := getScreenCellCount(line)
 	if screenCellCount == 0 {
-		return []textstyles.CellWithMetadataSlice{{}}
+		return []textstyles.StyledRunesWithTrailer{{}}
 	}
 
-	wrapped := make([]textstyles.CellWithMetadataSlice, 0, len(line)/width)
+	wrapped := make([]textstyles.StyledRunesWithTrailer, 0, len(line)/width)
 	for screenCellCount > width {
 		wrapWidth := getWrapCount(line, width)
 		firstPart := line[:wrapWidth]
@@ -107,7 +110,12 @@ func wrapLine(width int, line textstyles.CellWithMetadataSlice) []textstyles.Cel
 			firstPart = firstPart.WithoutSpaceLeft()
 		}
 
-		wrapped = append(wrapped, firstPart.WithoutSpaceRight())
+		wrapped = append(wrapped,
+			textstyles.StyledRunesWithTrailer{
+				StyledRunes:       firstPart.WithoutSpaceRight(),
+				ContainsSearchHit: firstPart.ContainsSearchHit(),
+			},
+		)
 
 		// These runes still need processing
 		remaining := line[wrapWidth:].WithoutSpaceLeft()
@@ -126,9 +134,15 @@ func wrapLine(width int, line textstyles.CellWithMetadataSlice) []textstyles.Cel
 		// indentation, which would be weird for wrapped text.
 		line = line.WithoutSpaceLeft()
 	}
+	line = line.WithoutSpaceRight()
 
 	if len(line) > 0 {
-		wrapped = append(wrapped, line.WithoutSpaceRight())
+		wrapped = append(wrapped,
+			textstyles.StyledRunesWithTrailer{
+				StyledRunes:       line,
+				ContainsSearchHit: line.ContainsSearchHit(),
+			},
+		)
 	}
 
 	return wrapped
