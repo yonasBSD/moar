@@ -13,7 +13,8 @@ type CellWithMetadata struct {
 
 	cachedWidth *int
 
-	IsSearchHit bool // True if this cell is part of a search hit
+	StartsSearchHit bool // True if this cell is the start of a search hit
+	IsSearchHit     bool // True if this cell is part of a search hit
 }
 
 // Required for some tests to pass
