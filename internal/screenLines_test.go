@@ -126,8 +126,8 @@ func TestSearchHighlight(t *testing.T) {
 			containsSearchHit: true,
 			cells: []textstyles.CellWithMetadata{
 				{Rune: 'x', Style: twin.StyleDefault},
-				{Rune: '"', Style: twin.StyleDefault.WithAttr(twin.AttrReverse), IsSearchHit: true},
-				{Rune: '"', Style: twin.StyleDefault.WithAttr(twin.AttrReverse), IsSearchHit: true},
+				{Rune: '"', Style: twin.StyleDefault.WithAttr(twin.AttrReverse), IsSearchHit: true, StartsSearchHit: true},
+				{Rune: '"', Style: twin.StyleDefault.WithAttr(twin.AttrReverse), IsSearchHit: true, StartsSearchHit: false},
 				{Rune: 'x', Style: twin.StyleDefault},
 			},
 		},
