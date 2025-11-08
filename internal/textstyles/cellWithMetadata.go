@@ -31,6 +31,10 @@ func (r CellWithMetadata) Equal(b CellWithMetadata) bool {
 		return false
 	}
 
+	if r.StartsSearchHit != b.StartsSearchHit {
+		return false
+	}
+
 	return true
 }
 
