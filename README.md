@@ -270,6 +270,9 @@ Execute `release.sh` and follow instructions.
 
 - Enable suspending using ^z, followed by resuming using `fg`.
 
+- Underline the file name in the status bar while viewing. The point is to make
+  it more obvious where this name ends in case it contains whitespace.
+
 - Retain the search string when pressing / to search a second time.
 
 ## Done
