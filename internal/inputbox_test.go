@@ -21,7 +21,7 @@ func TestInsertAndBackspace(t *testing.T) {
 	assert.Equal(t, "ab", b.text)
 
 	// Draw and inspect status line
-	b.draw(screen, "P: ")
+	b.draw(screen, "", "P: ")
 	row := rowToString(screen.GetRow(1))
 	assert.Equal(t, "P: ab", row)
 }
@@ -54,7 +54,7 @@ func TestCursorMovementAndInsertDelete(t *testing.T) {
 	assert.Assert(t, b.handleRune('E'))
 	assert.Equal(t, "SaXcE", b.text)
 
-	b.draw(screen, "G: ")
+	b.draw(screen, "", "G: ")
 	row := rowToString(screen.GetRow(1))
 	assert.Equal(t, "G: SaXcE", row)
 }
@@ -84,7 +84,7 @@ func TestUnicodeRunes(t *testing.T) {
 	assert.Assert(t, b.handleRune('你'))
 	assert.Equal(t, "你午", b.text)
 
-	b.draw(screen, "U: ")
+	b.draw(screen, "", "U: ")
 	row := rowToString(screen.GetRow(1))
 	// We expect prompt + two runes
 	assert.Equal(t, "U: 你午", row)

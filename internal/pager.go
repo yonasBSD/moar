@@ -272,6 +272,37 @@ func (p *Pager) getLineNumberPrefixLength(lineNumber linemetadata.Number) int {
 	return length
 }
 
+// Single quoted parts of the help text will be highlighted relative to the
+// status bar style.
+func renderHelpText(help string) []twin.StyledRune {
+	var result []twin.StyledRune
+
+	shortcutHighlight := twin.AttrBold
+	if statusbarStyle.HasAttr(shortcutHighlight) {
+		shortcutHighlight = twin.AttrUnderline
+	}
+	if statusbarStyle.HasAttr(shortcutHighlight) {
+		shortcutHighlight = twin.AttrReverse
+	}
+
+	style := statusbarStyle
+	for _, token := range help {
+		if token == '\'' {
+			// Highlight things within single quotes
+			if style == statusbarStyle {
+				style = statusbarStyle.WithAttr(shortcutHighlight)
+			} else {
+				style = statusbarStyle
+			}
+			continue
+		}
+
+		result = append(result, twin.NewStyledRune(token, style))
+	}
+
+	return result
+}
+
 // Draw the footer string at the bottom using the status bar style.
 //
 // Single quoted parts of the help text will be bolded.
@@ -289,25 +320,8 @@ func (p *Pager) setFooter(footer string, help string) {
 	}
 
 	// Help text, highlight keyboard shortcuts
-	highlightAttr := twin.AttrBold
-	if statusbarStyle.HasAttr(highlightAttr) {
-		highlightAttr = twin.AttrUnderline
-	}
-	if statusbarStyle.HasAttr(highlightAttr) {
-		highlightAttr = twin.AttrReverse
-	}
-	style := statusbarStyle
-	for _, token := range help {
-		if token == '\'' {
-			// Highlight things within single quotes
-			if style == statusbarStyle {
-				style = statusbarStyle.WithAttr(highlightAttr)
-			} else {
-				style = statusbarStyle
-			}
-			continue
-		}
-		pos += p.screen.SetCell(pos, height-1, twin.NewStyledRune(token, style))
+	for _, cell := range renderHelpText(help) {
+		pos += p.screen.SetCell(pos, height-1, cell)
 	}
 
 	for pos < width {

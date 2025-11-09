@@ -33,7 +33,7 @@ type InputBox struct {
 
 // draw renders the input box at the bottom line of the screen, showing a
 // simple prompt and the current text with a reverse attribute cursor.
-func (b *InputBox) draw(screen twin.Screen, prompt string) {
+func (b *InputBox) draw(screen twin.Screen, keys_help string, prompt string) {
 	width, height := screen.Size()
 	pos := 0
 
@@ -73,9 +73,25 @@ func (b *InputBox) draw(screen twin.Screen, prompt string) {
 		pos += screen.SetCell(pos, height-1, twin.NewStyledRune(' ', twin.StyleDefault.WithAttr(twin.AttrReverse)))
 	}
 
+	afterTextPos := pos
+
 	// Clear the rest of the line
 	for pos < width {
 		pos += screen.SetCell(pos, height-1, twin.NewStyledRune(' ', twin.StyleDefault))
+	}
+
+	// Draw help on the right
+	if len(keys_help) > 0 {
+		renderedHelp := renderHelpText(keys_help)
+		helpStart := width - len(renderedHelp)
+		if helpStart > afterTextPos {
+			// Draw the help text
+			pos = width - len(renderedHelp)
+			for _, cell := range renderedHelp {
+				pos += screen.SetCell(pos, height-1, cell)
+			}
+			screen.SetCell(pos, height-1, twin.NewStyledRune(' ', statusbarStyle))
+		}
 	}
 }
 
