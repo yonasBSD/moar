@@ -21,10 +21,15 @@ func (m PagerModeViewing) drawFooter(statusText string, spinner string) {
 		colonHelp = "':' to switch, "
 	}
 	m.pager.readerLock.Unlock()
-	helpText := "Press 'ESC' / 'q' to exit, " + colonHelp + "'/' to search, '&' to filter, 'h' for help"
+
+	searchHelp := "'/' to search"
+	if len(m.pager.searchString) > 0 {
+		searchHelp = "'n'/'p' to search next/previous"
+	}
+	helpText := "Press 'ESC' / 'q' to exit, " + colonHelp + searchHelp + ", '&' to filter, 'h' for help"
 
 	if m.pager.isShowingHelp {
-		helpText = "Press 'ESC' / 'q' to exit help, '/' to search"
+		helpText = "Press 'ESC' / 'q' to exit help, " + searchHelp
 		prefix = ""
 	}
 
