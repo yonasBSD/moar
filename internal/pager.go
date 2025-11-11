@@ -444,6 +444,8 @@ func (p *Pager) StartPaging(screen twin.Screen, chromaStyle *chroma.Style, chrom
 	consumeLessTermcapEnvs(screen.TerminalBackground(), chromaStyle, chromaFormatter)
 	styleUI(screen.TerminalBackground(), chromaStyle, chromaFormatter, p.StatusBarStyle, p.WithTerminalFg)
 
+	searchHistory = loadSearchHistory()
+
 	p.screen = screen
 	p.mode = PagerModeViewing{pager: p}
 	p.bookmarks = make(map[rune]scrollPosition)
