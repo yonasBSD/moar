@@ -95,6 +95,14 @@ func (b *InputBox) draw(screen twin.Screen, keys_help string, prompt string) {
 	}
 }
 
+func (b *InputBox) setText(text string) {
+	b.text = text
+	b.cursorPos = len([]rune(text))
+	if b.onTextChanged != nil {
+		b.onTextChanged(b.text)
+	}
+}
+
 // handleRune appends runes to the text of the InputBox and returns if those have been processed.
 // (Some keyboards send 0x08 instead of backspace, so we support it here too).
 func (b *InputBox) handleRune(char rune) bool {

@@ -20,6 +20,7 @@ type PagerModeSearch struct {
 	initialScrollPosition scrollPosition // Pager position before search started
 	direction             SearchDirection
 	inputBox              *InputBox
+	searchHistoryIndex    int
 }
 
 func NewPagerModeSearch(p *Pager, direction SearchDirection, initialScrollPosition scrollPosition) *PagerModeSearch {
@@ -27,6 +28,7 @@ func NewPagerModeSearch(p *Pager, direction SearchDirection, initialScrollPositi
 		pager:                 p,
 		initialScrollPosition: initialScrollPosition,
 		direction:             direction,
+		searchHistoryIndex:    len(searchHistory), // Past the end
 	}
 	m.inputBox = &InputBox{
 		accept: INPUTBOX_ACCEPT_ALL,
@@ -99,7 +101,7 @@ func toPattern(compileMe string) *regexp.Regexp {
 	panic(err)
 }
 
-func (m PagerModeSearch) onKey(key twin.KeyCode) {
+func (m *PagerModeSearch) onKey(key twin.KeyCode) {
 	if m.inputBox.handleKey(key) {
 		return
 	}
@@ -112,9 +114,16 @@ func (m PagerModeSearch) onKey(key twin.KeyCode) {
 		m.pager.mode = PagerModeViewing{pager: m.pager}
 		m.pager.scrollPosition = m.initialScrollPosition
 
-	case twin.KeyUp, twin.KeyDown, twin.KeyPgUp, twin.KeyPgDown:
+	case twin.KeyDown, twin.KeyPgUp, twin.KeyPgDown:
 		m.pager.mode = PagerModeViewing{pager: m.pager}
 		m.pager.mode.onKey(key)
+
+	case twin.KeyUp:
+		m.searchHistoryIndex -= 1
+		if m.searchHistoryIndex < 0 {
+			m.searchHistoryIndex = 0
+		}
+		m.inputBox.setText(searchHistory[m.searchHistoryIndex])
 
 	default:
 		log.Debugf("Unhandled search key event %v", key)
