@@ -114,7 +114,7 @@ func (m *PagerModeSearch) onKey(key twin.KeyCode) {
 		m.pager.mode = PagerModeViewing{pager: m.pager}
 		m.pager.scrollPosition = m.initialScrollPosition
 
-	case twin.KeyDown, twin.KeyPgUp, twin.KeyPgDown:
+	case twin.KeyPgUp, twin.KeyPgDown:
 		m.pager.mode = PagerModeViewing{pager: m.pager}
 		m.pager.mode.onKey(key)
 
@@ -124,6 +124,17 @@ func (m *PagerModeSearch) onKey(key twin.KeyCode) {
 			m.searchHistoryIndex = 0
 		}
 		m.inputBox.setText(searchHistory[m.searchHistoryIndex])
+
+	case twin.KeyDown:
+		m.searchHistoryIndex += 1
+		if m.searchHistoryIndex > len(searchHistory) {
+			m.searchHistoryIndex = len(searchHistory) - 1
+		}
+		if m.searchHistoryIndex == len(searchHistory) {
+			m.inputBox.setText("")
+		} else {
+			m.inputBox.setText(searchHistory[m.searchHistoryIndex])
+		}
 
 	default:
 		log.Debugf("Unhandled search key event %v", key)
