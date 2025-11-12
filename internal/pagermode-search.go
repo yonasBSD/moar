@@ -101,6 +101,22 @@ func toPattern(compileMe string) *regexp.Regexp {
 	panic(err)
 }
 
+func (m *PagerModeSearch) moveSearchHistoryIndex(delta int) {
+	m.searchHistoryIndex += delta
+	if m.searchHistoryIndex < 0 {
+		m.searchHistoryIndex = 0
+	}
+	if m.searchHistoryIndex > len(searchHistory) {
+		m.searchHistoryIndex = len(searchHistory) // Beyond the end of the history
+	}
+
+	if m.searchHistoryIndex == len(searchHistory) {
+		m.inputBox.setText("")
+	} else {
+		m.inputBox.setText(searchHistory[m.searchHistoryIndex])
+	}
+}
+
 func (m *PagerModeSearch) onKey(key twin.KeyCode) {
 	if m.inputBox.handleKey(key) {
 		return
@@ -119,22 +135,10 @@ func (m *PagerModeSearch) onKey(key twin.KeyCode) {
 		m.pager.mode.onKey(key)
 
 	case twin.KeyUp:
-		m.searchHistoryIndex -= 1
-		if m.searchHistoryIndex < 0 {
-			m.searchHistoryIndex = 0
-		}
-		m.inputBox.setText(searchHistory[m.searchHistoryIndex])
+		m.moveSearchHistoryIndex(-1)
 
 	case twin.KeyDown:
-		m.searchHistoryIndex += 1
-		if m.searchHistoryIndex > len(searchHistory) {
-			m.searchHistoryIndex = len(searchHistory) // Beyond the end of the history
-		}
-		if m.searchHistoryIndex == len(searchHistory) {
-			m.inputBox.setText("")
-		} else {
-			m.inputBox.setText(searchHistory[m.searchHistoryIndex])
-		}
+		m.moveSearchHistoryIndex(1)
 
 	default:
 		log.Debugf("Unhandled search key event %v", key)
