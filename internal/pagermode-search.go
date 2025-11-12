@@ -121,6 +121,8 @@ func (m *PagerModeSearch) moveSearchHistoryIndex(delta int) {
 
 func (m *PagerModeSearch) onKey(key twin.KeyCode) {
 	if m.inputBox.handleKey(key) {
+		m.searchHistoryIndex = len(searchHistory) // Reset history index when user types
+		m.userEditedText = m.inputBox.text
 		return
 	}
 
