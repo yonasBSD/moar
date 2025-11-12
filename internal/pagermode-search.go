@@ -145,6 +145,7 @@ func (m *PagerModeSearch) onKey(key twin.KeyCode) {
 	}
 }
 
-func (m PagerModeSearch) onRune(char rune) {
+func (m *PagerModeSearch) onRune(char rune) {
+	m.searchHistoryIndex = len(searchHistory) // Reset history index when user types
 	m.inputBox.handleRune(char)
 }
