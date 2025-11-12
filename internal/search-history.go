@@ -236,6 +236,11 @@ func addSearchHistoryEntry(entry string) {
 		searchHistory = searchHistory[1:]
 	}
 
+	if os.Getenv("LESSSECURE") == "1" {
+		// LESSSECURE=1 means not writing anything to disk
+		return
+	}
+
 	// Figure out the full history file path + name
 	home, err := os.UserHomeDir()
 	if err != nil {
