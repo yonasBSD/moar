@@ -12,6 +12,17 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+/*
+Search history semantics:
+- On startup, load history or import from other pager
+- Any change to the input box resets the history index to "past the end"
+- If the user starts typing, then arrows up once and down once, whatever the
+  user typed should still be there.
+- On importing from less, remove unprintable characters
+- On exiting search, no matter how, add a new entry at the end and deduplicate.
+  Save to disk.
+*/
+
 var searchHistory []string
 
 const maxSearchHistoryEntries = 100
@@ -126,18 +137,18 @@ func loadLessSearchHistory() ([]string, error) {
 func iterateFileByLines(filename string, processLine func(string)) error {
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return fmt.Errorf("could not get user home dir: %w", err)
+		return fmt.Errorf("could not get user home dir for iterating %s: %w", filename, err)
 	}
 
 	path := filepath.Join(home, filename)
 	f, err := os.Open(path)
 	if err != nil {
-		return fmt.Errorf("could not open %s: %w", path, err)
+		return fmt.Errorf("could not open %s for iteration: %w", path, err)
 	}
 	defer func() {
 		err := f.Close()
 		if err != nil {
-			log.Warnf("close %s failed: %v", path, err)
+			log.Warnf("closing %s failed when iterating: %v", path, err)
 		}
 	}()
 
@@ -192,4 +203,69 @@ func cleanSearchHistory(history []string) []string {
 
 	log.Debugf("Removed %d redundant search history lines", cleanCount)
 	return cleaned
+}
+
+func addSearchHistoryEntry(entry string) {
+	if entry == "" {
+		return
+	}
+
+	// Deduplicate if necessary
+	for i, existing := range searchHistory {
+		if existing == entry {
+			// Found duplicate, remove it
+			searchHistory = append(searchHistory[:i], searchHistory[i+1:]...)
+		}
+	}
+
+	// Append the new entry
+	searchHistory = append(searchHistory, entry)
+	for len(searchHistory) > maxSearchHistoryEntries {
+		// Remove oldest entry
+		searchHistory = searchHistory[1:]
+	}
+
+	// Figure out the full history file path + name
+	home, err := os.UserHomeDir()
+	if err != nil {
+		log.Infof("Could not get user home dir to write history: %v", err)
+	}
+	historyFilePath := filepath.Join(home, moorSearchHistoryFileName)
+
+	// Write new file to a temp file and rename it into place
+	tmpFilePath := historyFilePath + ".tmp"
+	f, err := os.Create(tmpFilePath)
+	if err != nil {
+		log.Infof("Could not create temp history file %s: %v", tmpFilePath, err)
+		return
+	}
+
+	writer := bufio.NewWriter(f)
+	for _, line := range searchHistory {
+		_, err := writer.WriteString(line + "\n")
+		if err != nil {
+			log.Infof("Could not write to temp history file %s: %v", tmpFilePath, err)
+			f.Close()
+			return
+		}
+	}
+	err = writer.Flush()
+	if err != nil {
+		log.Infof("Could not flush to temp history file %s: %v", tmpFilePath, err)
+		f.Close()
+		return
+	}
+
+	err = f.Close()
+	if err != nil {
+		log.Infof("Could not close temp history file %s: %v", tmpFilePath, err)
+		return
+	}
+
+	// Rename temp file into place
+	err = os.Rename(tmpFilePath, historyFilePath)
+	if err != nil {
+		log.Infof("Could not rename temp history file %s to %s: %v", tmpFilePath, historyFilePath, err)
+		return
+	}
 }

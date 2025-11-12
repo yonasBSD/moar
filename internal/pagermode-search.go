@@ -126,13 +126,16 @@ func (m *PagerModeSearch) onKey(key twin.KeyCode) {
 
 	switch key {
 	case twin.KeyEnter:
+		addSearchHistoryEntry(m.inputBox.text)
 		m.pager.mode = PagerModeViewing{pager: m.pager}
 
 	case twin.KeyEscape:
+		addSearchHistoryEntry(m.inputBox.text)
 		m.pager.mode = PagerModeViewing{pager: m.pager}
 		m.pager.scrollPosition = m.initialScrollPosition
 
 	case twin.KeyPgUp, twin.KeyPgDown:
+		addSearchHistoryEntry(m.inputBox.text)
 		m.pager.mode = PagerModeViewing{pager: m.pager}
 		m.pager.mode.onKey(key)
 
