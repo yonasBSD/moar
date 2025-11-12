@@ -53,7 +53,7 @@ func TrimSpaceRight(runes []StyledRune) []StyledRune {
 
 // Returns a slice of cells with leading whitespace cells removed
 func TrimSpaceLeft(runes []StyledRune) []StyledRune {
-	for i := 0; i < len(runes); i++ {
+	for i := range runes {
 		cell := runes[i]
 		if !unicode.IsSpace(cell.Rune) {
 			return runes[i:]

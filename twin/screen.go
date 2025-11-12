@@ -656,7 +656,7 @@ func (screen *UnixScreen) Size() (width int, height int) {
 	}
 
 	newCells := make([][]StyledRune, height)
-	for rowNumber := 0; rowNumber < height; rowNumber++ {
+	for rowNumber := range height {
 		newCells[rowNumber] = make([]StyledRune, width)
 	}
 
@@ -792,7 +792,14 @@ func (screen *UnixScreen) SetCell(column int, row int, styledRune StyledRune) in
 
 	screen.cells[row][column] = styledRune
 
-	return styledRune.Width()
+	runeWidth := styledRune.Width()
+	if runeWidth == 0 {
+		// This happens for unprintable runes. But we were asked to set
+		// something in this screen cell, so unprintable or not this will count
+		// as one cell wide.
+		return 1
+	}
+	return runeWidth
 }
 
 func (screen *UnixScreen) Clear() {
