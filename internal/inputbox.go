@@ -97,7 +97,7 @@ func (b *InputBox) draw(screen twin.Screen, keys_help string, prompt string) {
 
 func (b *InputBox) setText(text string) {
 	b.text = text
-	b.cursorPos = len([]rune(text))
+	b.moveCursorEnd()
 	if b.onTextChanged != nil {
 		b.onTextChanged(b.text)
 	}
