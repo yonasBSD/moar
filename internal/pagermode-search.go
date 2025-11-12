@@ -21,6 +21,7 @@ type PagerModeSearch struct {
 	direction             SearchDirection
 	inputBox              *InputBox
 	searchHistoryIndex    int
+	userEditedText        string
 }
 
 func NewPagerModeSearch(p *Pager, direction SearchDirection, initialScrollPosition scrollPosition) *PagerModeSearch {
@@ -111,7 +112,8 @@ func (m *PagerModeSearch) moveSearchHistoryIndex(delta int) {
 	}
 
 	if m.searchHistoryIndex == len(searchHistory) {
-		m.inputBox.setText("")
+		// Reset to whatever the user typed last
+		m.inputBox.setText(m.userEditedText)
 	} else {
 		m.inputBox.setText(searchHistory[m.searchHistoryIndex])
 	}
@@ -148,4 +150,5 @@ func (m *PagerModeSearch) onKey(key twin.KeyCode) {
 func (m *PagerModeSearch) onRune(char rune) {
 	m.searchHistoryIndex = len(searchHistory) // Reset history index when user types
 	m.inputBox.handleRune(char)
+	m.userEditedText = m.inputBox.text
 }
