@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"unicode"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -72,6 +73,17 @@ func loadMoorSearchHistory() ([]string, error) {
 	return cleanSearchHistory(lines), nil
 }
 
+// Return a new string with any unprintable characters removed
+func withoutUnprintables(s string) string {
+	var builder strings.Builder
+	for _, r := range s {
+		if unicode.IsPrint(r) {
+			builder.WriteRune(r)
+		}
+	}
+	return builder.String()
+}
+
 // File format ref: https://unix.stackexchange.com/a/246641/384864
 func loadLessSearchHistory() ([]string, error) {
 	fileNames := []string{".lesshst", "_lesshst"}
@@ -87,7 +99,7 @@ func loadLessSearchHistory() ([]string, error) {
 				return
 			}
 
-			lines = append(lines, line[1:]) // Strip leading "
+			lines = append(lines, withoutUnprintables(line[1:])) // Strip leading "
 			if len(lines) > maxSearchHistoryEntries {
 				// Throw away the first (oldest) history line, we don't want more
 				// than this
