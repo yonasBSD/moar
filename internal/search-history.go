@@ -240,32 +240,33 @@ func addSearchHistoryEntry(entry string) {
 		return
 	}
 
+	defer func() {
+		err := f.Close()
+		if err != nil {
+			// If close fails we don't really know what's in the temp file
+			log.Infof("Could not close temp history file %s, giving up: %v", tmpFilePath, err)
+			return
+		}
+
+		// Rename temp file into place
+		err = os.Rename(tmpFilePath, historyFilePath)
+		if err != nil {
+			log.Infof("Could not rename temp history file %s to %s: %v", tmpFilePath, historyFilePath, err)
+			return
+		}
+	}()
+
 	writer := bufio.NewWriter(f)
 	for _, line := range searchHistory {
 		_, err := writer.WriteString(line + "\n")
 		if err != nil {
 			log.Infof("Could not write to temp history file %s: %v", tmpFilePath, err)
-			f.Close()
 			return
 		}
 	}
 	err = writer.Flush()
 	if err != nil {
 		log.Infof("Could not flush to temp history file %s: %v", tmpFilePath, err)
-		f.Close()
-		return
-	}
-
-	err = f.Close()
-	if err != nil {
-		log.Infof("Could not close temp history file %s: %v", tmpFilePath, err)
-		return
-	}
-
-	// Rename temp file into place
-	err = os.Rename(tmpFilePath, historyFilePath)
-	if err != nil {
-		log.Infof("Could not rename temp history file %s to %s: %v", tmpFilePath, historyFilePath, err)
 		return
 	}
 }
