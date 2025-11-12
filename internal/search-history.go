@@ -29,7 +29,7 @@ const maxSearchHistoryEntries = 100
 const moorSearchHistoryFileName = ".moor_search_history"
 
 // If this returns nil it means there were problems and we shouldn't touch the
-// history.
+// history. Anything else means the history is ready to go.
 func loadSearchHistory() []string {
 	history, err := loadMoorSearchHistory()
 	if err != nil {
@@ -48,7 +48,9 @@ func loadSearchHistory() []string {
 		return nil
 	}
 	if history == nil {
-		return nil
+		// Neither moor nor less history found, so we start a new history file
+		// from scratch
+		return []string{}
 	}
 
 	log.Infof("Imported %d search history entries from less", len(history))
@@ -206,17 +208,26 @@ func cleanSearchHistory(history []string) []string {
 }
 
 func addSearchHistoryEntry(entry string) {
+	if searchHistory == nil {
+		// History loading must have failed, do nothing
+		return
+	}
 	if entry == "" {
+		return
+	}
+	if len(searchHistory) > 0 && searchHistory[len(searchHistory)-1] == entry {
+		// Same as last entry, do nothing
 		return
 	}
 
 	// Deduplicate if necessary
+	deduplicated := []string{}
 	for i, existing := range searchHistory {
-		if existing == entry {
-			// Found duplicate, remove it
-			searchHistory = append(searchHistory[:i], searchHistory[i+1:]...)
+		if entry != existing {
+			deduplicated = append(deduplicated, searchHistory[i])
 		}
 	}
+	searchHistory = deduplicated
 
 	// Append the new entry
 	searchHistory = append(searchHistory, entry)
@@ -229,6 +240,7 @@ func addSearchHistoryEntry(entry string) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		log.Infof("Could not get user home dir to write history: %v", err)
+		return
 	}
 	historyFilePath := filepath.Join(home, moorSearchHistoryFileName)
 
