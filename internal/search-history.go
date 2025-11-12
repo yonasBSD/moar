@@ -257,6 +257,10 @@ func addSearchHistoryEntry(entry string) {
 		return
 	}
 
+	// Prevent others from reading your history file. Best effort, if this
+	// fails it fails.
+	_ = f.Chmod(0o600)
+
 	shouldRename := true
 	defer func() {
 		err := f.Close()
