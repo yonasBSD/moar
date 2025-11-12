@@ -128,7 +128,7 @@ func (m *PagerModeSearch) onKey(key twin.KeyCode) {
 	case twin.KeyDown:
 		m.searchHistoryIndex += 1
 		if m.searchHistoryIndex > len(searchHistory) {
-			m.searchHistoryIndex = len(searchHistory) - 1
+			m.searchHistoryIndex = len(searchHistory) // Beyond the end of the history
 		}
 		if m.searchHistoryIndex == len(searchHistory) {
 			m.inputBox.setText("")
