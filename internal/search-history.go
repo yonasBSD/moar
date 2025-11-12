@@ -252,11 +252,17 @@ func addSearchHistoryEntry(entry string) {
 		return
 	}
 
+	shouldRename := true
 	defer func() {
 		err := f.Close()
 		if err != nil {
 			// If close fails we don't really know what's in the temp file
 			log.Infof("Could not close temp history file %s, giving up: %v", tmpFilePath, err)
+			return
+		}
+
+		if !shouldRename {
+			// Writing failed, don't rename
 			return
 		}
 
@@ -273,12 +279,14 @@ func addSearchHistoryEntry(entry string) {
 		_, err := writer.WriteString(line + "\n")
 		if err != nil {
 			log.Infof("Could not write to temp history file %s: %v", tmpFilePath, err)
+			shouldRename = false
 			return
 		}
 	}
 	err = writer.Flush()
 	if err != nil {
 		log.Infof("Could not flush to temp history file %s: %v", tmpFilePath, err)
+		shouldRename = false
 		return
 	}
 }
