@@ -99,7 +99,22 @@ func withoutUnprintables(s string) string {
 
 // File format ref: https://unix.stackexchange.com/a/246641/384864
 func loadLessSearchHistory() ([]string, error) {
+	lessHistFileValue := os.Getenv("LESSHISTFILE")
+	if lessHistFileValue == "/dev/null" {
+		// No less history file
+		return nil, nil
+	}
+	if lessHistFileValue == "-" {
+		// No less history file
+		return nil, nil
+	}
+
 	fileNames := []string{".lesshst", "_lesshst"}
+	if lessHistFileValue != "" {
+		// Check the user-specified file first
+		fileNames = append([]string{lessHistFileValue}, fileNames...)
+	}
+
 	for _, fileName := range fileNames {
 		lines := []string{}
 		err := iterateFileByLines(fileName, func(line string) {
@@ -136,13 +151,17 @@ func loadLessSearchHistory() ([]string, error) {
 	return nil, nil
 }
 
-func iterateFileByLines(filename string, processLine func(string)) error {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return fmt.Errorf("could not get user home dir for iterating %s: %w", filename, err)
+// path can be relative or absolute, or just a single file name (also relative).
+// If path is relative, treat it as relative to the user's home directory
+func iterateFileByLines(path string, processLine func(string)) error {
+	if !filepath.IsAbs(path) {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return fmt.Errorf("could not get user home dir for iterating %s: %w", path, err)
+		}
+		path = filepath.Join(home, path)
 	}
 
-	path := filepath.Join(home, filename)
 	f, err := os.Open(path)
 	if err != nil {
 		return fmt.Errorf("could not open %s for iteration: %w", path, err)
@@ -169,7 +188,7 @@ func iterateFileByLines(filename string, processLine func(string)) error {
 		return fmt.Errorf("scan %s: %w", path, err)
 	}
 
-	log.Debugf("%d lines of search history processed from ~/%s", counter, filename)
+	log.Debugf("%d lines of search history processed from %s", counter, path)
 	return nil
 }
 
