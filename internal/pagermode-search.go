@@ -45,7 +45,7 @@ func (m PagerModeSearch) drawFooter(_ string, _ string) {
 	if m.direction == SearchDirectionBackward {
 		prompt = "Search backwards: "
 	}
-	m.inputBox.draw(m.pager.screen, "Type to search, 'ENTER' submits, 'ESC' cancels", prompt)
+	m.inputBox.draw(m.pager.screen, "Type to search, 'ENTER' submits, 'ESC' cancels, '↑↓' navigate history", prompt)
 }
 
 func (m *PagerModeSearch) updateSearchPattern(text string) {
