@@ -136,12 +136,17 @@ Wrap long lines, toggle with
 \fB\+\1234\fR
 Immediately scroll to line
 .B 1234
+.SH FILES
+.TP
+.B ~/.moor_search_history
+Moor will store your search history in this file.
 .SH ENVIRONMENT
 .TP
 .B LESSSECURE
 Setting this to "1" prevents moor from opening new files or launching external programs, as required by
 .B systemctl(1)\&.
-In secure mode, the "v" command for opening the current file in an editor is disabled.
+In secure mode, the "v" command for opening the current file in an editor is disabled, and the search
+history file is not updated.
 .TP
 .B MOOR
 Additional options are read from this variable if it is set, just as if those same
