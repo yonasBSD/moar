@@ -162,10 +162,6 @@ func iterateFileByLines(filename string, processLine func(string)) error {
 		if len(line) == 0 {
 			continue
 		}
-		if len(line) > 640 {
-			// Line too long, 640 chars should be enough for anyone
-			continue
-		}
 		processLine(line)
 		counter++
 	}
