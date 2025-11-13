@@ -25,7 +25,7 @@ Search history semantics:
 
 var searchHistory []string
 
-const maxSearchHistoryEntries = 100
+const maxSearchHistoryEntries = 640 // This should be enough for anyone
 const moorSearchHistoryFileName = ".moor_search_history"
 
 // If this returns nil it means there were problems and we shouldn't touch the
