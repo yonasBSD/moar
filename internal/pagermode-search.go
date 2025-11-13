@@ -103,6 +103,10 @@ func toPattern(compileMe string) *regexp.Regexp {
 }
 
 func (m *PagerModeSearch) moveSearchHistoryIndex(delta int) {
+	if searchHistory == nil {
+		return
+	}
+
 	m.searchHistoryIndex += delta
 	if m.searchHistoryIndex < 0 {
 		m.searchHistoryIndex = 0
