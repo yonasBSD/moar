@@ -266,16 +266,19 @@ func addSearchHistoryEntry(entry string) {
 			return
 		}
 
-		if !shouldRename {
-			// Writing failed, don't rename
-			return
-		}
-
-		// Rename temp file into place
-		err = os.Rename(tmpFilePath, historyFilePath)
-		if err != nil {
-			log.Infof("Could not rename temp history file %s to %s: %v", tmpFilePath, historyFilePath, err)
-			return
+		if shouldRename {
+			// Rename temp file into place
+			err = os.Rename(tmpFilePath, historyFilePath)
+			if err != nil {
+				log.Infof("Could not rename temp history file %s to %s: %v", tmpFilePath, historyFilePath, err)
+				return
+			}
+		} else {
+			// Remove temp file
+			err = os.Remove(tmpFilePath)
+			if err != nil {
+				log.Infof("Could not remove temp history file %s: %v", tmpFilePath, err)
+			}
 		}
 	}()
 
