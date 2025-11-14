@@ -402,6 +402,7 @@ func pagerFromArgs(
 		"lang", nil,
 		"File contents, used for highlighting. Mime type or file extension (\"html\"). Default is to guess by filename.", parseLexerOption)
 	terminalFg := flagSet.Bool("terminal-fg", false, "Use terminal foreground color rather than style foreground for plain text")
+	noSearchLineHighlight := flagSet.Bool("no-search-line-highlight", false, "Do not highlight the background of lines with search hits")
 
 	defaultFormatter, err := parseColorsOption("auto")
 	if err != nil {
@@ -634,6 +635,7 @@ func pagerFromArgs(
 	pager.ScrollRightHint = *scrollRightHint
 	pager.SideScrollAmount = int(*shift)
 	pager.TabSize = int(*tabSize)
+	pager.WithSearchHitLineBackground = !*noSearchLineHighlight
 
 	pager.TargetLine = targetLine
 	if *follow && pager.TargetLine == nil {

@@ -115,7 +115,12 @@ type Pager struct {
 
 	WithTerminalFg bool // If true, don't set linePrefix
 
-	// Length of the longest line displayed. This is used for limiting scrolling to the right.
+	// If false, don't highlight lines with search hits (but still highlight the
+	// actual hits)
+	WithSearchHitLineBackground bool
+
+	// Length of the longest line displayed. This is used for limiting scrolling
+	// to the right.
 	longestLineLength int
 
 	// Bookmarks that you can come back to.
@@ -214,19 +219,20 @@ func NewPager(readers ...*reader.ReaderImpl) *Pager {
 	}
 
 	pager := Pager{
-		readers:          readers,
-		currentReader:    0,
-		readerSwitched:   make(chan struct{}, 1),
-		quit:             false,
-		ShowLineNumbers:  true, // Constant throghout the lifetime of the pager
-		showLineNumbers:  true, // Will be updated over time
-		ShowStatusBar:    true,
-		DeInit:           true,
-		SideScrollAmount: 16,
-		TabSize:          8, // This is what less defaults to
-		ScrollLeftHint:   textstyles.CellWithMetadata{Rune: '<', Style: twin.StyleDefault.WithAttr(twin.AttrReverse)},
-		ScrollRightHint:  textstyles.CellWithMetadata{Rune: '>', Style: twin.StyleDefault.WithAttr(twin.AttrReverse)},
-		scrollPosition:   newScrollPosition(name),
+		readers:                     readers,
+		currentReader:               0,
+		readerSwitched:              make(chan struct{}, 1),
+		quit:                        false,
+		ShowLineNumbers:             true, // Constant throghout the lifetime of the pager
+		showLineNumbers:             true, // Will be updated over time
+		ShowStatusBar:               true,
+		DeInit:                      true,
+		SideScrollAmount:            16,
+		TabSize:                     8, // This is what less defaults to
+		ScrollLeftHint:              textstyles.CellWithMetadata{Rune: '<', Style: twin.StyleDefault.WithAttr(twin.AttrReverse)},
+		ScrollRightHint:             textstyles.CellWithMetadata{Rune: '>', Style: twin.StyleDefault.WithAttr(twin.AttrReverse)},
+		scrollPosition:              newScrollPosition(name),
+		WithSearchHitLineBackground: true,
 	}
 
 	pager.mode = PagerModeViewing{pager: &pager}
@@ -443,7 +449,7 @@ func (p *Pager) StartPaging(screen twin.Screen, chromaStyle *chroma.Style, chrom
 		textstyles.TabSize = p.TabSize
 	}
 	consumeLessTermcapEnvs(screen.TerminalBackground(), chromaStyle, chromaFormatter)
-	styleUI(screen.TerminalBackground(), chromaStyle, chromaFormatter, p.StatusBarStyle, p.WithTerminalFg)
+	styleUI(screen.TerminalBackground(), chromaStyle, chromaFormatter, p.StatusBarStyle, p.WithTerminalFg, p.WithSearchHitLineBackground)
 
 	searchHistory = loadSearchHistory()
 

@@ -41,5 +41,5 @@ func TestSetStyle(t *testing.T) {
 // We used to crash doing this.
 func TestConfigureHighlighting_No24BitColors(t *testing.T) {
 	searchHitStyle = twin.StyleDefault.WithForeground(twin.NewColor16(3))
-	configureHighlighting(nil)
+	configureHighlighting(nil, true)
 }

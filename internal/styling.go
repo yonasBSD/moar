@@ -138,7 +138,7 @@ func getOppositeColor(base twin.Color) twin.Color {
 	}
 }
 
-func styleUI(terminalBackground *twin.Color, chromaStyle *chroma.Style, chromaFormatter *chroma.Formatter, statusbarOption StatusBarOption, withTerminalFg bool) {
+func styleUI(terminalBackground *twin.Color, chromaStyle *chroma.Style, chromaFormatter *chroma.Formatter, statusbarOption StatusBarOption, withTerminalFg bool, configureSearchHitLineBackground bool) {
 	// Set defaults
 	plainTextStyle = twin.StyleDefault
 	textstyles.ManPageHeading = twin.StyleDefault.WithAttr(twin.AttrBold)
@@ -192,12 +192,12 @@ func styleUI(terminalBackground *twin.Color, chromaStyle *chroma.Style, chromaFo
 		panic(fmt.Sprint("Unrecognized status bar style: ", statusbarOption))
 	}
 
-	configureHighlighting(terminalBackground)
+	configureHighlighting(terminalBackground, configureSearchHitLineBackground)
 }
 
 // Expects to be called from the end of styleUI(), since at that
 // point we should have all data we need to set up highlighting.
-func configureHighlighting(terminalBackground *twin.Color) {
+func configureHighlighting(terminalBackground *twin.Color, configureSearchHitLineBackground bool) {
 	if standoutStyle != nil {
 		searchHitStyle = *standoutStyle
 		log.Trace("Search hit style set from standout style: ", searchHitStyle)
@@ -205,7 +205,16 @@ func configureHighlighting(terminalBackground *twin.Color) {
 		log.Trace("Search hit style set to default: ", searchHitStyle)
 	}
 
-	// Figure out a line background that lies between plainTextStyle and searchHit
+	//
+	// Everything below this point relates to figuring out which background
+	// color we should use for lines with search hits.
+	//
+
+	if !configureSearchHitLineBackground {
+		log.Trace("Not configuring search hit line background color")
+		return
+	}
+
 	var plainBg twin.Color
 	if terminalBackground != nil {
 		plainBg = *terminalBackground
