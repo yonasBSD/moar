@@ -9,8 +9,17 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/adrg/xdg"
+
 	log "github.com/sirupsen/logrus"
 )
+
+type SearchHistory struct {
+	// Empty means no history file. Set by BootSearchHistory().
+	absFileName string
+
+	entries []string
+}
 
 /*
 Search history semantics:
@@ -23,45 +32,61 @@ Search history semantics:
   Save to disk.
 */
 
-var searchHistory []string
-
 const maxSearchHistoryEntries = 640 // This should be enough for anyone
-const moorSearchHistoryFileName = ".moor_search_history"
 
-// If this returns nil it means there were problems and we shouldn't touch the
-// history. Anything else means the history is ready to go.
-func loadSearchHistory() []string {
-	history, err := loadMoorSearchHistory()
+// A relative path or just a file name means relative to the user's home
+// directory. Empty means follow the XDG spec for data files.
+func BootSearchHistory(fileName string) SearchHistory {
+	fileName = resolveHistoryFilePath(fileName)
+
+	history, err := loadMoorSearchHistory(fileName)
 	if err != nil {
-		log.Infof("Could not load moor search history: %v", err)
+		log.Infof("Could not load moor search history from %s: %v", fileName, err)
 		// IO Error, give up
-		return nil
+		return SearchHistory{}
 	}
 	if history != nil {
-		log.Infof("Loaded %d search history entries from ~/%s", len(history), moorSearchHistoryFileName)
-		return history
+		log.Infof("Loaded %d search history entries from %s", len(history), fileName)
+		return SearchHistory{
+			absFileName: fileName,
+			entries:     history,
+		}
 	}
 
 	history, err = loadLessSearchHistory()
 	if err != nil {
 		log.Infof("Could not import less search history: %v", err)
-		return nil
+		return SearchHistory{
+			absFileName: fileName,
+			entries:     []string{},
+		}
 	}
 	if history == nil {
 		// Neither moor nor less history found, so we start a new history file
 		// from scratch
-		return []string{}
+		return SearchHistory{
+			absFileName: fileName,
+			entries:     []string{},
+		}
 	}
 
 	log.Infof("Imported %d search history entries from less", len(history))
-	return history
+	return SearchHistory{
+		absFileName: fileName,
+		entries:     history,
+	}
 }
 
-// Try loading search history from ~/.moor_search_history.
-// Returns (nil, nil) if the file doesn't exist. Returns history slice or error.
-func loadMoorSearchHistory() ([]string, error) {
+// Returns (nil, nil) if the file doesn't exist. Otherwise returns history slice
+// or error.
+func loadMoorSearchHistory(absHistoryFileName string) ([]string, error) {
+	if absHistoryFileName == "" {
+		// No history file
+		return nil, nil
+	}
+
 	lines := []string{}
-	err := iterateFileByLines(moorSearchHistoryFileName, func(line string) {
+	err := iterateFileByLines(absHistoryFileName, func(line string) {
 		if len(line) > 640 {
 			// Line too long, 640 chars should be enough for anyone
 			return
@@ -83,7 +108,38 @@ func loadMoorSearchHistory() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	return cleanSearchHistory(lines), nil
+	return removeDupsKeepingLast(lines), nil
+}
+
+// Empty file name will resolve to a default XDG friendly path. Absolute will be
+// left untouched. Relative will be interpreted relative to the user's home
+// directory.
+func resolveHistoryFilePath(fileName string) string {
+	if fileName == "-" || fileName == "/dev/null" {
+		// No history file
+		return ""
+	}
+
+	if fileName == "" {
+		xdgPath, err := xdg.DataFile("moor/search_history")
+		if err != nil {
+			log.Infof("Could not resolve XDG data file path for search history: %v", err)
+			return ""
+		}
+		return xdgPath
+	}
+
+	if filepath.IsAbs(fileName) {
+		return fileName
+	}
+
+	// Path relative to home directory
+	home, err := os.UserHomeDir()
+	if err != nil {
+		log.Infof("Could not get user home dir to resolve history file path: %v", err)
+		return ""
+	}
+	return filepath.Join(home, fileName)
 }
 
 // Return a new string with any unprintable characters removed
@@ -144,7 +200,7 @@ func loadLessSearchHistory() ([]string, error) {
 			return nil, err
 		}
 
-		return cleanSearchHistory(lines), nil
+		return removeDupsKeepingLast(lines), nil
 	}
 
 	// No history files found, not a problem but no history either, return
@@ -193,7 +249,7 @@ func iterateFileByLines(path string, processLine func(string)) error {
 }
 
 // If there are duplicates, retain only the last of each
-func cleanSearchHistory(history []string) []string {
+func removeDupsKeepingLast(history []string) []string {
 	if history == nil {
 		return nil
 	}
@@ -222,33 +278,20 @@ func cleanSearchHistory(history []string) []string {
 	return cleaned
 }
 
-func addSearchHistoryEntry(entry string) {
-	if searchHistory == nil {
-		// History loading must have failed, do nothing
-		return
-	}
+func (h *SearchHistory) addEntry(entry string) {
 	if entry == "" {
 		return
 	}
-	if len(searchHistory) > 0 && searchHistory[len(searchHistory)-1] == entry {
+	if len(h.entries) > 0 && h.entries[len(h.entries)-1] == entry {
 		// Same as last entry, do nothing
 		return
 	}
 
-	// Deduplicate if necessary
-	deduplicated := []string{}
-	for i, existing := range searchHistory {
-		if entry != existing {
-			deduplicated = append(deduplicated, searchHistory[i])
-		}
-	}
-	searchHistory = deduplicated
-
-	// Append the new entry
-	searchHistory = append(searchHistory, entry)
-	for len(searchHistory) > maxSearchHistoryEntries {
+	// Append the new entry in-memory
+	h.entries = removeDupsKeepingLast(append(h.entries, entry))
+	for len(h.entries) > maxSearchHistoryEntries {
 		// Remove oldest entry
-		searchHistory = searchHistory[1:]
+		h.entries = h.entries[1:]
 	}
 
 	if os.Getenv("LESSSECURE") == "1" {
@@ -256,16 +299,13 @@ func addSearchHistoryEntry(entry string) {
 		return
 	}
 
-	// Figure out the full history file path + name
-	home, err := os.UserHomeDir()
-	if err != nil {
-		log.Infof("Could not get user home dir to write history: %v", err)
+	if h.absFileName == "" {
+		// No history file configured
 		return
 	}
-	historyFilePath := filepath.Join(home, moorSearchHistoryFileName)
 
 	// Write new file to a temp file and rename it into place
-	tmpFilePath := historyFilePath + ".tmp"
+	tmpFilePath := h.absFileName + ".tmp"
 	f, err := os.Create(tmpFilePath)
 	if err != nil {
 		log.Infof("Could not create temp history file %s: %v", tmpFilePath, err)
@@ -287,9 +327,9 @@ func addSearchHistoryEntry(entry string) {
 
 		if shouldRename {
 			// Rename temp file into place
-			err = os.Rename(tmpFilePath, historyFilePath)
+			err = os.Rename(tmpFilePath, h.absFileName)
 			if err != nil {
-				log.Infof("Could not rename temp history file %s to %s: %v", tmpFilePath, historyFilePath, err)
+				log.Infof("Could not rename temp history file %s to %s: %v", tmpFilePath, h.absFileName, err)
 				return
 			}
 		} else {
@@ -302,7 +342,7 @@ func addSearchHistoryEntry(entry string) {
 	}()
 
 	writer := bufio.NewWriter(f)
-	for _, line := range searchHistory {
+	for _, line := range h.entries {
 		_, err := writer.WriteString(line + "\n")
 		if err != nil {
 			log.Infof("Could not write to temp history file %s: %v", tmpFilePath, err)
