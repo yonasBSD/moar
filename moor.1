@@ -143,7 +143,8 @@ Immediately scroll to line
 .SH FILES
 .TP
 .B $XDG_DATA_HOME/moor/search_history
-Moor will store your search history in this file.
+Moor will store your search history in this file. If $XDG_DATA_HOME is not set, the file will be
+stored in the default XDG location, usually \fB~/.local/share/moor/search_history\fR.
 .SH ENVIRONMENT
 .TP
 .B LESSSECURE
