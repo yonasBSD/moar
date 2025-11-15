@@ -368,7 +368,8 @@ func tokensFromStyledString(styledString _StyledString) []twin.StyledRune {
 		return tokens
 	}
 
-	// Special handling for man page formatted lines
+	// Special handling for man page formatted lines. If this is updated you
+	// must update HasManPageFormatting() as well.
 	for index := 0; index < len(runes); index++ {
 		nextIndex, token := consumeBullet(runes, index)
 		if nextIndex != index {
@@ -405,6 +406,34 @@ func tokensFromStyledString(styledString _StyledString) []twin.StyledRune {
 	}
 
 	return tokens
+}
+
+// Like tokensFromStyledString(), but only checks without building any formatting
+func HasManPageFormatting(s string) bool {
+	runes := []rune(s)
+	for index := range runes {
+		nextIndex, _ := consumeBullet(runes, index)
+		if nextIndex != index {
+			return true
+		}
+
+		nextIndex, _ = consumeBoldUnderline(runes, index)
+		if nextIndex != index {
+			return true
+		}
+
+		nextIndex, _ = consumeBold(runes, index)
+		if nextIndex != index {
+			return true
+		}
+
+		nextIndex, _ = consumeUnderline(runes, index)
+		if nextIndex != index {
+			return true
+		}
+	}
+
+	return false
 }
 
 type _StyledString struct {

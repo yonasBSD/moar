@@ -634,8 +634,17 @@ func (p *Pager) StartPaging(screen twin.Screen, chromaStyle *chroma.Style, chrom
 			}
 
 		case eventMaybeDone:
-			// Do nothing. We got this just so that we'll do the QuitIfOneScreen
-			// check (above) as soon as highlighting is done.
+			// Man pages come pre-formatted for the screen width, and line
+			// numbers will mess that up. So we disable line numbers if we
+			// detect a man page by its contents.
+			//
+			// See also noLineNumbersDefault() where we use environment
+			// variables to try to detect man paging.
+			if p.haveLoadedManPage() && len(p.readers) == 1 {
+				p.ShowLineNumbers = false
+				p.showLineNumbers = false
+				log.Info("man page detected by contents, disabling line numbers")
+			}
 
 		case eventSpinnerUpdate:
 			spinner = event.spinner

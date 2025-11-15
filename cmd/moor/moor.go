@@ -327,25 +327,23 @@ func russiaNotSupported() {
 	os.Exit(1)
 }
 
-// On man pages, disable line numbers by default.
+// For git output and man pages, disable line numbers by default.
 //
 // Before paging, "man" first checks the terminal width and formats the man page
-// to fit that width.
+// to fit that width. Git does that as well for git diff --stat.
 //
-// Then, if moor adds line numbers, the rightmost part of the man page won't be
-// visible.
+// Then, if moor adds line numbers, the rightmost part of the page will scroll
+// out of view.
 //
-// So we try to detect showing man pages, and in that case disable line numbers
-// so that the rightmost part of the page is visible by default.
+// So we try to this, and in that case disable line numbers so that the
+// rightmost part of the page is visible by default.
+//
+// See also internal/haveLoadedManPage(), where we try to detect man pages by
+// their contents.
 func noLineNumbersDefault() bool {
-	if os.Getenv("MANPATH") != "" {
-		// Set by "man" on macOS, skip line numbers in this case
-		return true
-	}
-
 	if os.Getenv("MAN_PN") != "" {
-		// Set by "man" on Ubuntu 22.04.4 when I tested it inside of Docker,
-		// skip line numbers in this case
+		// Set by "man" on Ubuntu 22.04.4 when I tested it inside of Docker.
+		log.Debug("MAN_PN is set, skipping line numbers for man page")
 		return true
 	}
 
@@ -354,6 +352,7 @@ func noLineNumbersDefault() bool {
 
 		// Neither logs nor diffs are helped by line numbers, turn them off by
 		// default.
+		log.Debug("GIT_EXEC_PATH is set, skipping line numbers when paging git output")
 		return true
 	}
 

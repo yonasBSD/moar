@@ -74,3 +74,7 @@ func (line *Line) Plain(lineIndex *linemetadata.Index) string {
 	}
 	return *line.plain
 }
+
+func (line *Line) HasManPageFormatting() bool {
+	return textstyles.HasManPageFormatting(line.raw)
+}
