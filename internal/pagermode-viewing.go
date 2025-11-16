@@ -186,8 +186,12 @@ func (m PagerModeViewing) onRune(char rune) {
 		p.setTargetLine(nil)
 
 	case ':':
-		p.mode = &PagerModeColonCommand{pager: p}
-		p.setTargetLine(nil)
+		if len(p.readers) > 1 {
+			p.mode = &PagerModeColonCommand{pager: p}
+			p.setTargetLine(nil)
+		} else {
+			p.mode = &PagerModeInfo{Pager: p, Text: "Only one file open, nothing to switch to"}
+		}
 
 	// Should match the pagermode-not-found.go previous-search-hit bindings
 	case 'n':
