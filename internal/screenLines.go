@@ -3,6 +3,7 @@ package internal
 import (
 	"fmt"
 
+	"github.com/davecgh/go-spew/spew"
 	log "github.com/sirupsen/logrus"
 	"github.com/walles/moor/v2/internal/linemetadata"
 	"github.com/walles/moor/v2/internal/reader"
@@ -158,8 +159,8 @@ func (p *Pager) internalRenderLines(highlightSearchHitLines bool) renderedScreen
 		}
 	}
 	if firstVisibleIndex == -1 {
-		panic(fmt.Errorf("scrollPosition %#v not found in allLines size %d",
-			p.scrollPosition, len(allLines)))
+		panic(fmt.Errorf("scrollPosition not found in allLines size %d:\n%s",
+			len(allLines), spew.Sdump(p.scrollPosition)))
 	}
 
 	// Drop the lines that should go above the screen
