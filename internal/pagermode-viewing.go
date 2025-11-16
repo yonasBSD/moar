@@ -190,7 +190,7 @@ func (m PagerModeViewing) onRune(char rune) {
 			p.mode = &PagerModeColonCommand{pager: p}
 			p.setTargetLine(nil)
 		} else {
-			p.mode = &PagerModeInfo{Pager: p, Text: "Only one file open, nothing to switch to"}
+			p.mode = &PagerModeInfo{Pager: p, Text: "Pass more files on the command line to be able to switch between them."}
 		}
 
 	// Should match the pagermode-not-found.go previous-search-hit bindings
