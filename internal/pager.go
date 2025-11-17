@@ -522,7 +522,7 @@ func (p *Pager) StartPaging(screen twin.Screen, chromaStyle *chroma.Style, chrom
 
 			case <-spinnerTicker.C:
 				currentSpinnerFrame := spinnerFrames[spinnerIndex]
-				if r.Done.Load() {
+				if r.ReadingDone.Load() {
 					// We're done, clear the spinner
 					currentSpinnerFrame = ""
 				}
@@ -567,7 +567,7 @@ func (p *Pager) StartPaging(screen twin.Screen, chromaStyle *chroma.Style, chrom
 			//
 			// Also, we only do this if we have exactly one reader, because
 			// that's what less does.
-			if len(p.readers) == 1 && p.QuitIfOneScreen && !p.isShowingHelp && r.Done.Load() && r.HighlightingDone.Load() {
+			if len(p.readers) == 1 && p.QuitIfOneScreen && !p.isShowingHelp && r.ReadingDone.Load() && r.HighlightingDone.Load() {
 				if p.fitsOnOneScreen() {
 					// Ref:
 					// https://github.com/walles/moor/issues/113#issuecomment-1368294132
