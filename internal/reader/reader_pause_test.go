@@ -34,7 +34,7 @@ func TestPauseAfterNLines(t *testing.T) {
 		"Reader should be paused after reading %d lines", pauseAfterLines)
 
 	// Verify that we have *not* received a done notification yet
-	assert.Assert(t, testMe.Done.Load() == false,
+	assert.Assert(t, testMe.ReadingDone.Load() == false,
 		"Reader should not be done yet, only paused")
 
 	// Check that the reader has exactly the first line and nothing else
@@ -55,7 +55,7 @@ func TestPauseAfterNLines(t *testing.T) {
 
 	// Expect a done notification
 	<-testMe.MaybeDone
-	assert.Assert(t, testMe.Done.Load() == true,
+	assert.Assert(t, testMe.ReadingDone.Load() == true,
 		"Reader should be done after reading all lines")
 
 	// Check that the reader has both lines

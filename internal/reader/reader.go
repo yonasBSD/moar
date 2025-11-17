@@ -96,8 +96,11 @@ type ReaderImpl struct {
 
 	Err error
 
-	Done             *atomic.Bool // Stream has been completely read. May not be highlighted yet.
-	HighlightingDone *atomic.Bool // Highlighting has been completed.
+	// Stream has been completely read. May not be highlighted yet.
+	ReadingDone *atomic.Bool
+
+	// Highlighting has been completed.
+	HighlightingDone *atomic.Bool
 
 	highlightingStyle chan chroma.Style
 
@@ -168,7 +171,7 @@ func (reader *ReaderImpl) preAllocLines() {
 func (reader *ReaderImpl) readStream(stream io.Reader, formatter chroma.Formatter, options ReaderOptions) {
 	reader.consumeLinesFromStream(stream)
 
-	reader.Done.Store(true)
+	reader.ReadingDone.Store(true)
 	select {
 	case reader.MaybeDone <- true:
 	default:
@@ -443,8 +446,8 @@ func NewFromStream(displayName string, reader io.Reader, formatter chroma.Format
 // Note that you must call reader.SetStyleForHighlighting() after this to get
 // highlighting.
 func newReaderFromStream(reader io.Reader, originalFileName *string, formatter chroma.Formatter, options ReaderOptions) *ReaderImpl {
-	done := atomic.Bool{}
-	done.Store(false)
+	readingDone := atomic.Bool{}
+	readingDone.Store(false)
 	highlightingDone := atomic.Bool{}
 	highlightingDone.Store(false)
 	pauseStatus := atomic.Bool{}
@@ -472,7 +475,7 @@ func newReaderFromStream(reader io.Reader, originalFileName *string, formatter c
 		highlightingStyle:       make(chan chroma.Style, 1),
 		doneWaitingForFirstByte: make(chan bool, 1),
 		HighlightingDone:        &highlightingDone,
-		Done:                    &done,
+		ReadingDone:             &readingDone,
 	}
 
 	go func() {
@@ -504,13 +507,13 @@ func NewFromTextForTesting(name string, text string) *ReaderImpl {
 			lines = append(lines, &line)
 		}
 	}
-	done := atomic.Bool{}
-	done.Store(true)
+	readingDone := atomic.Bool{}
+	readingDone.Store(true)
 	highlightingDone := atomic.Bool{}
 	highlightingDone.Store(true) // No highlighting to do = nothing left = Done!
 	returnMe := &ReaderImpl{
 		lines:                   lines,
-		Done:                    &done,
+		ReadingDone:             &readingDone,
 		HighlightingDone:        &highlightingDone,
 		doneWaitingForFirstByte: make(chan bool, 1),
 	}
@@ -639,7 +642,7 @@ func NewFromFilename(filename string, formatter chroma.Formatter, options Reader
 func (reader *ReaderImpl) Wait() error {
 	// Wait for our goroutine to finish
 	//revive:disable-next-line:empty-block
-	for !reader.Done.Load() {
+	for !reader.ReadingDone.Load() {
 		if reader.PauseStatus.Load() {
 			// We want more lines
 			reader.SetPauseAfterLines(reader.GetLineCount() * 2)
@@ -822,7 +825,7 @@ func (reader *ReaderImpl) GetLineCount() int {
 }
 
 func (reader *ReaderImpl) ShouldShowLineCount() bool {
-	if reader.Done.Load() {
+	if reader.ReadingDone.Load() {
 		// We are done, the number won't change, show it!
 		return true
 	}
