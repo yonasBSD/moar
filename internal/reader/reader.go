@@ -420,10 +420,6 @@ func NewFromStream(displayName string, reader io.Reader, formatter chroma.Format
 		mReader.Unlock()
 	}
 
-	if options.Lexer == nil {
-		mReader.HighlightingDone.Store(true)
-	}
-
 	if options.Style != nil {
 		mReader.SetStyleForHighlighting(*options.Style)
 	}
@@ -641,7 +637,6 @@ func NewFromFilename(filename string, formatter chroma.Formatter, options Reader
 // Wait for reader to finish reading and highlighting. Used by tests.
 func (reader *ReaderImpl) Wait() error {
 	// Wait for our goroutine to finish
-	//revive:disable-next-line:empty-block
 	for !reader.ReadingDone.Load() {
 		if reader.PauseStatus.Load() {
 			// We want more lines
