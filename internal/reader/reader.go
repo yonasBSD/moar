@@ -96,8 +96,8 @@ type ReaderImpl struct {
 
 	Err error
 
-	Done             *atomic.Bool
-	HighlightingDone *atomic.Bool
+	Done             *atomic.Bool // Stream has been completely read. May not be highlighted yet.
+	HighlightingDone *atomic.Bool // Highlighting has been completed.
 
 	highlightingStyle chan chroma.Style
 
@@ -168,13 +168,19 @@ func (reader *ReaderImpl) preAllocLines() {
 func (reader *ReaderImpl) readStream(stream io.Reader, formatter chroma.Formatter, options ReaderOptions) {
 	reader.consumeLinesFromStream(stream)
 
+	reader.Done.Store(true)
+	select {
+	case reader.MaybeDone <- true:
+	default:
+	}
+
 	t0 := time.Now()
 	style := <-reader.highlightingStyle
 	options.Style = &style
 	highlightFromMemory(reader, formatter, options)
 	log.Debug("highlightFromMemory() took ", time.Since(t0))
 
-	reader.Done.Store(true)
+	reader.HighlightingDone.Store(true)
 	select {
 	case reader.MaybeDone <- true:
 	default:
@@ -462,7 +468,7 @@ func newReaderFromStream(reader io.Reader, originalFileName *string, formatter c
 		PauseStatus: &pauseStatus,
 
 		MoreLinesAdded:          make(chan bool, 1),
-		MaybeDone:               make(chan bool, 1),
+		MaybeDone:               make(chan bool, 2),
 		highlightingStyle:       make(chan chroma.Style, 1),
 		doneWaitingForFirstByte: make(chan bool, 1),
 		HighlightingDone:        &highlightingDone,
@@ -689,14 +695,6 @@ func isXml(text string) bool {
 
 // We expect this to be executed in a goroutine
 func highlightFromMemory(reader *ReaderImpl, formatter chroma.Formatter, options ReaderOptions) {
-	defer func() {
-		reader.HighlightingDone.Store(true)
-		select {
-		case reader.MaybeDone <- true:
-		default:
-		}
-	}()
-
 	// Is the buffer small enough?
 	var byteCount int64
 	reader.Lock()
@@ -962,7 +960,8 @@ func (reader *ReaderImpl) PumpToStdout() {
 	drainAllLines()
 }
 
-// Replace reader contents with the given text and mark as done
+// Replace reader contents with the given text. Consider setting
+// HighlightingDone and signalling the MaybeDone channel afterwards.
 func (reader *ReaderImpl) setText(text string) {
 	lines := []*Line{}
 	for _, lineString := range strings.Split(text, "\n") {
@@ -980,11 +979,6 @@ func (reader *ReaderImpl) setText(text string) {
 	reader.lines = lines
 	reader.Unlock()
 
-	reader.Done.Store(true)
-	select {
-	case reader.MaybeDone <- true:
-	default:
-	}
 	log.Trace("Reader done, contents explicitly set")
 
 	select {
