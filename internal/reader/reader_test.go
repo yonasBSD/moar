@@ -316,6 +316,7 @@ func TestReadTextDone(t *testing.T) {
 
 // JSON should be auto detected and formatted
 func TestFormatJson(t *testing.T) {
+	// Note the space after "key" to verify formatting actually happens
 	jsonStream := strings.NewReader(`{"key" :"value"}`)
 	testMe, err := NewFromStream(
 		"JSON test",
@@ -337,6 +338,7 @@ func TestFormatJson(t *testing.T) {
 }
 
 func TestFormatJsonArray(t *testing.T) {
+	// Note the space after "key" to verify formatting actually happens
 	jsonStream := strings.NewReader(`[{"key" :"value"}]`)
 	testMe, err := NewFromStream(
 		"JSON test",
