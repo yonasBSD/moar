@@ -348,8 +348,9 @@ func (p *Pager) findFirstHit(startPosition linemetadata.Index, beforePosition *l
 // help large file search performance.
 func _findFirstHit(reader reader.Reader, startPosition linemetadata.Index, pattern regexp.Regexp, beforePosition *linemetadata.Index, backwards bool) *linemetadata.Index {
 	searchPosition := startPosition
+	lineCache := searchLineCache{}
 	for {
-		line := reader.GetLine(searchPosition)
+		line := lineCache.getLine(reader, searchPosition, backwards)
 		if line == nil {
 			// No match, give up
 			return nil

@@ -47,6 +47,7 @@ func IndexFromLength(length int) *Index {
 	return &Index{index: length - 1}
 }
 
+// Returns a new index between 0 and math.MaxInt
 func (i Index) NonWrappingAdd(offset int) Index {
 	if offset > 0 {
 		if i.index > math.MaxInt-offset {
