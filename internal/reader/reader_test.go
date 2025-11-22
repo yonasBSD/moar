@@ -62,7 +62,7 @@ func testGetLineCount(t *testing.T, reader *ReaderImpl) {
 	}
 }
 
-func firstLine(inputLines *InputLines) linemetadata.Index {
+func firstLine(inputLines InputLines) linemetadata.Index {
 	return inputLines.Lines[0].Index
 }
 

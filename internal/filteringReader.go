@@ -141,7 +141,7 @@ func (f *FilteringReader) GetLine(index linemetadata.Index) *reader.NumberedLine
 	return allLines[index.Index()]
 }
 
-func (f *FilteringReader) GetLines(firstLine linemetadata.Index, wantedLineCount int) *reader.InputLines {
+func (f *FilteringReader) GetLines(firstLine linemetadata.Index, wantedLineCount int) reader.InputLines {
 	if f.shouldPassThrough() {
 		return f.BackingReader.GetLines(firstLine, wantedLineCount)
 	}
@@ -149,7 +149,7 @@ func (f *FilteringReader) GetLines(firstLine linemetadata.Index, wantedLineCount
 	acceptedLines := f.getAllLines()
 
 	if len(acceptedLines) == 0 || wantedLineCount == 0 {
-		return &reader.InputLines{
+		return reader.InputLines{
 			StatusText: f.createStatus(nil),
 		}
 	}
@@ -168,7 +168,7 @@ func (f *FilteringReader) GetLines(firstLine linemetadata.Index, wantedLineCount
 		return f.GetLines(firstLine, firstLine.CountLinesTo(lastLine))
 	}
 
-	return &reader.InputLines{
+	return reader.InputLines{
 		Lines:      acceptedLines[firstLine.Index() : firstLine.Index()+wantedLineCount],
 		StatusText: f.createStatus(&lastLine),
 	}

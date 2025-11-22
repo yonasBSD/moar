@@ -56,7 +56,7 @@ type Reader interface {
 
 	// This method will try to honor wantedLineCount over firstLine. This means
 	// that the returned first line may be different from the requested one.
-	GetLines(firstLine linemetadata.Index, wantedLineCount int) *InputLines
+	GetLines(firstLine linemetadata.Index, wantedLineCount int) InputLines
 
 	// False when paused. Showing the paused line count is confusing, because
 	// the user might think that the number is the total line count, even though
@@ -865,15 +865,15 @@ func (reader *ReaderImpl) GetLine(index linemetadata.Index) *NumberedLine {
 // GetLines gets the indicated lines from the input
 //
 //revive:disable-next-line:unexported-return
-func (reader *ReaderImpl) GetLines(firstLine linemetadata.Index, wantedLineCount int) *InputLines {
+func (reader *ReaderImpl) GetLines(firstLine linemetadata.Index, wantedLineCount int) InputLines {
 	reader.Lock()
 	defer reader.Unlock()
 	return reader.getLinesUnlocked(firstLine, wantedLineCount)
 }
 
-func (reader *ReaderImpl) getLinesUnlocked(firstLine linemetadata.Index, wantedLineCount int) *InputLines {
+func (reader *ReaderImpl) getLinesUnlocked(firstLine linemetadata.Index, wantedLineCount int) InputLines {
 	if len(reader.lines) == 0 || wantedLineCount == 0 {
-		return &InputLines{
+		return InputLines{
 			StatusText: reader.createStatusUnlocked(firstLine),
 		}
 	}
@@ -903,7 +903,7 @@ func (reader *ReaderImpl) getLinesUnlocked(firstLine linemetadata.Index, wantedL
 		})
 	}
 
-	return &InputLines{
+	return InputLines{
 		Lines:      returnLines,
 		StatusText: reader.createStatusUnlocked(lastLine),
 	}
