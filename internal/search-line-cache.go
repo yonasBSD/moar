@@ -5,14 +5,24 @@ import (
 	"github.com/walles/moor/v2/internal/reader"
 )
 
-// For small searches or few cores, search will be fast no matter what we put here.
-// For large searches on many-core systems, a larger cache will help performance.
-// To evaluate:
+// For small searches or few cores, search will be fast no matter what we put
+// here. For large searches on many-core systems, a larger cache will help
+// performance. To evaluate:
 //
 //	go test -run='^$' -bench 'Search' ./internal
 //
-// On Johan's laptop, 200 is better than both 100 and 400.
-const searchLineCacheSize = 200
+// Results from Johan's laptop. The numbers are the test iteration counts for
+// BenchmarkHighlightedSearch and BenchmarkPlainTextSearch. The optimization has
+// been done to improve the sum of these two benchmarks.
+//
+// 20:     6+10=16
+// 200:   12+27=39
+// 1000:  16+27=43
+// 2000:  19+33=52
+// 5000:  18+34=52
+// 10000: 20+31=51
+// 20000: 16+32=48
+const searchLineCacheSize = 2_000
 
 type searchLineCache struct {
 	lines []*reader.NumberedLine

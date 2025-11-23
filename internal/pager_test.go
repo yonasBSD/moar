@@ -765,11 +765,14 @@ func benchmarkSearch(b *testing.B, highlighted bool) {
 		fileContents = *highlightedSourceCode
 	}
 
-	// Create some input to search
-	testString := ""
-	for range 100 {
-		testString += fileContents
+	// Create some input to search. Use a Builder to avoid quadratic string concatenation time.
+	var builder strings.Builder
+	const replications = 1000
+	builder.Grow(len(fileContents) * replications)
+	for range replications {
+		builder.WriteString(fileContents)
 	}
+	testString := builder.String()
 
 	reader := reader.NewFromTextForTesting("hello", testString)
 	pager := NewPager(reader)
