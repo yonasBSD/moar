@@ -7,7 +7,8 @@ import (
 
 // For small searches or few cores, search will be fast no matter what we put
 // here. For large searches on many-core systems, a larger cache will help
-// performance. To evaluate:
+// performance. But a larger cache without a performance increase has no value.
+// To evaluate:
 //
 //	go test -run='^$' -bench 'Search' ./internal
 //
@@ -15,13 +16,13 @@ import (
 // BenchmarkHighlightedSearch and BenchmarkPlainTextSearch. The optimization has
 // been done to improve the sum of these two benchmarks.
 //
-// 20:     6+10=16
-// 200:   12+27=39
-// 1000:  16+27=43
-// 2000:  19+33=52
-// 5000:  18+34=52
-// 10000: 20+31=51
-// 20000: 16+32=48
+//	20:     6+10=16
+//	200:   12+27=39
+//	1000:  16+27=43
+//	2000:  19+33=52  <-- chosen value. Better than 1000, smaller than 5000.
+//	5000:  18+34=52
+//	10000: 20+31=51
+//	20000: 16+32=48
 const searchLineCacheSize = 2_000
 
 type searchLineCache struct {
