@@ -1,17 +1,14 @@
 package internal
 
 import (
-	"fmt"
 	"os"
 	"path"
-	"regexp"
 	"runtime"
 	"strings"
 	"testing"
 
 	"github.com/alecthomas/chroma/v2"
 	"github.com/alecthomas/chroma/v2/formatters"
-	"github.com/alecthomas/chroma/v2/lexers"
 	"github.com/alecthomas/chroma/v2/styles"
 	"github.com/google/go-cmp/cmp"
 	"github.com/walles/moor/v2/internal/linemetadata"
@@ -19,8 +16,6 @@ import (
 	"github.com/walles/moor/v2/internal/textstyles"
 	"github.com/walles/moor/v2/twin"
 	"gotest.tools/v3/assert"
-
-	log "github.com/sirupsen/logrus"
 )
 
 // NOTE: You can find related tests in screenLines_test.go.
@@ -353,69 +348,6 @@ func TestToPattern(t *testing.T) {
 	assert.Assert(t, toPattern(")g").MatchString(")g"))
 }
 
-func TestFindFirstHitSimple(t *testing.T) {
-	reader := reader.NewFromTextForTesting("TestFindFirstHitSimple", "AB")
-	pager := NewPager(reader)
-	pager.screen = twin.NewFakeScreen(40, 10)
-
-	assert.NilError(t, pager.readers[pager.currentReader].Wait())
-
-	pager.searchPattern = toPattern("AB")
-
-	hit := pager.findFirstHit(linemetadata.Index{}, nil, SearchDirectionForward)
-	assert.Assert(t, hit.IsZero())
-}
-
-func TestFindFirstHitAnsi(t *testing.T) {
-	reader := reader.NewFromTextForTesting("", "A\x1b[30mB")
-	pager := NewPager(reader)
-	pager.screen = twin.NewFakeScreen(40, 10)
-
-	assert.NilError(t, pager.readers[pager.currentReader].Wait())
-
-	pager.searchPattern = toPattern("AB")
-
-	hit := pager.findFirstHit(linemetadata.Index{}, nil, SearchDirectionForward)
-	assert.Assert(t, hit.IsZero())
-}
-
-func TestFindFirstHitNoMatch(t *testing.T) {
-	reader := reader.NewFromTextForTesting("TestFindFirstHitSimple", "AB")
-	pager := NewPager(reader)
-	pager.screen = twin.NewFakeScreen(40, 10)
-
-	assert.NilError(t, pager.readers[pager.currentReader].Wait())
-
-	pager.searchPattern = toPattern("this pattern should not be found")
-
-	hit := pager.findFirstHit(linemetadata.Index{}, nil, SearchDirectionForward)
-	assert.Assert(t, hit == nil)
-}
-
-func TestFindFirstHitNoMatchBackwards(t *testing.T) {
-	reader := reader.NewFromTextForTesting("TestFindFirstHitSimple", "AB")
-	pager := NewPager(reader)
-	pager.screen = twin.NewFakeScreen(40, 10)
-
-	assert.NilError(t, pager.readers[pager.currentReader].Wait())
-
-	pager.searchPattern = toPattern("this pattern should not be found")
-	theEnd := *linemetadata.IndexFromLength(reader.GetLineCount())
-
-	hit := pager.findFirstHit(theEnd, nil, SearchDirectionBackward)
-	assert.Assert(t, hit == nil)
-}
-
-// Converts a cell row to a plain string and removes trailing whitespace.
-func rowToString(row []twin.StyledRune) string {
-	rowString := ""
-	for _, cell := range row {
-		rowString += string(cell.Rune)
-	}
-
-	return strings.TrimRight(rowString, " ")
-}
-
 func TestScrollToBottomWrapNextToLastLine(t *testing.T) {
 	reader := reader.NewFromTextForTesting("",
 		"first line\nline two will be wrapped\nhere's the last line")
@@ -740,75 +672,4 @@ func TestTerminalFg(t *testing.T) {
 
 	assertRunesEqual(t, styleAnswer, startPagingWithTerminalFg(t, reader, false).GetRow(0)[0])
 	assertRunesEqual(t, terminalAnswer, startPagingWithTerminalFg(t, reader, true).GetRow(0)[0])
-}
-
-func benchmarkSearch(b *testing.B, highlighted bool) {
-	log.SetLevel(log.WarnLevel) // Stop info logs from polluting benchmark output
-
-	// Pick a go file so we get something with highlighting
-	_, sourceFilename, _, ok := runtime.Caller(0)
-	if !ok {
-		panic("Getting current filename failed")
-	}
-
-	sourceBytes, err := os.ReadFile(sourceFilename)
-	assert.NilError(b, err)
-	fileContents := string(sourceBytes)
-
-	// Read one copy of the example input
-	if highlighted {
-		highlightedSourceCode, err := reader.Highlight(fileContents, *styles.Get("native"), formatters.TTY16m, lexers.Get("go"))
-		assert.NilError(b, err)
-		if highlightedSourceCode == nil {
-			panic("Highlighting didn't want to, returned nil")
-		}
-		fileContents = *highlightedSourceCode
-	}
-
-	// Create some input to search. Use a Builder to avoid quadratic string concatenation time.
-	var builder strings.Builder
-	const replications = 1000
-	builder.Grow(len(fileContents) * replications)
-	for range replications {
-		builder.WriteString(fileContents)
-	}
-	testString := builder.String()
-
-	reader := reader.NewFromTextForTesting("hello", testString)
-	pager := NewPager(reader)
-	pager.screen = twin.NewFakeScreen(40, 10)
-
-	// The [] around the 't' is there to make sure it doesn't match, remember
-	// we're searching through this very file.
-	pager.searchPattern = regexp.MustCompile("This won'[t] match anything")
-
-	// I hope forcing a GC here will make numbers more predictable
-	runtime.GC()
-
-	b.ResetTimer()
-
-	for range b.N {
-		// This test will search through all the N copies we made of our file
-		hit := pager.findFirstHit(linemetadata.Index{}, nil, SearchDirectionForward)
-
-		if hit != nil {
-			panic(fmt.Errorf("This test is meant to scan the whole file without finding anything"))
-		}
-	}
-}
-
-// How long does it take to search a highlighted file for some regex?
-//
-// Run with: go test -run='^$' -bench=. . ./...
-func BenchmarkHighlightedSearch(b *testing.B) {
-	benchmarkSearch(b, true)
-}
-
-// How long does it take to search a plain text file for some regex?
-//
-// Search performance was a problem for me when I had a 600MB file to search in.
-//
-// Run with: go test -run='^$' -bench=. . ./...
-func BenchmarkPlainTextSearch(b *testing.B) {
-	benchmarkSearch(b, false)
 }

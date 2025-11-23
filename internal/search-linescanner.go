@@ -21,7 +21,7 @@ import (
 //
 // For the actual searching, this method will call _findFirstHit() in parallel
 // on multiple cores, to help large file search performance.
-func (p *Pager) findFirstHit(startPosition linemetadata.Index, beforePosition *linemetadata.Index, direction SearchDirection) *linemetadata.Index {
+func FindFirstHit(reader reader.Reader, pattern regexp.Regexp, startPosition linemetadata.Index, beforePosition *linemetadata.Index, direction SearchDirection) *linemetadata.Index {
 	// If the number of lines to search matches the number of cores (or more),
 	// divide the search into chunks. Otherwise use one chunk.
 	chunkCount := runtime.NumCPU()
@@ -34,7 +34,7 @@ func (p *Pager) findFirstHit(startPosition linemetadata.Index, beforePosition *l
 			linesCount = startPosition.Index() - beforePosition.Index()
 		}
 	} else {
-		linesCount = p.Reader().GetLineCount() - startPosition.Index()
+		linesCount = reader.GetLineCount() - startPosition.Index()
 		if beforePosition != nil {
 			// Searching from 1 with before set to 2 should make the count 1
 			linesCount = beforePosition.Index() - startPosition.Index()
@@ -93,8 +93,6 @@ func (p *Pager) findFirstHit(startPosition linemetadata.Index, beforePosition *l
 			chunkBefore = beforePosition
 		}
 
-		reader := p.Reader()
-		pattern := *p.searchPattern
 		go func(i int, searchStart linemetadata.Index, chunkBefore *linemetadata.Index) {
 			defer func() {
 				PanicHandler("findFirstHit()/chunkSearch", recover(), debug.Stack())
