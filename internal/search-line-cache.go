@@ -5,6 +5,13 @@ import (
 	"github.com/walles/moor/v2/internal/reader"
 )
 
+// For small searches or few cores, search will be fast no matter what we put here.
+// For large searches on many-core systems, a larger cache will help performance.
+// To evaluate:
+//
+//	go test -run='^$' -bench 'Search' ./internal
+//
+// On Johan's laptop, 200 is better than both 100 and 400.
 const searchLineCacheSize = 200
 
 type searchLineCache struct {

@@ -19,6 +19,8 @@ import (
 	"github.com/walles/moor/v2/internal/textstyles"
 	"github.com/walles/moor/v2/twin"
 	"gotest.tools/v3/assert"
+
+	log "github.com/sirupsen/logrus"
 )
 
 // NOTE: You can find related tests in screenLines_test.go.
@@ -741,6 +743,8 @@ func TestTerminalFg(t *testing.T) {
 }
 
 func benchmarkSearch(b *testing.B, highlighted bool) {
+	log.SetLevel(log.WarnLevel) // Stop info logs from polluting benchmark output
+
 	// Pick a go file so we get something with highlighting
 	_, sourceFilename, _, ok := runtime.Caller(0)
 	if !ok {
