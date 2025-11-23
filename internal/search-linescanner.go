@@ -128,7 +128,7 @@ func _findFirstHit(reader reader.Reader, startPosition linemetadata.Index, patte
 	searchPosition := startPosition
 	lineCache := searchLineCache{}
 	for {
-		line := lineCache.getLine(reader, searchPosition, direction)
+		line := lineCache.GetLine(reader, searchPosition, direction)
 		if line == nil {
 			// No match, give up
 			return nil

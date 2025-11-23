@@ -18,15 +18,11 @@ type searchLineCache struct {
 	lines []*reader.NumberedLine
 }
 
-func (c *searchLineCache) getLine(reader reader.Reader, index linemetadata.Index, direction SearchDirection) *reader.NumberedLine {
+func (c *searchLineCache) GetLine(reader reader.Reader, index linemetadata.Index, direction SearchDirection) *reader.NumberedLine {
 	// Do we have a cache hit?
-	if len(c.lines) > 0 {
-		firstCachedIndexInclusive := c.lines[0].Index
-		lastCachedIndexInclusive := c.lines[len(c.lines)-1].Index
-		if !index.IsBefore(firstCachedIndexInclusive) && !index.IsAfter(lastCachedIndexInclusive) {
-			cachedLine := c.lines[index.Index()-firstCachedIndexInclusive.Index()]
-			return cachedLine
-		}
+	cacheHit := c.getLineFromCache(index)
+	if cacheHit != nil {
+		return cacheHit
 	}
 
 	// Cache miss, load new lines
@@ -47,13 +43,24 @@ func (c *searchLineCache) getLine(reader reader.Reader, index linemetadata.Index
 	c.lines = lines.Lines
 
 	// Get the line from the cache
-	firstCachedIndexInclusive := c.lines[0].Index
-	lastCachedIndexInclusive := c.lines[len(c.lines)-1].Index
-	if !index.IsBefore(firstCachedIndexInclusive) && !index.IsAfter(lastCachedIndexInclusive) {
-		cachedLine := c.lines[index.Index()-firstCachedIndexInclusive.Index()]
-		return cachedLine
+	return c.getLineFromCache(index)
+}
+
+// Or nil if that line isn't in the cache
+func (c *searchLineCache) getLineFromCache(index linemetadata.Index) *reader.NumberedLine {
+	if len(c.lines) == 0 {
+		return nil
 	}
 
-	// The reader doesn't have that line
-	return nil
+	firstCachedIndexInclusive := c.lines[0].Index
+	if index.IsBefore(firstCachedIndexInclusive) {
+		return nil
+	}
+
+	lastCachedIndexInclusive := c.lines[len(c.lines)-1].Index
+	if index.IsAfter(lastCachedIndexInclusive) {
+		return nil
+	}
+
+	return c.lines[index.Index()-firstCachedIndexInclusive.Index()]
 }
