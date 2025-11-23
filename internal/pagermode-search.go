@@ -8,11 +8,11 @@ import (
 	"github.com/walles/moor/v2/twin"
 )
 
-type SearchDirection int
+type SearchDirection bool
 
 const (
-	SearchDirectionForward SearchDirection = iota
-	SearchDirectionBackward
+	SearchDirectionForward  SearchDirection = false
+	SearchDirectionBackward SearchDirection = true
 )
 
 type PagerModeSearch struct {

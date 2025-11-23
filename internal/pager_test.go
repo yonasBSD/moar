@@ -360,7 +360,7 @@ func TestFindFirstHitSimple(t *testing.T) {
 
 	pager.searchPattern = toPattern("AB")
 
-	hit := pager.findFirstHit(linemetadata.Index{}, nil, false)
+	hit := pager.findFirstHit(linemetadata.Index{}, nil, SearchDirectionForward)
 	assert.Assert(t, hit.IsZero())
 }
 
@@ -373,7 +373,7 @@ func TestFindFirstHitAnsi(t *testing.T) {
 
 	pager.searchPattern = toPattern("AB")
 
-	hit := pager.findFirstHit(linemetadata.Index{}, nil, false)
+	hit := pager.findFirstHit(linemetadata.Index{}, nil, SearchDirectionForward)
 	assert.Assert(t, hit.IsZero())
 }
 
@@ -386,7 +386,7 @@ func TestFindFirstHitNoMatch(t *testing.T) {
 
 	pager.searchPattern = toPattern("this pattern should not be found")
 
-	hit := pager.findFirstHit(linemetadata.Index{}, nil, false)
+	hit := pager.findFirstHit(linemetadata.Index{}, nil, SearchDirectionForward)
 	assert.Assert(t, hit == nil)
 }
 
@@ -400,7 +400,7 @@ func TestFindFirstHitNoMatchBackwards(t *testing.T) {
 	pager.searchPattern = toPattern("this pattern should not be found")
 	theEnd := *linemetadata.IndexFromLength(reader.GetLineCount())
 
-	hit := pager.findFirstHit(theEnd, nil, true)
+	hit := pager.findFirstHit(theEnd, nil, SearchDirectionBackward)
 	assert.Assert(t, hit == nil)
 }
 
@@ -782,7 +782,7 @@ func benchmarkSearch(b *testing.B, highlighted bool) {
 
 	for range b.N {
 		// This test will search through all the N copies we made of our file
-		hit := pager.findFirstHit(linemetadata.Index{}, nil, false)
+		hit := pager.findFirstHit(linemetadata.Index{}, nil, SearchDirectionForward)
 
 		if hit != nil {
 			panic(fmt.Errorf("This test is meant to scan the whole file without finding anything"))

@@ -11,7 +11,7 @@ type searchLineCache struct {
 	lines []*reader.NumberedLine
 }
 
-func (c *searchLineCache) getLine(reader reader.Reader, index linemetadata.Index, backwards bool) *reader.NumberedLine {
+func (c *searchLineCache) getLine(reader reader.Reader, index linemetadata.Index, direction SearchDirection) *reader.NumberedLine {
 	// Do we have a cache hit?
 	if len(c.lines) > 0 {
 		firstCachedIndexInclusive := c.lines[0].Index
@@ -24,7 +24,7 @@ func (c *searchLineCache) getLine(reader reader.Reader, index linemetadata.Index
 
 	// Cache miss, load new lines
 	firstIndexToRequest := index
-	if backwards {
+	if direction == SearchDirectionBackward {
 		// Let's say we want index 10 to be in the cache. Cache size is 5.
 		// Then, the first index must be 6, so that we get 6,7,8,9,10.
 		// Or in other words, 10 - 5 + 1 = 6.
