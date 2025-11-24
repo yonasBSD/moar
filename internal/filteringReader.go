@@ -53,7 +53,7 @@ func (f *FilteringReader) rebuildCache() {
 	allBaseLines := f.BackingReader.GetLines(linemetadata.Index{}, math.MaxInt)
 	resultIndex := 0
 	for _, line := range allBaseLines.Lines {
-		if filterPattern != nil && len(filterPattern.String()) > 0 && !filterPattern.MatchString(line.Line.Plain(&line.Index)) {
+		if filterPattern != nil && len(filterPattern.String()) > 0 && !filterPattern.MatchString(line.Line.Plain()) {
 			// We have a pattern but it doesn't match
 			continue
 		}

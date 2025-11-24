@@ -109,16 +109,13 @@ func TestEmpty(t *testing.T) {
 
 // Repro case for a search bug discovered in v1.9.8.
 func TestSearchHighlight(t *testing.T) {
-	line := reader.NewLine("x\"\"x")
+	numberedLine := reader.NewFromTextForTesting("TestSearchHighlight", "x\"\"x").GetLine(linemetadata.Index{})
 	pager := Pager{
 		screen:        twin.NewFakeScreen(100, 10),
 		searchPattern: regexp.MustCompile("\""),
 	}
 
-	numberedLine := reader.NumberedLine{
-		Line: &line,
-	}
-	rendered := pager.renderLine(&numberedLine, pager.getLineNumberPrefixLength(numberedLine.Number), true)
+	rendered := pager.renderLine(numberedLine, pager.getLineNumberPrefixLength(numberedLine.Number), true)
 	assert.DeepEqual(t, []renderedLine{
 		{
 			inputLineIndex:    linemetadata.Index{},

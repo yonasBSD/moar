@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/walles/moor/v2/internal/linemetadata"
+	"github.com/walles/moor/v2/internal/textstyles"
 	"github.com/walles/moor/v2/internal/util"
 
 	"github.com/alecthomas/chroma/v2"
@@ -855,10 +856,17 @@ func (reader *ReaderImpl) GetLine(index linemetadata.Index) *NumberedLine {
 	if !index.IsWithinLength(len(reader.lines)) {
 		return nil
 	}
+
+	line := reader.lines[index.Index()]
+	if line.plain == nil {
+		plain := textstyles.WithoutFormatting(line.raw, &index)
+		line.plain = &plain
+	}
+
 	return &NumberedLine{
 		Index:  index,
 		Number: linemetadata.NumberFromZeroBased(index.Index()),
-		Line:   reader.lines[index.Index()],
+		Line:   line,
 	}
 }
 
@@ -896,10 +904,16 @@ func (reader *ReaderImpl) getLinesUnlocked(firstLine linemetadata.Index, wantedL
 	returnLines := make([]*NumberedLine, 0, len(notNumberedReturnLines))
 	for loopIndex, line := range notNumberedReturnLines {
 		lineIndex := firstLine.NonWrappingAdd(loopIndex)
+		returnLine := reader.lines[lineIndex.Index()]
+		if line.plain == nil {
+			plain := textstyles.WithoutFormatting(line.raw, &lineIndex)
+			line.plain = &plain
+		}
+
 		returnLines = append(returnLines, &NumberedLine{
 			Index:  lineIndex,
 			Number: linemetadata.NumberFromZeroBased(lineIndex.Index()),
-			Line:   line,
+			Line:   returnLine,
 		})
 	}
 
