@@ -14,7 +14,7 @@ const esc = '\x1b'
 
 type styledStringSplitter struct {
 	input          string
-	lineIndex      *linemetadata.Index
+	lineIndex      *linemetadata.Index // Used for error reporting
 	plainTextStyle twin.Style
 
 	nextByteIndex     int
@@ -29,7 +29,9 @@ type styledStringSplitter struct {
 	callback func(str string, style twin.Style)
 }
 
-// Returns the style of the line's trailer
+// Returns the style of the line's trailer.
+//
+// The lineIndex is only used for error reporting.
 func styledStringsFromString(plainTextStyle twin.Style, s string, lineIndex *linemetadata.Index, callback func(string, twin.Style)) twin.Style {
 	if !strings.ContainsAny(s, "\x1b") {
 		// This shortcut makes BenchmarkPlainTextSearch() perform a lot better

@@ -4,6 +4,7 @@ import (
 	"regexp"
 	"testing"
 
+	"github.com/walles/moor/v2/internal/linemetadata"
 	"github.com/walles/moor/v2/internal/textstyles"
 	"github.com/walles/moor/v2/twin"
 	"gotest.tools/v3/assert"
@@ -38,7 +39,7 @@ func TestHighlightedTokensWithManPageHeading(t *testing.T) {
 // single-width here so rune index == screen column.
 func TestSearchHitSpanningWrapBoundary(t *testing.T) {
 	// Arrange: a line where the search hit crosses index 5
-	line := NewLine("0123456789")
+	line := NewFromTextForTesting("TestSearchHitSpanningWrapBoundary", "0123456789").GetLine(linemetadata.Index{}).Line
 	// Match runs from indices 3..8 inclusive ("345678")
 	pattern := regexp.MustCompile("345678")
 	searchHitStyle := twin.StyleDefault.WithForeground(twin.NewColor16(3))

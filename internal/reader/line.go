@@ -2,7 +2,6 @@ package reader
 
 import (
 	"regexp"
-	"sync"
 
 	"github.com/walles/moor/v2/internal/linemetadata"
 	"github.com/walles/moor/v2/internal/textstyles"
@@ -12,16 +11,13 @@ import (
 // A Line represents a line of text that can / will be paged
 type Line struct {
 	raw   string
-	plain *string
-	lock  sync.Mutex
+	plain *string // This will be populated by the reader's Get methods if not set
 }
 
 // NewLine creates a new Line from a (potentially ANSI / man page formatted) string
 func NewLine(raw string) Line {
 	return Line{
-		raw:   raw,
-		plain: nil,
-		lock:  sync.Mutex{},
+		raw: raw,
 	}
 }
 
@@ -33,8 +29,7 @@ func (line *Line) HighlightedTokens(
 	search *regexp.Regexp,
 	lineIndex *linemetadata.Index,
 ) textstyles.StyledRunesWithTrailer {
-	plain := line.Plain(lineIndex)
-	matchRanges := getMatchRanges(&plain, search)
+	matchRanges := getMatchRanges(line.plain, search)
 
 	fromString := textstyles.StyledRunesFromString(plainTextStyle, line.raw, lineIndex)
 	returnRunes := make([]textstyles.CellWithMetadata, 0, len(fromString.StyledRunes))
@@ -64,14 +59,7 @@ func (line *Line) HighlightedTokens(
 }
 
 // Plain returns a plain text representation of the initial string
-func (line *Line) Plain(lineIndex *linemetadata.Index) string {
-	line.lock.Lock()
-	defer line.lock.Unlock()
-
-	if line.plain == nil {
-		plain := textstyles.WithoutFormatting(line.raw, lineIndex)
-		line.plain = &plain
-	}
+func (line *Line) Plain() string {
 	return *line.plain
 }
 

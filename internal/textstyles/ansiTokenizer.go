@@ -53,6 +53,7 @@ func isPlain(s string) bool {
 	return true
 }
 
+// lineIndex is only used for error reporting
 func WithoutFormatting(s string, lineIndex *linemetadata.Index) string {
 	if isPlain(s) {
 		return s
