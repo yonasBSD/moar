@@ -76,6 +76,10 @@ func benchmarkSearch(b *testing.B, highlighted bool) {
 	assert.NilError(b, err)
 	fileContents := string(sourceBytes)
 
+	// Repeat input enough times to get to some target size, before highlighting
+	// to get the same amount of text in either case
+	replications := 5_000_000 / len(fileContents)
+
 	// Read one copy of the example input
 	if highlighted {
 		highlightedSourceCode, err := reader.Highlight(fileContents, *styles.Get("native"), formatters.TTY16m, lexers.Get("go"))
@@ -88,7 +92,6 @@ func benchmarkSearch(b *testing.B, highlighted bool) {
 
 	// Create some input to search. Use a Builder to avoid quadratic string concatenation time.
 	var builder strings.Builder
-	const replications = 1000
 	builder.Grow(len(fileContents) * replications)
 	for range replications {
 		builder.WriteString(fileContents)
@@ -96,6 +99,7 @@ func benchmarkSearch(b *testing.B, highlighted bool) {
 	testString := builder.String()
 
 	reader := reader.NewFromTextForTesting("hello", testString)
+	assert.NilError(b, reader.Wait())
 
 	// The [] around the 't' is there to make sure it doesn't match, remember
 	// we're searching through this very file.
