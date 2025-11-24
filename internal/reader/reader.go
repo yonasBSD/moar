@@ -75,7 +75,7 @@ type Reader interface {
 //
 // This package provides query methods for the struct, no peeking!!
 type ReaderImpl struct {
-	sync.Mutex
+	sync.RWMutex
 
 	lines []*Line
 
@@ -202,9 +202,9 @@ func (reader *ReaderImpl) readStream(stream io.Reader, formatter chroma.Formatte
 // pauseAfterLinesUpdated to be signalled in SetPauseAfterLines().
 func (reader *ReaderImpl) maybePause() {
 	for {
-		reader.Lock()
+		reader.RLock()
 		shouldPause := len(reader.lines) >= reader.pauseAfterLines
-		reader.Unlock()
+		reader.RUnlock()
 
 		if !shouldPause {
 			// Not there yet, no pause
@@ -324,9 +324,9 @@ func (reader *ReaderImpl) consumeLinesFromStream(stream io.Reader) {
 }
 
 func (reader *ReaderImpl) tailFile() error {
-	reader.Lock()
+	reader.RLock()
 	fileName := reader.FileName
-	reader.Unlock()
+	reader.RUnlock()
 	if fileName == nil {
 		return nil
 	}
@@ -345,9 +345,9 @@ func (reader *ReaderImpl) tailFile() error {
 			return nil
 		}
 
-		reader.Lock()
+		reader.RLock()
 		bytesCount := reader.bytesCount
-		reader.Unlock()
+		reader.RUnlock()
 
 		if bytesCount == -1 {
 			log.Debugf("Bytes count unknown for %s, stop tailing", *fileName)
@@ -648,13 +648,13 @@ func (reader *ReaderImpl) Wait() error {
 	for !reader.HighlightingDone.Load() {
 	}
 
-	reader.Lock()
-	defer reader.Unlock()
+	reader.RLock()
+	defer reader.RUnlock()
 	return reader.Err
 }
 
 func textAsString(reader *ReaderImpl, shouldFormat bool) string {
-	reader.Lock()
+	reader.RLock()
 
 	text := strings.Builder{}
 	for _, line := range reader.lines {
@@ -662,7 +662,7 @@ func textAsString(reader *ReaderImpl, shouldFormat bool) string {
 		text.WriteString("\n")
 	}
 	result := text.String()
-	reader.Unlock()
+	reader.RUnlock()
 
 	var jsonData any
 	err := json.Unmarshal([]byte(result), &jsonData)
@@ -696,17 +696,17 @@ func isXml(text string) bool {
 func highlightFromMemory(reader *ReaderImpl, formatter chroma.Formatter, options ReaderOptions) {
 	// Is the buffer small enough?
 	var byteCount int64
-	reader.Lock()
+	reader.RLock()
 	for _, line := range reader.lines {
 		byteCount += int64(len(line.raw))
 
 		if byteCount > MAX_HIGHLIGHT_SIZE {
 			log.Info("File too large for highlighting: ", byteCount)
-			reader.Unlock()
+			reader.RUnlock()
 			return
 		}
 	}
-	reader.Unlock()
+	reader.RUnlock()
 
 	text := textAsString(reader, options.ShouldFormat)
 
@@ -752,7 +752,7 @@ func highlightFromMemory(reader *ReaderImpl, formatter chroma.Formatter, options
 	reader.setText(*highlighted)
 }
 
-// createStatusUnlocked() assumes that its caller is holding the lock
+// createStatusUnlocked() assumes that its caller is holding the read lock
 func (reader *ReaderImpl) createStatusUnlocked(lastLine linemetadata.Index) string {
 	displayName := ""
 	if reader.DisplayName != nil {
@@ -814,8 +814,8 @@ func (reader *ReaderImpl) AwaitFirstByte() {
 
 // GetLineCount returns the number of lines available for viewing
 func (reader *ReaderImpl) GetLineCount() int {
-	reader.Lock()
-	defer reader.Unlock()
+	reader.RLock()
+	defer reader.RUnlock()
 
 	return len(reader.lines)
 }
@@ -874,11 +874,12 @@ func (reader *ReaderImpl) GetLine(index linemetadata.Index) *NumberedLine {
 //
 //revive:disable-next-line:unexported-return
 func (reader *ReaderImpl) GetLines(firstLine linemetadata.Index, wantedLineCount int) InputLines {
-	reader.Lock()
-	defer reader.Unlock()
+	reader.RLock()
+	defer reader.RUnlock()
 	return reader.getLinesUnlocked(firstLine, wantedLineCount)
 }
 
+// Assumes the read lock is being held
 func (reader *ReaderImpl) getLinesUnlocked(firstLine linemetadata.Index, wantedLineCount int) InputLines {
 	if len(reader.lines) == 0 || wantedLineCount == 0 {
 		return InputLines{
@@ -907,11 +908,18 @@ func (reader *ReaderImpl) getLinesUnlocked(firstLine linemetadata.Index, wantedL
 		returnLine := reader.lines[lineIndex.Index()]
 		if line.plain == nil {
 			// Plaining is slow, release the lock while doing it
-			reader.Unlock()
-			plain := textstyles.WithoutFormatting(line.raw, &lineIndex)
-			reader.Lock()
+			reader.RUnlock()
 
+			// Holding no locks, do the slow work
+			plain := textstyles.WithoutFormatting(line.raw, &lineIndex)
+
+			// Update the reader, needs the write lock
+			reader.Lock()
 			line.plain = &plain
+			reader.Unlock()
+
+			// Reacquire the read lock for the next loop iteration
+			reader.RLock()
 		}
 
 		returnLines = append(returnLines, NumberedLine{
