@@ -16,12 +16,12 @@ import (
 // BenchmarkHighlightedSearch and BenchmarkPlainTextSearch. The optimization has
 // been done to improve the sum of these two benchmarks.
 //
-//	200:    98+189=287
-//	1000:  106+188=294
-//	2000:  116+204=320 <-- best
-//	5000:  115+189=304
-//	10000:  91+151=242
-const searchLineCacheSize = 2_000
+//	1000: 106+188=294
+//	2000: 187+216=403
+//	3000: 190+224=414
+//	4000: 198+231=429
+//	5000: 186+204=390
+const searchLineCacheSize = 4_000
 
 type searchLineCache struct {
 	lines []reader.NumberedLine

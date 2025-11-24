@@ -906,7 +906,11 @@ func (reader *ReaderImpl) getLinesUnlocked(firstLine linemetadata.Index, wantedL
 		lineIndex := firstLine.NonWrappingAdd(loopIndex)
 		returnLine := reader.lines[lineIndex.Index()]
 		if line.plain == nil {
+			// Plaining is slow, release the lock while doing it
+			reader.Unlock()
 			plain := textstyles.WithoutFormatting(line.raw, &lineIndex)
+			reader.Lock()
+
 			line.plain = &plain
 		}
 
