@@ -119,7 +119,7 @@ func TestPauseAfterNLines_Polling(t *testing.T) {
 	testMe.SetPauseAfterLines(99)
 
 	// Give the new line two seconds to arrive
-	var bothLines []*NumberedLine
+	var bothLines []NumberedLine
 	for range 20 {
 		bothLines = testMe.GetLines(linemetadata.Index{}, 10).Lines
 		if len(bothLines) > 1 {

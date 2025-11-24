@@ -33,7 +33,7 @@ type renderedLine struct {
 
 type renderedScreen struct {
 	lines             []renderedLine
-	inputLines        []*reader.NumberedLine
+	inputLines        []reader.NumberedLine
 	numberPrefixWidth int // Including padding. 0 means no line numbers.
 	statusText        string
 }
@@ -208,7 +208,7 @@ func (p *Pager) internalRenderLines(highlightSearchHitLines bool) renderedScreen
 //
 // lineNumber and numberPrefixLength are required for knowing how much to
 // indent, and to (optionally) render the line number.
-func (p *Pager) renderLine(line *reader.NumberedLine, numberPrefixLength int, highlightSearchHitLines bool) []renderedLine {
+func (p *Pager) renderLine(line reader.NumberedLine, numberPrefixLength int, highlightSearchHitLines bool) []renderedLine {
 	highlighted := line.HighlightedTokens(plainTextStyle, searchHitStyle, p.searchPattern)
 	var wrapped []textstyles.StyledRunesWithTrailer
 	if p.WrapLongLines {

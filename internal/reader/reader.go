@@ -127,7 +127,7 @@ type ReaderImpl struct {
 
 // InputLines contains a number of lines from the reader, plus metadata
 type InputLines struct {
-	Lines []*NumberedLine
+	Lines []NumberedLine
 
 	// "monkey.txt: 1-23/45 51%"
 	StatusText string
@@ -901,7 +901,7 @@ func (reader *ReaderImpl) getLinesUnlocked(firstLine linemetadata.Index, wantedL
 	}
 
 	notNumberedReturnLines := reader.lines[firstLine.Index() : lastLine.Index()+1]
-	returnLines := make([]*NumberedLine, 0, len(notNumberedReturnLines))
+	returnLines := make([]NumberedLine, 0, len(notNumberedReturnLines))
 	for loopIndex, line := range notNumberedReturnLines {
 		lineIndex := firstLine.NonWrappingAdd(loopIndex)
 		returnLine := reader.lines[lineIndex.Index()]
@@ -910,7 +910,7 @@ func (reader *ReaderImpl) getLinesUnlocked(firstLine linemetadata.Index, wantedL
 			line.plain = &plain
 		}
 
-		returnLines = append(returnLines, &NumberedLine{
+		returnLines = append(returnLines, NumberedLine{
 			Index:  lineIndex,
 			Number: linemetadata.NumberFromZeroBased(lineIndex.Index()),
 			Line:   returnLine,

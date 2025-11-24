@@ -132,7 +132,7 @@ func (si *scrollPositionInternal) handleNegativeDeltaScreenLines(pager *Pager) {
 		previousLine := pager.Reader().GetLine(previousLineIndex)
 		previousSubLinesCount := 0
 		if previousLine != nil {
-			previousSubLines := pager.renderLine(previousLine, si.getMaxNumberPrefixLength(pager), true)
+			previousSubLines := pager.renderLine(*previousLine, si.getMaxNumberPrefixLength(pager), true)
 			previousSubLinesCount = len(previousSubLines)
 		}
 
@@ -166,14 +166,14 @@ func (si *scrollPositionInternal) handlePositiveDeltaScreenLines(pager *Pager) {
 			if line == nil {
 				panic(fmt.Errorf("Last line is nil"))
 			}
-			subLines := pager.renderLine(line, maxPrefixLength, true)
+			subLines := pager.renderLine(*line, maxPrefixLength, true)
 
 			// ... and go to the bottom of that.
 			si.deltaScreenLines = len(subLines) - 1
 			return
 		}
 
-		subLines := pager.renderLine(line, maxPrefixLength, true)
+		subLines := pager.renderLine(*line, maxPrefixLength, true)
 		if si.deltaScreenLines < len(subLines) {
 			// Sublines are within bounds!
 			return
@@ -212,7 +212,7 @@ func (si *scrollPositionInternal) emptyBottomLinesCount(pager *Pager) int {
 			break
 		}
 
-		subLines := pager.renderLine(line, lastLineNumberWidth, true)
+		subLines := pager.renderLine(*line, lastLineNumberWidth, true)
 		unclaimedViewportLines -= len(subLines)
 		if unclaimedViewportLines <= 0 {
 			return 0
@@ -355,7 +355,7 @@ func (p *Pager) isScrolledToEnd() bool {
 	// Last line is on screen, now we need to figure out whether we can see all
 	// of it
 	lastInputLine := p.Reader().GetLine(lastInputLineIndex)
-	lastInputLineRendered := p.renderLine(lastInputLine, p.getLineNumberPrefixLength(lastInputLine.Number), true)
+	lastInputLineRendered := p.renderLine(*lastInputLine, p.getLineNumberPrefixLength(lastInputLine.Number), true)
 	lastRenderedSubLine := lastInputLineRendered[len(lastInputLineRendered)-1]
 
 	// If the last visible subline is the same as the last possible subline then

@@ -16,15 +16,15 @@ import (
 // BenchmarkHighlightedSearch and BenchmarkPlainTextSearch. The optimization has
 // been done to improve the sum of these two benchmarks.
 //
-//	200:   45+126=171
-//	1000:  84+129=213
-//	2000:  73+124=197
-//	5000:  78+148=226  <-- Chosen value, faster than 2000 and smaller than 10000
-//	10000: 76+148=224
-const searchLineCacheSize = 5_000
+//	200:    98+189=287
+//	1000:  106+188=294
+//	2000:  116+204=320 <-- best
+//	5000:  115+189=304
+//	10000:  91+151=242
+const searchLineCacheSize = 2_000
 
 type searchLineCache struct {
-	lines []*reader.NumberedLine
+	lines []reader.NumberedLine
 }
 
 func (c *searchLineCache) GetLine(reader reader.Reader, index linemetadata.Index, direction SearchDirection) *reader.NumberedLine {
@@ -71,5 +71,5 @@ func (c *searchLineCache) getLineFromCache(index linemetadata.Index) *reader.Num
 		return nil
 	}
 
-	return c.lines[index.Index()-firstCachedIndexInclusive.Index()]
+	return &c.lines[index.Index()-firstCachedIndexInclusive.Index()]
 }
