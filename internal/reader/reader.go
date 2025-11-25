@@ -864,20 +864,29 @@ func (reader *ReaderImpl) ShouldShowLineCount() bool {
 
 // GetLine gets a line. If the requested line number is out of bounds, nil is returned.
 func (reader *ReaderImpl) GetLine(index linemetadata.Index) *NumberedLine {
-	reader.Lock()
-	defer reader.Unlock()
+	reader.RLock()
+	defer reader.RUnlock()
 
 	if index.Index() >= reader.pauseAfterLines-DEFAULT_PAUSE_AFTER_LINES/2 {
+		// Switch to the write lock for changing the pause threshold
+		reader.RUnlock()
+		reader.Lock()
+
 		// Getting close(ish) to the pause threshold, bump it up. The Max()
 		// construct is to handle the case when the add overflows.
 		reader.pauseAfterLines = slices.Max([]int{
 			reader.pauseAfterLines + DEFAULT_PAUSE_AFTER_LINES/2,
 			reader.pauseAfterLines})
+
 		select {
 		case reader.pauseAfterLinesUpdated <- true:
 		default:
 			// Default case required for the write to be non-blocking
 		}
+
+		// Back to read lock for the rest of this function
+		reader.Unlock()
+		reader.RLock()
 	}
 
 	if !index.IsWithinLength(len(reader.lines)) {
