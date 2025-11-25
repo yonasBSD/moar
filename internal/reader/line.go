@@ -11,14 +11,7 @@ import (
 // A Line represents a line of text that can / will be paged
 type Line struct {
 	raw   string
-	plain *string // This will be populated by the reader's Get methods if not set
-}
-
-// NewLine creates a new Line from a (potentially ANSI / man page formatted) string
-func NewLine(raw string) Line {
-	return Line{
-		raw: raw,
-	}
+	plain string
 }
 
 // Returns a representation of the string split into styled tokens. Any regexp
@@ -29,7 +22,7 @@ func (line *Line) HighlightedTokens(
 	search *regexp.Regexp,
 	lineIndex *linemetadata.Index,
 ) textstyles.StyledRunesWithTrailer {
-	matchRanges := getMatchRanges(line.plain, search)
+	matchRanges := getMatchRanges(line.Plain(), search)
 
 	fromString := textstyles.StyledRunesFromString(plainTextStyle, line.raw, lineIndex)
 	returnRunes := make([]textstyles.CellWithMetadata, 0, len(fromString.StyledRunes))
@@ -60,7 +53,7 @@ func (line *Line) HighlightedTokens(
 
 // Plain returns a plain text representation of the initial string
 func (line *Line) Plain() string {
-	return *line.plain
+	return line.plain
 }
 
 func (line *Line) HasManPageFormatting() bool {

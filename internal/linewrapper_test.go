@@ -5,14 +5,12 @@ import (
 
 	"gotest.tools/v3/assert"
 
-	"github.com/walles/moor/v2/internal/reader"
 	"github.com/walles/moor/v2/internal/textstyles"
 	"github.com/walles/moor/v2/twin"
 )
 
 func tokenize(input string) []textstyles.CellWithMetadata {
-	line := reader.NewLine(input)
-	return line.HighlightedTokens(twin.StyleDefault, twin.StyleDefault, nil, nil).StyledRunes
+	return textstyles.StyledRunesFromString(twin.StyleDefault, input, nil).StyledRunes
 }
 
 func rowsToString(cellLines []textstyles.CellWithMetadataSlice) string {

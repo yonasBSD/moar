@@ -21,11 +21,10 @@ func TestHighlightedTokensWithManPageHeading(t *testing.T) {
 		manPageHeading += string(char) + "\b" + string(char)
 	}
 
-	line := NewLine(manPageHeading)
-	highlighted := line.HighlightedTokens(twin.StyleDefault, twin.StyleDefault, nil, nil)
+	highlighted := textstyles.StyledRunesFromString(twin.StyleDefault, manPageHeading, nil).StyledRunes
 
-	assert.Equal(t, len(highlighted.StyledRunes), len(headingText))
-	for i, cell := range highlighted.StyledRunes {
+	assert.Equal(t, len(highlighted), len(headingText))
+	for i, cell := range highlighted {
 		assert.Equal(t, cell.Rune, rune(headingText[i]))
 		assert.Equal(t, cell.Style, textstyles.ManPageHeading)
 	}

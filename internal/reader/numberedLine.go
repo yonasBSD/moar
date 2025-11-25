@@ -12,7 +12,7 @@ import (
 type NumberedLine struct {
 	Index  linemetadata.Index
 	Number linemetadata.Number
-	Line   *Line
+	Line   Line
 }
 
 func (nl *NumberedLine) Plain() string {
