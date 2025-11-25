@@ -98,8 +98,8 @@ func benchmarkSearch(b *testing.B, highlighted bool, warm bool) {
 	}
 	testString := builder.String()
 
-	reader := reader.NewFromTextForTesting("hello", testString)
-	assert.NilError(b, reader.Wait())
+	benchMe := reader.NewFromTextForTesting("hello", testString)
+	assert.NilError(b, benchMe.Wait())
 
 	// The [] around the 't' is there to make sure it doesn't match, remember
 	// we're searching through this very file.
@@ -107,7 +107,7 @@ func benchmarkSearch(b *testing.B, highlighted bool, warm bool) {
 
 	if warm {
 		// Warm up any caches etc by doing one search before we start measuring
-		hit := FindFirstHit(reader, *pattern, linemetadata.Index{}, nil, SearchDirectionForward)
+		hit := FindFirstHit(benchMe, *pattern, linemetadata.Index{}, nil, SearchDirectionForward)
 		if hit != nil {
 			panic(fmt.Errorf("This test is meant to scan the whole file without finding anything"))
 		}
@@ -118,9 +118,18 @@ func benchmarkSearch(b *testing.B, highlighted bool, warm bool) {
 
 	b.ResetTimer()
 
-	for range b.N {
+	for i := range b.N {
+		if i > 0 && !warm {
+			b.StopTimer()
+			// Rebuild the reader so all internal indexes are fresh
+			benchMe = reader.NewFromTextForTesting("hello", testString)
+			assert.NilError(b, benchMe.Wait())
+			runtime.GC()
+			b.StartTimer()
+		}
+
 		// This test will search through all the N copies we made of our file
-		hit := FindFirstHit(reader, *pattern, linemetadata.Index{}, nil, SearchDirectionForward)
+		hit := FindFirstHit(benchMe, *pattern, linemetadata.Index{}, nil, SearchDirectionForward)
 
 		if hit != nil {
 			panic(fmt.Errorf("This test is meant to scan the whole file without finding anything"))
