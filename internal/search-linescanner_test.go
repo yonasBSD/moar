@@ -116,6 +116,8 @@ func benchmarkSearch(b *testing.B, highlighted bool, warm bool) {
 	// I hope forcing a GC here will make numbers more predictable
 	runtime.GC()
 
+	b.SetBytes(int64(len(testString)))
+
 	b.ResetTimer()
 
 	for i := range b.N {
