@@ -54,12 +54,13 @@ func isPlain(s string) bool {
 }
 
 // lineIndex is only used for error reporting
-func WithoutFormatting(s string, lineIndex linemetadata.Index) string {
+func StripFormatting(s string, lineIndex linemetadata.Index) string {
 	if isPlain(s) {
 		return s
 	}
 
 	stripped := strings.Builder{}
+	stripped.Grow(len(s)) // This makes BenchmarkStripFormatting 6% faster
 	runeCount := 0
 
 	styledStringsFromString(twin.StyleDefault, s, &lineIndex, func(str string, style twin.Style) {

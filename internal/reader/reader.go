@@ -146,7 +146,7 @@ func (l *line) Plain(rlocked *sync.RWMutex, index linemetadata.Index) string {
 		rlocked.RUnlock()
 
 		// Holding no locks, do the slow work
-		plain := textstyles.WithoutFormatting(l.raw, index)
+		plain := textstyles.StripFormatting(l.raw, index)
 
 		// Update the reader, needs the write lock
 		rlocked.Lock()
