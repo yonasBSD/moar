@@ -69,8 +69,8 @@ type Reader interface {
 }
 
 type line struct {
-	raw                    string
-	plainAccessUsingGetter *string
+	raw            string
+	plainTextCache *string // Use line.Plain() to access this field
 }
 
 // ReaderImpl reads a file into an array of strings.
@@ -141,7 +141,7 @@ type InputLines struct {
 // rlocked is supposed to be RLock()ed before entering this function. The index
 // is for error reporting.
 func (l *line) Plain(rlocked *sync.RWMutex, index linemetadata.Index) string {
-	if l.plainAccessUsingGetter == nil {
+	if l.plainTextCache == nil {
 		// Plaining is slow, release the lock while doing it
 		rlocked.RUnlock()
 
@@ -150,14 +150,14 @@ func (l *line) Plain(rlocked *sync.RWMutex, index linemetadata.Index) string {
 
 		// Update the reader, needs the write lock
 		rlocked.Lock()
-		l.plainAccessUsingGetter = &plain
+		l.plainTextCache = &plain
 		rlocked.Unlock()
 
 		// Reacquire the read lock for the next loop iteration
 		rlocked.RLock()
 	}
 
-	return *l.plainAccessUsingGetter
+	return *l.plainTextCache
 }
 
 // Count lines in the original file and preallocate space for them.  Good
