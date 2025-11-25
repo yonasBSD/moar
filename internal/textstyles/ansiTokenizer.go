@@ -62,11 +62,6 @@ func WithoutFormatting(s string, lineIndex linemetadata.Index) string {
 	stripped := strings.Builder{}
 	runeCount := 0
 
-	// " * 2" here makes BenchmarkPlainTextSearch() perform 30% faster. Probably
-	// due to avoiding a number of additional implicit Grow() calls when adding
-	// runes.
-	stripped.Grow(len(s) * 2)
-
 	styledStringsFromString(twin.StyleDefault, s, &lineIndex, func(str string, style twin.Style) {
 		for _, runeValue := range runesFromStyledString(_StyledString{String: str, Style: style}) {
 			switch runeValue {
