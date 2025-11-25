@@ -8,18 +8,18 @@ type MatchRanges struct {
 }
 
 // getMatchRanges locates one or more regexp matches in a string
-func getMatchRanges(String *string, Pattern *regexp.Regexp) *MatchRanges {
+func getMatchRanges(String string, Pattern *regexp.Regexp) *MatchRanges {
 	if Pattern == nil {
 		return nil
 	}
 
 	return &MatchRanges{
-		Matches: toRunePositions(Pattern.FindAllStringIndex(*String, -1), String),
+		Matches: toRunePositions(Pattern.FindAllStringIndex(String, -1), String),
 	}
 }
 
 // Convert byte indices to rune indices
-func toRunePositions(byteIndices [][]int, matchedString *string) [][2]int {
+func toRunePositions(byteIndices [][]int, matchedString string) [][2]int {
 	var returnMe [][2]int
 	if len(byteIndices) == 0 {
 		// Nothing to see here, move along
@@ -28,7 +28,7 @@ func toRunePositions(byteIndices [][]int, matchedString *string) [][2]int {
 
 	runeIndex := 0
 	byteIndicesToRuneIndices := make(map[int]int, 0)
-	for byteIndex := range *matchedString {
+	for byteIndex := range matchedString {
 		byteIndicesToRuneIndices[byteIndex] = runeIndex
 
 		runeIndex++
@@ -37,7 +37,7 @@ func toRunePositions(byteIndices [][]int, matchedString *string) [][2]int {
 	// If a match touches the end of the string, that will be encoded as one
 	// byte past the end of the string. Therefore we must add a mapping for
 	// first-index-after-the-end.
-	byteIndicesToRuneIndices[len(*matchedString)] = runeIndex
+	byteIndicesToRuneIndices[len(matchedString)] = runeIndex
 
 	for _, bytePair := range byteIndices {
 		fromRuneIndex := byteIndicesToRuneIndices[bytePair[0]]

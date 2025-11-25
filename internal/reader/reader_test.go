@@ -574,18 +574,18 @@ func TestCachePlainText(t *testing.T) {
 	assert.Equal(t, reader.GetLineCount(), 2)
 
 	// Plain should initially be nil
-	assert.Assert(t, reader.lines[0].plain == nil)
-	assert.Assert(t, reader.lines[1].plain == nil)
+	assert.Assert(t, reader.lines[0].plainAccessUsingGetter == nil)
+	assert.Assert(t, reader.lines[1].plainAccessUsingGetter == nil)
 
 	// Getting one line should populate its plain text
 	reader.GetLine(linemetadata.IndexFromOneBased(2))
-	assert.Assert(t, reader.lines[0].plain == nil)
-	assert.Assert(t, reader.lines[1].plain != nil)
+	assert.Assert(t, reader.lines[0].plainAccessUsingGetter == nil)
+	assert.Assert(t, reader.lines[1].plainAccessUsingGetter != nil)
 
 	// Getting multiple lines should populate their plain text
 	reader.GetLines(linemetadata.IndexFromOneBased(1), 2)
-	assert.Assert(t, reader.lines[0].plain != nil)
-	assert.Assert(t, reader.lines[1].plain != nil)
+	assert.Assert(t, reader.lines[0].plainAccessUsingGetter != nil)
+	assert.Assert(t, reader.lines[1].plainAccessUsingGetter != nil)
 }
 
 // How long does it take to read a file?
