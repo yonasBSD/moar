@@ -141,34 +141,6 @@ type InputLines struct {
 	StatusText string
 }
 
-// rlocked is supposed to be RLock()ed before entering this function. The index
-// is for error reporting.
-func (l *line) Plain(rlocked *sync.RWMutex, index linemetadata.Index, withCache bool) string {
-	if l.plainTextCache != nil {
-		return *l.plainTextCache
-	}
-
-	// Plaining is slow, release the lock while doing it
-	rlocked.RUnlock()
-
-	// Holding no locks, do the slow work
-	plain := textstyles.StripFormatting(l.raw, index)
-
-	// Update the reader, needs the write lock. Note that we take the lock
-	// whether or not we are actually caching, to simulate cache misses for
-	// benchmarking.
-	rlocked.Lock()
-	if withCache {
-		l.plainTextCache = &plain
-	}
-	rlocked.Unlock()
-
-	// Reacquire the read lock for the next loop iteration
-	rlocked.RLock()
-
-	return plain
-}
-
 // Count lines in the original file and preallocate space for them.  Good
 // performance improvement:
 //
@@ -877,6 +849,52 @@ func (reader *ReaderImpl) ShouldShowLineCount() bool {
 	return false
 }
 
+// The reader must be RLock()ed before entering this function. The index is for
+// error reporting.
+func (reader *ReaderImpl) plain(lines []*line, firstIndex linemetadata.Index, withCache bool) []string {
+	alreadyCached := true
+	for _, l := range lines {
+		if l.plainTextCache == nil {
+			alreadyCached = false
+			break
+		}
+	}
+
+	if alreadyCached {
+		// All lines cached, fast path
+		plainLines := make([]string, 0, len(lines))
+		for _, l := range lines {
+			plainLines = append(plainLines, *l.plainTextCache)
+		}
+		return plainLines
+	}
+
+	// Plaining is slow, release the lock while doing it
+	reader.RUnlock()
+
+	// Holding no locks, do the slow work
+	plainLines := make([]string, 0, len(lines))
+	for loopIndex, l := range lines {
+		plainLines = append(plainLines, textstyles.StripFormatting(l.raw, firstIndex.NonWrappingAdd(loopIndex)))
+	}
+
+	// Update the reader, needs the write lock. Note that we take the lock
+	// whether or not we are actually caching, to simulate cache misses for
+	// benchmarking.
+	reader.Lock()
+	if withCache {
+		for loopIndex, l := range lines {
+			l.plainTextCache = &plainLines[loopIndex]
+		}
+	}
+	reader.Unlock()
+
+	// Reacquire the read lock for the next loop iteration
+	reader.RLock()
+
+	return plainLines
+}
+
 // GetLine gets a line. If the requested line number is out of bounds, nil is returned.
 func (reader *ReaderImpl) GetLine(index linemetadata.Index) *NumberedLine {
 	reader.RLock()
@@ -908,12 +926,13 @@ func (reader *ReaderImpl) GetLine(index linemetadata.Index) *NumberedLine {
 		return nil
 	}
 
-	line := reader.lines[index.Index()]
+	returnLine := reader.lines[index.Index()]
+	plainReturnLines := reader.plain([]*line{returnLine}, index, !reader.disableCache)
 
 	return &NumberedLine{
 		Index:  index,
 		Number: linemetadata.NumberFromZeroBased(index.Index()),
-		Line:   Line{raw: line.raw, plain: line.Plain(&reader.RWMutex, index, !reader.disableCache)},
+		Line:   Line{raw: returnLine.raw, plain: plainReturnLines[0]},
 	}
 }
 
@@ -948,16 +967,17 @@ func (reader *ReaderImpl) getLinesUnlocked(firstLine linemetadata.Index, wantedL
 		return reader.getLinesUnlocked(firstLine, firstLine.CountLinesTo(lastLine))
 	}
 
-	notNumberedReturnLines := reader.lines[firstLine.Index() : lastLine.Index()+1]
-	returnLines := make([]NumberedLine, 0, len(notNumberedReturnLines))
-	for loopIndex := range notNumberedReturnLines {
+	rawReturnLines := reader.lines[firstLine.Index() : lastLine.Index()+1]
+	plainReturnLines := reader.plain(rawReturnLines, firstLine, !reader.disableCache)
+	returnLines := make([]NumberedLine, 0, len(rawReturnLines))
+	for loopIndex := range rawReturnLines {
 		lineIndex := firstLine.NonWrappingAdd(loopIndex)
 		returnLine := reader.lines[lineIndex.Index()]
 
 		returnLines = append(returnLines, NumberedLine{
 			Index:  lineIndex,
 			Number: linemetadata.NumberFromZeroBased(lineIndex.Index()),
-			Line:   Line{raw: returnLine.raw, plain: returnLine.Plain(&reader.RWMutex, lineIndex, !reader.disableCache)},
+			Line:   Line{raw: returnLine.raw, plain: plainReturnLines[loopIndex]},
 		})
 	}
 
