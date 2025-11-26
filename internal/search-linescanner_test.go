@@ -119,6 +119,11 @@ func benchmarkSearch(b *testing.B, highlighted bool, warm bool) {
 	runtime.GC()
 
 	b.SetBytes(int64(len(testString)))
+	if !highlighted && !warm {
+		// Only report bytes per op for cold plain text searches, the others
+		// involve highlighting or caching which makes this number less relevant
+		b.SetBytes(int64(len(testString)))
+	}
 
 	b.ResetTimer()
 
