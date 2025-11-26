@@ -111,6 +111,8 @@ func benchmarkSearch(b *testing.B, highlighted bool, warm bool) {
 		if hit != nil {
 			panic(fmt.Errorf("This test is meant to scan the whole file without finding anything"))
 		}
+	} else {
+		benchMe.DisableCacheForBenchmarking()
 	}
 
 	// I hope forcing a GC here will make numbers more predictable
@@ -120,16 +122,7 @@ func benchmarkSearch(b *testing.B, highlighted bool, warm bool) {
 
 	b.ResetTimer()
 
-	for i := range b.N {
-		if i > 0 && !warm {
-			b.StopTimer()
-			// Rebuild the reader so all internal indexes are fresh
-			benchMe = reader.NewFromTextForTesting("hello", testString)
-			assert.NilError(b, benchMe.Wait())
-			runtime.GC()
-			b.StartTimer()
-		}
-
+	for range b.N {
 		// This test will search through all the N copies we made of our file
 		hit := FindFirstHit(benchMe, *pattern, linemetadata.Index{}, nil, SearchDirectionForward)
 

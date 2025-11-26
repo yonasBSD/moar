@@ -128,6 +128,9 @@ type ReaderImpl struct {
 
 	// PauseStatus is true if the reader is paused, false if it is not
 	PauseStatus *atomic.Bool
+
+	// For benchmarking cold cache searches
+	disableCache bool
 }
 
 // InputLines contains a number of lines from the reader, plus metadata
@@ -140,24 +143,30 @@ type InputLines struct {
 
 // rlocked is supposed to be RLock()ed before entering this function. The index
 // is for error reporting.
-func (l *line) Plain(rlocked *sync.RWMutex, index linemetadata.Index) string {
-	if l.plainTextCache == nil {
-		// Plaining is slow, release the lock while doing it
-		rlocked.RUnlock()
-
-		// Holding no locks, do the slow work
-		plain := textstyles.StripFormatting(l.raw, index)
-
-		// Update the reader, needs the write lock
-		rlocked.Lock()
-		l.plainTextCache = &plain
-		rlocked.Unlock()
-
-		// Reacquire the read lock for the next loop iteration
-		rlocked.RLock()
+func (l *line) Plain(rlocked *sync.RWMutex, index linemetadata.Index, withCache bool) string {
+	if l.plainTextCache != nil {
+		return *l.plainTextCache
 	}
 
-	return *l.plainTextCache
+	// Plaining is slow, release the lock while doing it
+	rlocked.RUnlock()
+
+	// Holding no locks, do the slow work
+	plain := textstyles.StripFormatting(l.raw, index)
+
+	// Update the reader, needs the write lock. Note that we take the lock
+	// whether or not we are actually caching, to simulate cache misses for
+	// benchmarking.
+	rlocked.Lock()
+	if withCache {
+		l.plainTextCache = &plain
+	}
+	rlocked.Unlock()
+
+	// Reacquire the read lock for the next loop iteration
+	rlocked.RLock()
+
+	return plain
 }
 
 // Count lines in the original file and preallocate space for them.  Good
@@ -548,6 +557,12 @@ func NewFromTextForTesting(name string, text string) *ReaderImpl {
 	return returnMe
 }
 
+func (reader *ReaderImpl) DisableCacheForBenchmarking() {
+	reader.Lock()
+	defer reader.Unlock()
+	reader.disableCache = true
+}
+
 // Duplicate of moor/moor.go:TryOpen
 func TryOpen(filename string) error {
 	// Try opening the file
@@ -898,7 +913,7 @@ func (reader *ReaderImpl) GetLine(index linemetadata.Index) *NumberedLine {
 	return &NumberedLine{
 		Index:  index,
 		Number: linemetadata.NumberFromZeroBased(index.Index()),
-		Line:   Line{raw: line.raw, plain: line.Plain(&reader.RWMutex, index)},
+		Line:   Line{raw: line.raw, plain: line.Plain(&reader.RWMutex, index, !reader.disableCache)},
 	}
 }
 
@@ -942,7 +957,7 @@ func (reader *ReaderImpl) getLinesUnlocked(firstLine linemetadata.Index, wantedL
 		returnLines = append(returnLines, NumberedLine{
 			Index:  lineIndex,
 			Number: linemetadata.NumberFromZeroBased(lineIndex.Index()),
-			Line:   Line{raw: returnLine.raw, plain: returnLine.Plain(&reader.RWMutex, lineIndex)},
+			Line:   Line{raw: returnLine.raw, plain: returnLine.Plain(&reader.RWMutex, lineIndex, !reader.disableCache)},
 		})
 	}
 
