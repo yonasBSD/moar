@@ -42,7 +42,7 @@ func TestSearchHitSpanningWrapBoundary(t *testing.T) {
 	// Match runs from indices 3..8 inclusive ("345678")
 	pattern := regexp.MustCompile("345678")
 	searchHitStyle := twin.StyleDefault.WithForeground(twin.NewColor16(3))
-	highlighted := line.HighlightedTokens(twin.StyleDefault, searchHitStyle, pattern, nil)
+	highlighted := line.HighlightedTokens(twin.StyleDefault, searchHitStyle, pattern, linemetadata.Index{})
 
 	// Sanity: overall line reports having a search hit
 	assert.Assert(t, highlighted.ContainsSearchHit, "Expected overall line to contain search hit")

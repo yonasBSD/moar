@@ -105,14 +105,13 @@ func benchmarkSearch(b *testing.B, highlighted bool, warm bool) {
 	// we're searching through this very file.
 	pattern := regexp.MustCompile("This won'[t] match anything")
 
+	reader.DisablePlainCachingForBenchmarking = !warm
 	if warm {
 		// Warm up any caches etc by doing one search before we start measuring
 		hit := FindFirstHit(benchMe, *pattern, linemetadata.Index{}, nil, SearchDirectionForward)
 		if hit != nil {
 			panic(fmt.Errorf("This test is meant to scan the whole file without finding anything"))
 		}
-	} else {
-		benchMe.DisableCacheForBenchmarking()
 	}
 
 	// I hope forcing a GC here will make numbers more predictable
