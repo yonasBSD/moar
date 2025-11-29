@@ -672,6 +672,8 @@ func BenchmarkReadLargeFile(b *testing.B) {
 	// Make sure we don't pause during the benchmark
 	targetLineCount := largeSizeBytes * 2
 
+	b.SetBytes(int64(totalBytesWritten))
+
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
 		readMe, err := NewFromFilename(
