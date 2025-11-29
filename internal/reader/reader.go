@@ -26,12 +26,13 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// Files larger than this won't be highlighted
-//
-//revive:disable-next-line:var-naming
-const MAX_HIGHLIGHT_SIZE int64 = 1024 * 1024
+// An 1.7MB file took 2s to highlight. The number for this limit is totally
+// negotiable.
+const MAX_HIGHLIGHT_SIZE int64 = 2_000_000
 
-const DEFAULT_PAUSE_AFTER_LINES = 20_000
+// 140k lines took 20ms to search from a cold start. If we want to stay below
+// 100ms, we can do about 700k lines before pausing.
+const DEFAULT_PAUSE_AFTER_LINES = 700_000
 
 var DisablePlainCachingForBenchmarking = false
 
