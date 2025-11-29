@@ -49,9 +49,12 @@ func FindFirstHit(reader reader.Reader, pattern regexp.Regexp, startPosition lin
 	log.Debugf("Searching %d lines across %d cores with %d lines per core...", linesCount, chunkCount, chunkSize)
 	t0 := time.Now()
 	defer func() {
-		linesPerSecond := float64(linesCount) / time.Since(t0).Seconds()
+		dt := time.Since(t0)
+		linesPerSecond := float64(linesCount) / dt.Seconds()
 		linesPerSecondS := fmt.Sprintf("%.0f", linesPerSecond)
-		if linesPerSecond > 7_000_000.0 {
+		if linesPerSecond > 7_000_000_000.0 {
+			linesPerSecondS = fmt.Sprintf("%.0fG", linesPerSecond/1000_000_000.0)
+		} else if linesPerSecond > 7_000_000.0 {
 			linesPerSecondS = fmt.Sprintf("%.0fM", linesPerSecond/1000_000.0)
 		} else if linesPerSecond > 7_000.0 {
 			linesPerSecondS = fmt.Sprintf("%.0fk", linesPerSecond/1000.0)
@@ -60,11 +63,11 @@ func FindFirstHit(reader reader.Reader, pattern regexp.Regexp, startPosition lin
 		if linesCount > 0 {
 			log.Debugf("Searched %d lines in %s at %slines/s or %s/line",
 				linesCount,
-				time.Since(t0),
+				dt,
 				linesPerSecondS,
-				time.Since(t0)/time.Duration(linesCount))
+				(dt / time.Duration(linesCount)).String())
 		} else {
-			log.Debugf("Searched %d lines in %s at %slines/s", linesCount, time.Since(t0), linesPerSecondS)
+			log.Debugf("Searched %d lines in %s at %slines/s", linesCount, dt, linesPerSecondS)
 		}
 	}()
 
