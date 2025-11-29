@@ -70,7 +70,7 @@ type Reader interface {
 
 type line struct {
 	raw            string
-	plainTextCache *string // Use line.Plain() to access this field
+	plainTextCache atomic.Pointer[string] // Use line.Plain() to access this field
 }
 
 // ReaderImpl reads a file into an array of strings.
@@ -849,56 +849,30 @@ func (reader *ReaderImpl) ShouldShowLineCount() bool {
 	return false
 }
 
-// The reader must be RLock()ed before entering this function. The index is for
-// error reporting.
-func (reader *ReaderImpl) plain(lines []*line, firstIndex linemetadata.Index, withCache bool) []string {
-	alreadyCached := true
-	for _, l := range lines {
-		if l.plainTextCache == nil {
-			alreadyCached = false
-			break
-		}
+// The index is for error reporting. Set withCache to false to simulate a cache
+// miss for benchmarking.
+func (line *line) Plain(index linemetadata.Index, withCache bool) string {
+	fromCache := line.plainTextCache.Load()
+	if !withCache {
+		// Simulate a cache miss for benchmarking
+		fromCache = nil
+	}
+	if fromCache != nil {
+		return *fromCache
 	}
 
-	if alreadyCached {
-		// All lines cached, fast path
-		plainLines := make([]string, 0, len(lines))
-		for _, l := range lines {
-			plainLines = append(plainLines, *l.plainTextCache)
-		}
-		return plainLines
-	}
+	plain := textstyles.StripFormatting(line.raw, index)
 
-	// Plaining is slow, release the lock while doing it
-	reader.RUnlock()
+	// If this succeeds, all good. If it fails it means some other goroutine
+	// populated the cache before us, which is also fine.
+	_ = line.plainTextCache.CompareAndSwap(nil, &plain)
 
-	// Holding no locks, do the slow work
-	plainLines := make([]string, 0, len(lines))
-	for loopIndex, l := range lines {
-		plainLines = append(plainLines, textstyles.StripFormatting(l.raw, firstIndex.NonWrappingAdd(loopIndex)))
-	}
-
-	// Update the reader, needs the write lock. Note that we take the lock
-	// whether or not we are actually caching, to simulate cache misses for
-	// benchmarking.
-	reader.Lock()
-	if withCache {
-		for loopIndex, l := range lines {
-			l.plainTextCache = &plainLines[loopIndex]
-		}
-	}
-	reader.Unlock()
-
-	// Reacquire the read lock for the next loop iteration
-	reader.RLock()
-
-	return plainLines
+	return plain
 }
 
 // GetLine gets a line. If the requested line number is out of bounds, nil is returned.
 func (reader *ReaderImpl) GetLine(index linemetadata.Index) *NumberedLine {
 	reader.RLock()
-	defer reader.RUnlock()
 
 	if index.Index() >= reader.pauseAfterLines-DEFAULT_PAUSE_AFTER_LINES/2 {
 		// Switch to the write lock for changing the pause threshold
@@ -923,67 +897,98 @@ func (reader *ReaderImpl) GetLine(index linemetadata.Index) *NumberedLine {
 	}
 
 	if !index.IsWithinLength(len(reader.lines)) {
+		reader.RUnlock()
 		return nil
 	}
 
 	returnLine := reader.lines[index.Index()]
-	plainReturnLines := reader.plain([]*line{returnLine}, index, !reader.disableCache)
+	reader.RUnlock()
 
 	return &NumberedLine{
 		Index:  index,
 		Number: linemetadata.NumberFromZeroBased(index.Index()),
-		Line:   Line{raw: returnLine.raw, plain: plainReturnLines[0]},
+		Line: Line{
+			raw:   returnLine.raw,
+			plain: returnLine.Plain(index, !reader.disableCache),
+		},
 	}
+}
+
+// Given a starting point and a count, return a start and end index that don't
+// exceed maxIndex. On overflow, the requested range will be shifted backwards
+// to fit within maxIndex, and if that's not enough, cut at the end.
+func clipRangeToLength(start linemetadata.Index, wantedCount int, maxIndex int) (int, int) {
+	if wantedCount <= 0 {
+		panic(fmt.Sprintf("wantedCount must be at least 1, was %d", wantedCount))
+	}
+	if maxIndex < 0 {
+		panic(fmt.Sprintf("maxIndex must be at least 0, was %d", maxIndex))
+	}
+
+	first := start.Index()
+
+	// Cap wantedCount to the available length (maxIndex+1).
+	available := maxIndex + 1
+	if wantedCount > available {
+		wantedCount = available
+	}
+
+	// Clamp start so the window fits: start <= maxIndex - (wantedCount - 1)
+	highestStart := maxIndex - (wantedCount - 1)
+	if first > highestStart {
+		first = highestStart
+	}
+	if first < 0 {
+		first = 0
+	}
+
+	last := first + wantedCount - 1
+	if last > maxIndex {
+		last = maxIndex
+	}
+
+	return first, last
 }
 
 // GetLines gets the indicated lines from the input
-//
-//revive:disable-next-line:unexported-return
 func (reader *ReaderImpl) GetLines(firstLine linemetadata.Index, wantedLineCount int) InputLines {
 	reader.RLock()
-	defer reader.RUnlock()
-	return reader.getLinesUnlocked(firstLine, wantedLineCount)
-}
 
-// Assumes the read lock is being held
-func (reader *ReaderImpl) getLinesUnlocked(firstLine linemetadata.Index, wantedLineCount int) InputLines {
 	if len(reader.lines) == 0 || wantedLineCount == 0 {
+		statusText := reader.createStatusUnlocked(firstLine)
+		reader.RUnlock()
+
 		return InputLines{
-			StatusText: reader.createStatusUnlocked(firstLine),
+			StatusText: statusText,
 		}
 	}
 
-	lastLine := firstLine.NonWrappingAdd(wantedLineCount - 1)
-
 	// Prevent reading past the end of the available lines
-	maxLineIndex := *linemetadata.IndexFromLength(len(reader.lines))
-	if lastLine.IsAfter(maxLineIndex) {
-		lastLine = maxLineIndex
+	firstLineIndex, lastLineIndex := clipRangeToLength(firstLine, wantedLineCount, len(reader.lines)-1)
 
-		// If one line was requested, then first and last should be exactly the
-		// same, and we would get there by adding zero.
-		firstLine = lastLine.NonWrappingAdd(1 - wantedLineCount)
+	statusText := reader.createStatusUnlocked(linemetadata.IndexFromZeroBased(lastLineIndex))
 
-		return reader.getLinesUnlocked(firstLine, firstLine.CountLinesTo(lastLine))
-	}
+	rawReturnLines := reader.lines[firstLineIndex : lastLineIndex+1]
 
-	rawReturnLines := reader.lines[firstLine.Index() : lastLine.Index()+1]
-	plainReturnLines := reader.plain(rawReturnLines, firstLine, !reader.disableCache)
+	// Scary parts done, no lock needed anymore
+	reader.RUnlock()
+
 	returnLines := make([]NumberedLine, 0, len(rawReturnLines))
-	for loopIndex := range rawReturnLines {
-		lineIndex := firstLine.NonWrappingAdd(loopIndex)
-		returnLine := reader.lines[lineIndex.Index()]
-
+	for loopIndex, returnLine := range rawReturnLines {
+		lineIndex := linemetadata.IndexFromZeroBased(firstLineIndex + loopIndex)
 		returnLines = append(returnLines, NumberedLine{
 			Index:  lineIndex,
-			Number: linemetadata.NumberFromZeroBased(lineIndex.Index()),
-			Line:   Line{raw: returnLine.raw, plain: plainReturnLines[loopIndex]},
+			Number: linemetadata.NumberFromZeroBased(firstLineIndex + loopIndex),
+			Line: Line{
+				raw:   returnLine.raw,
+				plain: returnLine.Plain(lineIndex, !reader.disableCache),
+			},
 		})
 	}
 
 	return InputLines{
 		Lines:      returnLines,
-		StatusText: reader.createStatusUnlocked(lastLine),
+		StatusText: statusText,
 	}
 }
 

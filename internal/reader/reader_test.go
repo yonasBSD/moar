@@ -1,6 +1,7 @@
 package reader
 
 import (
+	"math"
 	"os"
 	"os/exec"
 	"path"
@@ -566,6 +567,43 @@ func TestReadUpdatingFile_HalfUtf8(t *testing.T) {
 	assert.Equal(t, int(testMe.bytesCount), len([]byte("här")))
 }
 
+func TestClipRangeToLength(t *testing.T) {
+	// Within bounds
+	i0, i1 := clipRangeToLength(linemetadata.Index{}, 1, 20)
+	assert.Equal(t, i0, 0)
+	assert.Equal(t, i1, 0)
+
+	// Touching the end, still within bounds
+	i0, i1 = clipRangeToLength(linemetadata.Index{}, 1, 0)
+	assert.Equal(t, i0, 0)
+	assert.Equal(t, i1, 0)
+
+	// Overflow, push down to indices 6, 7, 8
+	i0, i1 = clipRangeToLength(linemetadata.IndexFromOneBased(100), 3, 8)
+	assert.Equal(t, i0, 6)
+	assert.Equal(t, i1, 8)
+
+	// Overflow, push down and clip to indices 0, 1
+	i0, i1 = clipRangeToLength(linemetadata.IndexFromOneBased(100), 3, 1)
+	assert.Equal(t, i0, 0)
+	assert.Equal(t, i1, 1)
+
+	// Maxed out start
+	i0, i1 = clipRangeToLength(linemetadata.IndexMax(), 1, 0)
+	assert.Equal(t, i0, 0)
+	assert.Equal(t, i1, 0)
+
+	// Maxed out count
+	i0, i1 = clipRangeToLength(linemetadata.Index{}, math.MaxInt, 0)
+	assert.Equal(t, i0, 0)
+	assert.Equal(t, i1, 0)
+
+	// Maxed out start and count
+	i0, i1 = clipRangeToLength(linemetadata.IndexMax(), math.MaxInt, 3)
+	assert.Equal(t, i0, 0)
+	assert.Equal(t, i1, 3)
+}
+
 // Fetching lines should fill in the plain text
 func TestCachePlainText(t *testing.T) {
 	reader := NewFromTextForTesting("TestCachePlainText", "Hällo\nWörld")
@@ -574,18 +612,18 @@ func TestCachePlainText(t *testing.T) {
 	assert.Equal(t, reader.GetLineCount(), 2)
 
 	// Plain should initially be nil
-	assert.Assert(t, reader.lines[0].plainTextCache == nil)
-	assert.Assert(t, reader.lines[1].plainTextCache == nil)
+	assert.Assert(t, reader.lines[0].plainTextCache.Load() == nil)
+	assert.Assert(t, reader.lines[1].plainTextCache.Load() == nil)
 
 	// Getting one line should populate its plain text
 	reader.GetLine(linemetadata.IndexFromOneBased(2))
-	assert.Assert(t, reader.lines[0].plainTextCache == nil)
-	assert.Assert(t, reader.lines[1].plainTextCache != nil)
+	assert.Assert(t, reader.lines[0].plainTextCache.Load() == nil)
+	assert.Assert(t, reader.lines[1].plainTextCache.Load() != nil)
 
 	// Getting multiple lines should populate their plain text
 	reader.GetLines(linemetadata.IndexFromOneBased(1), 2)
-	assert.Assert(t, reader.lines[0].plainTextCache != nil)
-	assert.Assert(t, reader.lines[1].plainTextCache != nil)
+	assert.Assert(t, reader.lines[0].plainTextCache.Load() != nil)
+	assert.Assert(t, reader.lines[1].plainTextCache.Load() != nil)
 }
 
 // How long does it take to read a file?
