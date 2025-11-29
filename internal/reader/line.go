@@ -8,23 +8,17 @@ import (
 	"github.com/walles/moor/v2/twin"
 )
 
-// A Line represents a line of text that can / will be paged
-type Line struct {
-	raw   string
-	plain string
-}
-
 // Returns a representation of the string split into styled tokens. Any regexp
 // matches are highlighted. A nil regexp means no highlighting.
 func (line *Line) HighlightedTokens(
 	plainTextStyle twin.Style,
 	searchHitStyle twin.Style,
 	search *regexp.Regexp,
-	lineIndex *linemetadata.Index,
+	lineIndex linemetadata.Index,
 ) textstyles.StyledRunesWithTrailer {
-	matchRanges := getMatchRanges(line.Plain(), search)
+	matchRanges := getMatchRanges(line.Plain(lineIndex), search)
 
-	fromString := textstyles.StyledRunesFromString(plainTextStyle, line.raw, lineIndex)
+	fromString := textstyles.StyledRunesFromString(plainTextStyle, line.raw, &lineIndex)
 	returnRunes := make([]textstyles.CellWithMetadata, 0, len(fromString.StyledRunes))
 	lastWasSearchHit := false
 	for _, token := range fromString.StyledRunes {
@@ -49,11 +43,6 @@ func (line *Line) HighlightedTokens(
 		Trailer:           fromString.Trailer,
 		ContainsSearchHit: !matchRanges.Empty(),
 	}
-}
-
-// Plain returns a plain text representation of the initial string
-func (line *Line) Plain() string {
-	return line.plain
 }
 
 func (line *Line) HasManPageFormatting() bool {
