@@ -968,7 +968,11 @@ func (reader *ReaderImpl) GetLines(firstLine linemetadata.Index, wantedLineCount
 
 	statusText := reader.createStatusUnlocked(linemetadata.IndexFromZeroBased(lastLineIndex))
 
-	rawReturnLines := reader.lines[firstLineIndex : lastLineIndex+1]
+	// Copy out the pointers we need while holding the lock. Using a direct
+	// subslice would keep referencing the shared backing array, which would
+	// need locking. Copy to get away from that.
+	rawReturnLines := make([]*line, lastLineIndex-firstLineIndex+1)
+	copy(rawReturnLines, reader.lines[firstLineIndex:lastLineIndex+1])
 
 	// Scary parts done, no lock needed anymore
 	reader.RUnlock()
