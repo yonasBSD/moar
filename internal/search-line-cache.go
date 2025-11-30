@@ -48,13 +48,7 @@ func (c *searchLineCache) GetLine(reader reader.Reader, index linemetadata.Index
 		firstIndexToRequest = index.NonWrappingAdd(-searchLineCacheSize + 1)
 	}
 
-	lines := reader.GetLines(firstIndexToRequest, searchLineCacheSize)
-	if len(lines.Lines) == 0 {
-		// No lines at all
-		return nil
-	}
-
-	c.lines = lines.Lines
+	reader.GetLinesPreallocated(firstIndexToRequest, &c.lines)
 
 	// Get the line from the cache
 	return c.getLineFromCache(index)
@@ -62,6 +56,11 @@ func (c *searchLineCache) GetLine(reader reader.Reader, index linemetadata.Index
 
 // Or nil if that line isn't in the cache
 func (c *searchLineCache) getLineFromCache(index linemetadata.Index) *reader.NumberedLine {
+	if cap(c.lines) != searchLineCacheSize {
+		// Initialize cache
+		c.lines = make([]reader.NumberedLine, 0, searchLineCacheSize)
+	}
+
 	if len(c.lines) == 0 {
 		return nil
 	}
