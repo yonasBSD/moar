@@ -76,7 +76,10 @@ func benchmarkSearch(b *testing.B, highlighted bool, warm bool) {
 	assert.NilError(b, err)
 	fileContents := string(sourceBytes)
 
-	// Read one copy of the example input
+	// Repeat input enough times to get to some target size, before highlighting
+	// to get the same amount of text in either case
+	replications := 5_000_000 / len(fileContents)
+
 	if highlighted {
 		highlightedSourceCode, err := reader.Highlight(fileContents, *styles.Get("native"), formatters.TTY16m, lexers.Get("go"))
 		assert.NilError(b, err)
@@ -86,9 +89,11 @@ func benchmarkSearch(b *testing.B, highlighted bool, warm bool) {
 		fileContents = *highlightedSourceCode
 	}
 
-	// Repeat input enough times to get to some target size, before highlighting
-	// to get the same amount of text in either case
-	replications := 5_000_000 / len(fileContents)
+	if !warm {
+		// This makes the ns/op benchmark numbers more comparable between plain
+		// and highlighted in the cold case.
+		replications = 5_000_000 / len(fileContents)
+	}
 
 	// Create some input to search. Use a Builder to avoid quadratic string concatenation time.
 	var builder strings.Builder
