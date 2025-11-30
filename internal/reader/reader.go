@@ -944,7 +944,6 @@ func clipRangeToLength(start linemetadata.Index, wantedCount int, maxIndex int) 
 // GetLines gets the indicated lines from the input
 func (reader *ReaderImpl) GetLines(firstLine linemetadata.Index, wantedLineCount int) InputLines {
 	reader.RLock()
-
 	if len(reader.lines) == 0 || wantedLineCount == 0 {
 		statusText := reader.createStatusUnlocked(firstLine)
 		reader.RUnlock()
@@ -953,29 +952,54 @@ func (reader *ReaderImpl) GetLines(firstLine linemetadata.Index, wantedLineCount
 			StatusText: statusText,
 		}
 	}
+	reader.RUnlock()
+
+	firstLineIndex, lastLineIndex := clipRangeToLength(firstLine, wantedLineCount, len(reader.lines)-1)
+	wantedLineCount = lastLineIndex - firstLineIndex + 1
+
+	resultLines := make([]NumberedLine, 0, wantedLineCount)
+	statusText := reader.GetLinesPreallocated(linemetadata.IndexFromZeroBased(firstLineIndex), &resultLines)
+
+	return InputLines{
+		Lines:      resultLines,
+		StatusText: statusText,
+	}
+}
+
+// GetLines gets the indicated lines from the input. The lines will be stored
+// in the provided preallocated slice to avoid allocations. The line count is
+// determined by the capacity of the provided slice.
+//
+// The return value is the status text for the returned lines.
+func (reader *ReaderImpl) GetLinesPreallocated(firstLine linemetadata.Index, resultLines *[]NumberedLine) string {
+	// Clear the result slice
+	*resultLines = (*resultLines)[:0]
+
+	reader.RLock()
+
+	if len(reader.lines) == 0 || cap(*resultLines) == 0 {
+		statusText := reader.createStatusUnlocked(firstLine)
+		reader.RUnlock()
+
+		return statusText
+	}
 
 	// Prevent reading past the end of the available lines
-	firstLineIndex, lastLineIndex := clipRangeToLength(firstLine, wantedLineCount, len(reader.lines)-1)
+	firstLineIndex, lastLineIndex := clipRangeToLength(firstLine, cap(*resultLines), len(reader.lines)-1)
 
 	statusText := reader.createStatusUnlocked(linemetadata.IndexFromZeroBased(lastLineIndex))
 
-	returnLines := make([]NumberedLine, 0, lastLineIndex-firstLineIndex+1)
 	for loopIndex, returnLine := range reader.lines[firstLineIndex : lastLineIndex+1] {
-		lineIndex := linemetadata.IndexFromZeroBased(firstLineIndex + loopIndex)
-		returnLines = append(returnLines, NumberedLine{
-			Index:  lineIndex,
+		*resultLines = append(*resultLines, NumberedLine{
+			Index:  linemetadata.IndexFromZeroBased(firstLineIndex + loopIndex),
 			Number: linemetadata.NumberFromZeroBased(firstLineIndex + loopIndex),
 			Line:   returnLine,
 		})
 	}
 
-	// Scary parts done, no lock needed anymore
 	reader.RUnlock()
 
-	return InputLines{
-		Lines:      returnLines,
-		StatusText: statusText,
-	}
+	return statusText
 }
 
 func (reader *ReaderImpl) PumpToStdout() {
