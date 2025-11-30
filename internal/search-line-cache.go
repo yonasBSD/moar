@@ -10,22 +10,17 @@ import (
 // performance. But a larger cache without a performance increase has no value.
 // To evaluate:
 //
-//	go test -run='^$' -bench 'Search' ./internal
+//  go test -run='^$' -bench 'Warm' ./internal
 //
 // Results from Johan's laptop. The numbers are the test iteration counts for
-// BenchmarkHighlightedSearch and BenchmarkPlainTextSearch. The optimization has
-// been done to improve the sum of these two benchmarks.
+// BenchmarkHighlightedWarmSearch and BenchmarkPlainTextWarmSearch. The
+// optimization has been done to improve the sum of these two benchmarks.
 //
-// After introducing the RWMutex in reader.go these numbers became quite
-// volatile, they change a bunch from run to run so it's hard to draw obvious
-// conclusions. I ended up just picking one number.
-//
-//	 200: 387+368=755
-//	1000: 400+392=792
-//	2000: 382+394=776
-//	3000: 373+402=775
-//	4000: 393+412=805
-//	5000: 374+366=740
+//    100: 741+726=1467
+//    500: 832+882=1714 <-- Best
+//   1000: 754+810=1564
+//   5000: 637+658=1295
+
 const searchLineCacheSize = 500
 
 type searchLineCache struct {
