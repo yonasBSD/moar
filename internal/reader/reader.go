@@ -62,6 +62,13 @@ type Reader interface {
 	// that the returned first line may be different from the requested one.
 	GetLines(firstLine linemetadata.Index, wantedLineCount int) InputLines
 
+	// GetLines gets the indicated lines from the input. The lines will be stored
+	// in the provided preallocated slice to avoid allocations. The line count is
+	// determined by the capacity of the provided slice.
+	//
+	// The return value is the status text for the returned lines.
+	GetLinesPreallocated(firstLine linemetadata.Index, resultLines *[]NumberedLine) string
+
 	// False when paused. Showing the paused line count is confusing, because
 	// the user might think that the number is the total line count, even though
 	// we are not done yet.

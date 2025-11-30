@@ -174,6 +174,16 @@ func (f *FilteringReader) GetLines(firstLine linemetadata.Index, wantedLineCount
 	}
 }
 
+func (f *FilteringReader) GetLinesPreallocated(firstLine linemetadata.Index, resultLines *[]reader.NumberedLine) string {
+	if f.shouldPassThrough() {
+		return f.BackingReader.GetLinesPreallocated(firstLine, resultLines)
+	}
+
+	lines := f.GetLines(firstLine, cap(*resultLines))
+	*resultLines = lines.Lines
+	return lines.StatusText
+}
+
 // In the general case, this will return a text like this:
 // "Filtered: 1234/5678 lines  22%"
 func (f *FilteringReader) createStatus(lastLine *linemetadata.Index) string {
