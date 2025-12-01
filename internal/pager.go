@@ -241,7 +241,7 @@ func NewPager(readers ...*reader.ReaderImpl) *Pager {
 	pager.mode = PagerModeViewing{pager: &pager}
 	pager.filteringReader = FilteringReader{
 		BackingReader: readers[0], // Always start with the first reader
-		FilterPattern: &pager.filter,
+		Filter:        &pager.filter,
 	}
 
 	searchHistory := BootSearchHistory("")
@@ -489,7 +489,7 @@ func (p *Pager) StartPaging(screen twin.Screen, chromaStyle *chroma.Style, chrom
 			select {
 			case <-p.readerSwitched:
 				// A different reader is now active
-				p.filter = nil
+				p.filter = search.Search{}
 
 				p.readerLock.Lock()
 				r = p.readers[p.currentReader]

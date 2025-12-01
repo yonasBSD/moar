@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	log "github.com/sirupsen/logrus"
+	"github.com/walles/moor/v2/internal/search"
 	"github.com/walles/moor/v2/internal/textstyles"
 	"github.com/walles/moor/v2/twin"
 )
@@ -175,7 +176,7 @@ func (m PagerModeViewing) onRune(char rune) {
 			// that if you feel that's time well spent.
 			p.mode = NewPagerModeFilter(p)
 			p.search.Stop()
-			p.filterPattern = nil
+			p.filter = search.Search{}
 		}
 
 	case 'g':

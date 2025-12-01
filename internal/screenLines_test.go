@@ -1,7 +1,6 @@
 package internal
 
 import (
-	"regexp"
 	"strconv"
 	"strings"
 	"testing"
@@ -101,7 +100,7 @@ func TestEmpty(t *testing.T) {
 	}
 	pager.filteringReader = FilteringReader{
 		BackingReader: pager.readers[pager.currentReader],
-		FilterPattern: &pager.filterPattern,
+		Filter:        &pager.filter,
 	}
 
 	rendered := pager.renderLines()
@@ -154,7 +153,7 @@ func TestOverflowDown(t *testing.T) {
 	}
 	pager.filteringReader = FilteringReader{
 		BackingReader: pager.readers[pager.currentReader],
-		FilterPattern: &pager.filterPattern,
+		Filter:        &pager.filter,
 	}
 
 	rendered := pager.renderLines()
@@ -179,7 +178,7 @@ func TestOverflowUp(t *testing.T) {
 	}
 	pager.filteringReader = FilteringReader{
 		BackingReader: pager.readers[pager.currentReader],
-		FilterPattern: &pager.filterPattern,
+		Filter:        &pager.filter,
 	}
 
 	rendered := pager.renderLines()
@@ -249,7 +248,7 @@ func TestOneLineTerminal(t *testing.T) {
 	}
 	pager.filteringReader = FilteringReader{
 		BackingReader: pager.readers[pager.currentReader],
-		FilterPattern: &pager.filterPattern,
+		Filter:        &pager.filter,
 	}
 
 	rendered := pager.renderLines()
@@ -276,14 +275,14 @@ func TestShortenedInput(t *testing.T) {
 
 	pager.filteringReader = FilteringReader{
 		BackingReader: pager.readers[pager.currentReader],
-		FilterPattern: &pager.filterPattern,
+		Filter:        &pager.filter,
 	}
 
 	pager.scrollToEnd()
 	assert.Equal(t, pager.lineIndex().Index(), 991, "This should have been the effect of calling scrollToEnd()")
 
 	pager.mode = NewPagerModeFilter(&pager)
-	pager.filterPattern = regexp.MustCompile("first") // Match only the first line
+	pager.filter = search.For("first") // Match only the first line
 
 	rendered := pager.renderLines()
 	assert.Equal(t, len(rendered.lines), 1, "Should have rendered one line")
@@ -314,14 +313,14 @@ func TestShortenedInputManyLines(t *testing.T) {
 
 	pager.filteringReader = FilteringReader{
 		BackingReader: pager.readers[pager.currentReader],
-		FilterPattern: &pager.filterPattern,
+		Filter:        &pager.filter,
 	}
 
 	pager.scrollToEnd()
 	assert.Equal(t, pager.lineIndex().Index(), 991, "Should be at the last line before filtering")
 
 	pager.mode = NewPagerModeFilter(&pager)
-	pager.filterPattern = regexp.MustCompile(`^match`)
+	pager.filter = search.For(`^match`)
 
 	rendered := pager.renderLines()
 	assert.Equal(t, len(rendered.lines), 9, "Should have rendered 9 lines (10 minus one status bar)")
@@ -391,7 +390,7 @@ func testRenderLinesWithSearchHits(t *testing.T, input string, expectedBackgroun
 	}
 	pager.filteringReader = FilteringReader{
 		BackingReader: pager.readers[pager.currentReader],
-		FilterPattern: &pager.filterPattern,
+		Filter:        &pager.filter,
 	}
 	pager.search = search.For("xxx")
 	pager.ShowStatusBar = false
