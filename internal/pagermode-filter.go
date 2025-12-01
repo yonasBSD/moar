@@ -2,6 +2,7 @@ package internal
 
 import (
 	log "github.com/sirupsen/logrus"
+	"github.com/walles/moor/v2/internal/search"
 	"github.com/walles/moor/v2/twin"
 )
 
@@ -28,7 +29,7 @@ func (m PagerModeFilter) drawFooter(_ string, _ string) {
 }
 
 func (m *PagerModeFilter) updateFilterPattern(text string) {
-	m.pager.filterPattern = toPattern(text)
+	m.pager.filter.For(text)
 	m.pager.search.For(text)
 }
 
@@ -43,7 +44,7 @@ func (m *PagerModeFilter) onKey(key twin.KeyCode) {
 
 	case twin.KeyEscape:
 		m.pager.mode = PagerModeViewing{pager: m.pager}
-		m.pager.filterPattern = nil
+		m.pager.filter = search.Search{}
 		m.pager.search.Stop()
 
 	case twin.KeyUp, twin.KeyDown, twin.KeyPgUp, twin.KeyPgDown:

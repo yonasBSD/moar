@@ -20,7 +20,7 @@ func testCanonicalize1000(t *testing.T, withStatusBar bool, currentStartLine lin
 	pager.readers = []*reader.ReaderImpl{reader.NewFromTextForTesting("test", strings.Repeat("a\n", 2000))}
 	pager.filteringReader = FilteringReader{
 		BackingReader: pager.readers[pager.currentReader],
-		FilterPattern: &pager.filterPattern,
+		Filter:        &pager.filter,
 	}
 	pager.ShowLineNumbers = true
 	pager.showLineNumbers = true
@@ -76,7 +76,7 @@ func tryScrollAmount(t *testing.T, scrollFrom linemetadata.Index, scrollDistance
 	pager.readers = []*reader.ReaderImpl{reader.NewFromTextForTesting("test", strings.Repeat("x\n", 1492))}
 	pager.filteringReader = FilteringReader{
 		BackingReader: pager.readers[pager.currentReader],
-		FilterPattern: &pager.filterPattern,
+		Filter:        &pager.filter,
 	}
 	pager.ShowLineNumbers = true
 	pager.showLineNumbers = true
