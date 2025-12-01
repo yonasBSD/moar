@@ -10,6 +10,10 @@ type Search struct {
 	pattern *regexp.Regexp
 }
 
+func (search Search) Equals(other Search) bool {
+	return search.String == other.String
+}
+
 func For(s string) Search {
 	search := Search{}
 	search.For(s)

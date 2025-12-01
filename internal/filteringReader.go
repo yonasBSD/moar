@@ -94,7 +94,7 @@ func (f *FilteringReader) getAllLines() []reader.NumberedLine {
 	if f.filterWhenCaching.Active() {
 		cacheFilterPattern = f.filterWhenCaching
 	}
-	if currentFilterPattern != cacheFilterPattern {
+	if !currentFilterPattern.Equals(cacheFilterPattern) {
 		f.rebuildCache()
 		return *f.filteredLinesCache
 	}
