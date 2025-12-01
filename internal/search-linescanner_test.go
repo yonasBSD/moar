@@ -152,13 +152,6 @@ func BenchmarkPlainTextColdSearch(b *testing.B) {
 	benchmarkSearch(b, false, false)
 }
 
-// How long does it take to search a highlighted file for some regex the second time?
-//
-// Run with: go test -run='^$' -bench=. . ./...
-func BenchmarkHighlightedWarmSearch(b *testing.B) {
-	benchmarkSearch(b, true, true)
-}
-
 // How long does it take to search a plain text file for some regex the second time?
 //
 // Run with: go test -run='^$' -bench=. . ./...
