@@ -3,7 +3,6 @@ package internal
 import (
 	"fmt"
 	"math"
-	"regexp"
 	"runtime/debug"
 	"sync"
 	"time"
@@ -12,6 +11,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/walles/moor/v2/internal/linemetadata"
 	"github.com/walles/moor/v2/internal/reader"
+	"github.com/walles/moor/v2/internal/search"
 	"github.com/walles/moor/v2/internal/textstyles"
 	"github.com/walles/moor/v2/twin"
 )
@@ -64,13 +64,12 @@ type Pager struct {
 	// mode is better?
 	mode PagerMode
 
-	searchString  string
-	searchPattern *regexp.Regexp
+	search search.Search
 
 	// This should never be null while paging. Configured in NewPager().
 	searchHistory *SearchHistory
 
-	filterPattern *regexp.Regexp
+	filter search.Search
 
 	// We used to have a "Following" field here. If you want to follow, set
 	// TargetLineNumber to LineNumberMax() instead, see below.
@@ -242,7 +241,7 @@ func NewPager(readers ...*reader.ReaderImpl) *Pager {
 	pager.mode = PagerModeViewing{pager: &pager}
 	pager.filteringReader = FilteringReader{
 		BackingReader: readers[0], // Always start with the first reader
-		FilterPattern: &pager.filterPattern,
+		Filter:        &pager.filter,
 	}
 
 	searchHistory := BootSearchHistory("")
@@ -490,7 +489,7 @@ func (p *Pager) StartPaging(screen twin.Screen, chromaStyle *chroma.Style, chrom
 			select {
 			case <-p.readerSwitched:
 				// A different reader is now active
-				p.filterPattern = nil
+				p.filter = search.Search{}
 
 				p.readerLock.Lock()
 				r = p.readers[p.currentReader]
@@ -724,7 +723,7 @@ func (p *Pager) fitsOnOneScreen() bool {
 
 	lines := reader.GetLines(linemetadata.Index{}, reader.GetLineCount())
 	for _, line := range lines.Lines {
-		rendered := line.HighlightedTokens(twin.StyleDefault, twin.StyleDefault, nil).StyledRunes
+		rendered := line.HighlightedTokens(twin.StyleDefault, twin.StyleDefault, search.Search{}).StyledRunes
 		if len(rendered) > width {
 			// This line is too long to fit on one screen line, no fit
 			return false

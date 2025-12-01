@@ -209,7 +209,7 @@ func (p *Pager) internalRenderLines(highlightSearchHitLines bool) renderedScreen
 // lineNumber and numberPrefixLength are required for knowing how much to
 // indent, and to (optionally) render the line number.
 func (p *Pager) renderLine(line reader.NumberedLine, numberPrefixLength int, highlightSearchHitLines bool) []renderedLine {
-	highlighted := line.HighlightedTokens(plainTextStyle, searchHitStyle, p.searchPattern)
+	highlighted := line.HighlightedTokens(plainTextStyle, searchHitStyle, p.search)
 	var wrapped []textstyles.StyledRunesWithTrailer
 	if p.WrapLongLines {
 		width, _ := p.screen.Size()

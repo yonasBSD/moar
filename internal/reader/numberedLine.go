@@ -1,10 +1,9 @@
 package reader
 
 import (
-	"regexp"
-
 	"github.com/rivo/uniseg"
 	"github.com/walles/moor/v2/internal/linemetadata"
+	"github.com/walles/moor/v2/internal/search"
 	"github.com/walles/moor/v2/internal/textstyles"
 	"github.com/walles/moor/v2/twin"
 )
@@ -19,7 +18,7 @@ func (nl *NumberedLine) Plain() string {
 	return nl.Line.Plain(nl.Index)
 }
 
-func (nl *NumberedLine) HighlightedTokens(plainTextStyle twin.Style, searchHitStyle twin.Style, search *regexp.Regexp) textstyles.StyledRunesWithTrailer {
+func (nl *NumberedLine) HighlightedTokens(plainTextStyle twin.Style, searchHitStyle twin.Style, search search.Search) textstyles.StyledRunesWithTrailer {
 	return nl.Line.HighlightedTokens(plainTextStyle, searchHitStyle, search, nl.Index)
 }
 

@@ -1,7 +1,6 @@
 package internal
 
 import (
-	"regexp"
 	"strconv"
 	"strings"
 	"testing"
@@ -9,6 +8,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/walles/moor/v2/internal/linemetadata"
 	"github.com/walles/moor/v2/internal/reader"
+	"github.com/walles/moor/v2/internal/search"
 	"github.com/walles/moor/v2/internal/textstyles"
 	"github.com/walles/moor/v2/twin"
 	"gotest.tools/v3/assert"
@@ -100,7 +100,7 @@ func TestEmpty(t *testing.T) {
 	}
 	pager.filteringReader = FilteringReader{
 		BackingReader: pager.readers[pager.currentReader],
-		FilterPattern: &pager.filterPattern,
+		Filter:        &pager.filter,
 	}
 
 	rendered := pager.renderLines()
@@ -113,8 +113,8 @@ func TestEmpty(t *testing.T) {
 func TestSearchHighlight(t *testing.T) {
 	numberedLine := reader.NewFromTextForTesting("TestSearchHighlight", "x\"\"x").GetLine(linemetadata.Index{})
 	pager := Pager{
-		screen:        twin.NewFakeScreen(100, 10),
-		searchPattern: regexp.MustCompile("\""),
+		screen: twin.NewFakeScreen(100, 10),
+		search: search.For("\""),
 	}
 
 	rendered := pager.renderLine(*numberedLine, pager.getLineNumberPrefixLength(numberedLine.Number), true)
@@ -153,7 +153,7 @@ func TestOverflowDown(t *testing.T) {
 	}
 	pager.filteringReader = FilteringReader{
 		BackingReader: pager.readers[pager.currentReader],
-		FilterPattern: &pager.filterPattern,
+		Filter:        &pager.filter,
 	}
 
 	rendered := pager.renderLines()
@@ -178,7 +178,7 @@ func TestOverflowUp(t *testing.T) {
 	}
 	pager.filteringReader = FilteringReader{
 		BackingReader: pager.readers[pager.currentReader],
-		FilterPattern: &pager.filterPattern,
+		Filter:        &pager.filter,
 	}
 
 	rendered := pager.renderLines()
@@ -248,7 +248,7 @@ func TestOneLineTerminal(t *testing.T) {
 	}
 	pager.filteringReader = FilteringReader{
 		BackingReader: pager.readers[pager.currentReader],
-		FilterPattern: &pager.filterPattern,
+		Filter:        &pager.filter,
 	}
 
 	rendered := pager.renderLines()
@@ -275,14 +275,14 @@ func TestShortenedInput(t *testing.T) {
 
 	pager.filteringReader = FilteringReader{
 		BackingReader: pager.readers[pager.currentReader],
-		FilterPattern: &pager.filterPattern,
+		Filter:        &pager.filter,
 	}
 
 	pager.scrollToEnd()
 	assert.Equal(t, pager.lineIndex().Index(), 991, "This should have been the effect of calling scrollToEnd()")
 
 	pager.mode = NewPagerModeFilter(&pager)
-	pager.filterPattern = regexp.MustCompile("first") // Match only the first line
+	pager.filter = search.For("first") // Match only the first line
 
 	rendered := pager.renderLines()
 	assert.Equal(t, len(rendered.lines), 1, "Should have rendered one line")
@@ -313,14 +313,14 @@ func TestShortenedInputManyLines(t *testing.T) {
 
 	pager.filteringReader = FilteringReader{
 		BackingReader: pager.readers[pager.currentReader],
-		FilterPattern: &pager.filterPattern,
+		Filter:        &pager.filter,
 	}
 
 	pager.scrollToEnd()
 	assert.Equal(t, pager.lineIndex().Index(), 991, "Should be at the last line before filtering")
 
 	pager.mode = NewPagerModeFilter(&pager)
-	pager.filterPattern = regexp.MustCompile(`^match`)
+	pager.filter = search.For(`^match`)
 
 	rendered := pager.renderLines()
 	assert.Equal(t, len(rendered.lines), 9, "Should have rendered 9 lines (10 minus one status bar)")
@@ -390,9 +390,9 @@ func testRenderLinesWithSearchHits(t *testing.T, input string, expectedBackgroun
 	}
 	pager.filteringReader = FilteringReader{
 		BackingReader: pager.readers[pager.currentReader],
-		FilterPattern: &pager.filterPattern,
+		Filter:        &pager.filter,
 	}
-	pager.searchPattern = regexp.MustCompile("xxx")
+	pager.search = search.For("xxx")
 	pager.ShowStatusBar = false
 	pager.mode = PagerModeViewing{&pager}
 	pager.showLineNumbers = false
