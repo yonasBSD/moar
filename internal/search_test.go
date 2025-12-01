@@ -1,7 +1,6 @@
 package internal
 
 import (
-	"regexp"
 	"strings"
 	"testing"
 
@@ -113,8 +112,7 @@ func TestScrollToNextSearchHit_StartAtBottom(t *testing.T) {
 	pager.scrollToEnd()
 
 	// Set the search to something that doesn't exist in this pager
-	pager.searchString = "xxx"
-	pager.searchPattern = toPattern(pager.searchString)
+	pager.search.For("xxx")
 
 	// Scroll to the next search hit
 	pager.scrollToNextSearchHit()
@@ -127,8 +125,7 @@ func TestScrollToNextSearchHit_StartAtTop(t *testing.T) {
 	pager := createThreeLinesPager(t)
 
 	// Set the search to something that doesn't exist in this pager
-	pager.searchString = "xxx"
-	pager.searchPattern = toPattern(pager.searchString)
+	pager.search.For("xxx")
 
 	// Scroll to the next search hit
 	pager.scrollToNextSearchHit()
@@ -142,8 +139,7 @@ func TestScrollToNextSearchHit_WrapAfterNotFound(t *testing.T) {
 	pager.scrollToEnd()
 
 	// Search for "a", it's on the first line (ref createThreeLinesPager())
-	pager.searchString = "a"
-	pager.searchPattern = toPattern(pager.searchString)
+	pager.search.For("a")
 
 	// Scroll to the next search hit, this should take us into _NotFound
 	pager.scrollToNextSearchHit()
@@ -162,8 +158,7 @@ func TestScrollToNextSearchHit_WrapAfterFound(t *testing.T) {
 	pager.scrollToEnd()
 
 	// Search for "f", it's on the last line (ref createThreeLinesPager())
-	pager.searchString = "f"
-	pager.searchPattern = toPattern(pager.searchString)
+	pager.search.For("f")
 
 	// Scroll to the next search hit, this should take us into _NotFound
 	pager.scrollToNextSearchHit()
@@ -201,8 +196,7 @@ func TestScrollLeftToSearchHits_NoLineNumbers(t *testing.T) {
 	pager.screen = screen
 	pager.ShowLineNumbers = false
 	pager.showLineNumbers = false
-	pager.searchString = "a"
-	pager.searchPattern = toPattern("a")
+	pager.search.For("a")
 	pager.leftColumnZeroBased = 1
 
 	assert.Equal(t, true, pager.scrollLeftToSearchHits())
@@ -217,8 +211,7 @@ func TestScrollLeftToSearchHits_WithLineNumbers(t *testing.T) {
 	pager.screen = screen
 	pager.ShowLineNumbers = true
 	pager.showLineNumbers = false
-	pager.searchString = "a"
-	pager.searchPattern = toPattern("a")
+	pager.search.For("a")
 	pager.leftColumnZeroBased = 1
 
 	assert.Equal(t, true, pager.scrollLeftToSearchHits())
@@ -233,8 +226,7 @@ func TestScrollLeftToSearchHits_ScrollOneScreen(t *testing.T) {
 	pager.screen = screen
 	pager.ShowLineNumbers = true
 	pager.showLineNumbers = false
-	pager.searchString = "a"
-	pager.searchPattern = toPattern("a")
+	pager.search.For("a")
 	pager.leftColumnZeroBased = 20
 
 	assert.Equal(t, true, pager.scrollLeftToSearchHits())
@@ -265,8 +257,7 @@ func TestScrollRightToSearchHits_DisableLineNumbersToSeeHit0(t *testing.T) {
 	pager.screen = screen
 	pager.ShowLineNumbers = true
 	pager.showLineNumbers = true
-	pager.searchString = "a"
-	pager.searchPattern = toPattern("a")
+	pager.search.For("a")
 	pager.leftColumnZeroBased = 0
 
 	assert.Equal(t, true, pager.scrollRightToSearchHits())
@@ -281,8 +272,7 @@ func TestScrollRightToSearchHits_DisableLineNumbersToSeeHit(t *testing.T) {
 	pager.screen = screen
 	pager.ShowLineNumbers = true
 	pager.showLineNumbers = true
-	pager.searchString = "a"
-	pager.searchPattern = toPattern("a")
+	pager.search.For("a")
 	pager.leftColumnZeroBased = 0
 
 	assert.Equal(t, true, pager.scrollRightToSearchHits())
@@ -297,8 +287,7 @@ func TestScrollRightToSearchHits_HiddenByScrollMarker(t *testing.T) {
 	pager.screen = screen
 	pager.ShowLineNumbers = false
 	pager.showLineNumbers = false
-	pager.searchString = "a"
-	pager.searchPattern = toPattern("a")
+	pager.search.For("a")
 	pager.leftColumnZeroBased = 0
 
 	assert.Equal(t, true, pager.scrollRightToSearchHits())
@@ -313,8 +302,7 @@ func TestScrollRightToSearchHits_Issue337(t *testing.T) {
 	pager.screen = screen
 	pager.ShowLineNumbers = false
 	pager.showLineNumbers = false
-	pager.searchString = "a"
-	pager.searchPattern = toPattern("a")
+	pager.search.For("a")
 	pager.leftColumnZeroBased = 0
 
 	assert.Equal(t, false, pager.scrollRightToSearchHits(), "Search hit was already visible, should not have scrolled")
@@ -329,8 +317,7 @@ func TestScrollRightToSearchHits_LastCharHit(t *testing.T) {
 	pager.screen = screen
 	pager.ShowLineNumbers = false
 	pager.showLineNumbers = false
-	pager.searchString = "a"
-	pager.searchPattern = toPattern("a")
+	pager.search.For("a")
 	pager.leftColumnZeroBased = 0
 
 	assert.Equal(t, true, pager.scrollRightToSearchHits())
@@ -342,15 +329,14 @@ func TestScrollRightToSearchHits_LastCharHit(t *testing.T) {
 func TestScrollRightToSearchHits_OnlyStartOfHitTriggers(t *testing.T) {
 	// Arrange: create a line with a multi-rune search hit
 	line := "abcDEFGHIJKLMNOPQRSTUVWXYZ"
-	pattern := regexp.MustCompile("DEFGHIJ") // Match starts at index 3
 	readerImpl := reader.NewFromTextForTesting("test", line)
 	screen := twin.NewFakeScreen(5, 2) // Narrow screen to force scrolling
 	pager := NewPager(readerImpl)
+	pager.search.For("DEFGHIJ") // Match starts at index 3
 	pager.screen = screen
 	pager.WrapLongLines = false
 	pager.ShowLineNumbers = false
 	pager.showLineNumbers = false
-	pager.searchPattern = pattern
 
 	assert.Assert(t, !pager.scrollRightToSearchHits(), "No more search hit starts to the right, should not scroll")
 }

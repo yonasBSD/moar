@@ -4,7 +4,6 @@ package internal
 
 import (
 	"fmt"
-	"regexp"
 	"runtime"
 	"runtime/debug"
 	"time"
@@ -12,6 +11,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/walles/moor/v2/internal/linemetadata"
 	"github.com/walles/moor/v2/internal/reader"
+	"github.com/walles/moor/v2/internal/search"
 )
 
 // Search input lines. Not screen lines!
@@ -21,7 +21,7 @@ import (
 //
 // For the actual searching, this method will call _findFirstHit() in parallel
 // on multiple cores, to help large file search performance.
-func FindFirstHit(reader reader.Reader, pattern regexp.Regexp, startPosition linemetadata.Index, beforePosition *linemetadata.Index, direction SearchDirection) *linemetadata.Index {
+func FindFirstHit(reader reader.Reader, search search.Search, startPosition linemetadata.Index, beforePosition *linemetadata.Index, direction SearchDirection) *linemetadata.Index {
 	// If the number of lines to search matches the number of cores (or more),
 	// divide the search into chunks. Otherwise use one chunk.
 	chunkCount := runtime.NumCPU()
@@ -101,7 +101,7 @@ func FindFirstHit(reader reader.Reader, pattern regexp.Regexp, startPosition lin
 				PanicHandler("findFirstHit()/chunkSearch", recover(), debug.Stack())
 			}()
 
-			findings[i] <- _findFirstHit(reader, searchStart, pattern, chunkBefore, direction)
+			findings[i] <- _findFirstHit(reader, searchStart, search, chunkBefore, direction)
 		}(i, searchStart, chunkBefore)
 	}
 
@@ -125,7 +125,7 @@ func FindFirstHit(reader reader.Reader, pattern regexp.Regexp, startPosition lin
 //
 // This method will run over multiple chunks of the input file in parallel to
 // help large file search performance.
-func _findFirstHit(reader reader.Reader, startPosition linemetadata.Index, pattern regexp.Regexp, beforePosition *linemetadata.Index, direction SearchDirection) *linemetadata.Index {
+func _findFirstHit(reader reader.Reader, startPosition linemetadata.Index, search search.Search, beforePosition *linemetadata.Index, direction SearchDirection) *linemetadata.Index {
 	searchPosition := startPosition
 	lineCache := searchLineCache{}
 	for {
@@ -136,7 +136,7 @@ func _findFirstHit(reader reader.Reader, startPosition linemetadata.Index, patte
 		}
 
 		lineText := line.Plain()
-		if pattern.MatchString(lineText) {
+		if search.Matches(lineText) {
 			return &searchPosition
 		}
 

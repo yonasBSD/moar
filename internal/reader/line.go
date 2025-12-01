@@ -1,9 +1,8 @@
 package reader
 
 import (
-	"regexp"
-
 	"github.com/walles/moor/v2/internal/linemetadata"
+	"github.com/walles/moor/v2/internal/search"
 	"github.com/walles/moor/v2/internal/textstyles"
 	"github.com/walles/moor/v2/twin"
 )
@@ -13,10 +12,10 @@ import (
 func (line *Line) HighlightedTokens(
 	plainTextStyle twin.Style,
 	searchHitStyle twin.Style,
-	search *regexp.Regexp,
+	search search.Search,
 	lineIndex linemetadata.Index,
 ) textstyles.StyledRunesWithTrailer {
-	matchRanges := getMatchRanges(line.Plain(lineIndex), search)
+	matchRanges := search.GetMatchRanges(line.Plain(lineIndex))
 
 	fromString := textstyles.StyledRunesFromString(plainTextStyle, line.raw, &lineIndex)
 	returnRunes := make([]textstyles.CellWithMetadata, 0, len(fromString.StyledRunes))

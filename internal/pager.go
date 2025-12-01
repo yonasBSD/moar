@@ -12,6 +12,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/walles/moor/v2/internal/linemetadata"
 	"github.com/walles/moor/v2/internal/reader"
+	"github.com/walles/moor/v2/internal/search"
 	"github.com/walles/moor/v2/internal/textstyles"
 	"github.com/walles/moor/v2/twin"
 )
@@ -64,8 +65,7 @@ type Pager struct {
 	// mode is better?
 	mode PagerMode
 
-	searchString  string
-	searchPattern *regexp.Regexp
+	search search.Search
 
 	// This should never be null while paging. Configured in NewPager().
 	searchHistory *SearchHistory
@@ -724,7 +724,7 @@ func (p *Pager) fitsOnOneScreen() bool {
 
 	lines := reader.GetLines(linemetadata.Index{}, reader.GetLineCount())
 	for _, line := range lines.Lines {
-		rendered := line.HighlightedTokens(twin.StyleDefault, twin.StyleDefault, nil).StyledRunes
+		rendered := line.HighlightedTokens(twin.StyleDefault, twin.StyleDefault, search.Search{}).StyledRunes
 		if len(rendered) > width {
 			// This line is too long to fit on one screen line, no fit
 			return false

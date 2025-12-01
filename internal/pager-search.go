@@ -9,7 +9,7 @@ import (
 
 // Scroll to the next search hit, while the user is typing the search string.
 func (p *Pager) scrollToSearchHits() {
-	if p.searchPattern == nil {
+	if p.search.Inactive() {
 		// This is not a search
 		return
 	}
@@ -30,7 +30,7 @@ func (p *Pager) scrollToSearchHits() {
 		return
 	}
 
-	firstHitIndex := FindFirstHit(p.Reader(), *p.searchPattern, *lineIndex, nil, SearchDirectionForward)
+	firstHitIndex := FindFirstHit(p.Reader(), p.search, *lineIndex, nil, SearchDirectionForward)
 	if firstHitIndex == nil {
 		alreadyAtTheTop := (*lineIndex == linemetadata.Index{})
 		if alreadyAtTheTop {
@@ -39,7 +39,7 @@ func (p *Pager) scrollToSearchHits() {
 		}
 
 		// Try again from the top
-		firstHitIndex = FindFirstHit(p.Reader(), *p.searchPattern, linemetadata.Index{}, lineIndex, SearchDirectionForward)
+		firstHitIndex = FindFirstHit(p.Reader(), p.search, linemetadata.Index{}, lineIndex, SearchDirectionForward)
 	}
 	if firstHitIndex == nil {
 		// No match, give up
@@ -59,7 +59,7 @@ func (p *Pager) scrollToSearchHits() {
 
 // Scroll to the next search hit, when the user presses 'n'.
 func (p *Pager) scrollToNextSearchHit() {
-	if p.searchPattern == nil {
+	if p.search.Inactive() {
 		// Nothing to search for, never mind
 		return
 	}
@@ -96,7 +96,7 @@ func (p *Pager) scrollToNextSearchHit() {
 		panic(fmt.Sprint("Unknown search mode when finding next: ", p.mode))
 	}
 
-	firstHitIndex := FindFirstHit(p.Reader(), *p.searchPattern, firstSearchIndex, nil, SearchDirectionForward)
+	firstHitIndex := FindFirstHit(p.Reader(), p.search, firstSearchIndex, nil, SearchDirectionForward)
 	if firstHitIndex == nil {
 		p.mode = PagerModeNotFound{pager: p}
 		return
@@ -117,7 +117,7 @@ func (p *Pager) scrollToNextSearchHit() {
 // Scroll backwards to the previous search hit, while the user is typing the
 // search string.
 func (p *Pager) scrollToSearchHitsBackwards() {
-	if p.searchPattern == nil {
+	if p.search.Inactive() {
 		// This is not a search
 		return
 	}
@@ -135,7 +135,7 @@ func (p *Pager) scrollToSearchHitsBackwards() {
 	// Start at the top visible line
 	lineIndex := p.scrollPosition.lineIndex(p)
 
-	firstHitIndex := FindFirstHit(p.Reader(), *p.searchPattern, *lineIndex, nil, SearchDirectionBackward)
+	firstHitIndex := FindFirstHit(p.Reader(), p.search, *lineIndex, nil, SearchDirectionBackward)
 	if firstHitIndex == nil {
 		lastReaderLineIndex := linemetadata.IndexFromLength(p.Reader().GetLineCount())
 		if lastReaderLineIndex == nil {
@@ -153,7 +153,7 @@ func (p *Pager) scrollToSearchHitsBackwards() {
 		}
 
 		// Try again from the bottom
-		firstHitIndex = FindFirstHit(p.Reader(), *p.searchPattern, *lastReaderLineIndex, lineIndex, SearchDirectionBackward)
+		firstHitIndex = FindFirstHit(p.Reader(), p.search, *lastReaderLineIndex, lineIndex, SearchDirectionBackward)
 	}
 	if firstHitIndex == nil {
 		// No match, give up
@@ -175,7 +175,7 @@ func (p *Pager) scrollToSearchHitsBackwards() {
 
 // Scroll backwards to the previous search hit, when the user presses 'N'.
 func (p *Pager) scrollToPreviousSearchHit() {
-	if p.searchPattern == nil {
+	if p.search.Inactive() {
 		// Nothing to search for, never mind
 		return
 	}
@@ -213,7 +213,7 @@ func (p *Pager) scrollToPreviousSearchHit() {
 		panic(fmt.Sprint("Unknown search mode when finding previous: ", p.mode))
 	}
 
-	hitIndex := FindFirstHit(p.Reader(), *p.searchPattern, firstSearchIndex, nil, SearchDirectionBackward)
+	hitIndex := FindFirstHit(p.Reader(), p.search, firstSearchIndex, nil, SearchDirectionBackward)
 	if hitIndex == nil {
 		p.mode = PagerModeNotFound{pager: p}
 		return
@@ -262,7 +262,7 @@ func (p *Pager) centerSearchHitsVertically() {
 		firstHitRow := -1
 		lastHitRow := -1
 		for rowIndex, row := range rendered.inputLines {
-			if !p.searchPattern.MatchString(row.Plain()) {
+			if !p.search.Matches(row.Plain()) {
 				continue
 			}
 

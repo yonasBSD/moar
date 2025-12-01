@@ -23,7 +23,7 @@ func (m PagerModeViewing) drawFooter(statusText string, spinner string) {
 	m.pager.readerLock.Unlock()
 
 	searchHelp := "'/' to search"
-	if len(m.pager.searchString) > 0 {
+	if !m.pager.search.Inactive() {
 		searchHelp = "'n'/'p' to search next/previous"
 	}
 	helpText := "Press 'ESC' / 'q' to exit, " + colonHelp + searchHelp + ", '&' to filter, 'h' for help"
@@ -162,22 +162,19 @@ func (m PagerModeViewing) onRune(char rune) {
 	case '/':
 		p.mode = NewPagerModeSearch(p, SearchDirectionForward, p.scrollPosition)
 		p.setTargetLine(nil)
-		p.searchString = ""
-		p.searchPattern = nil
+		p.search.Stop()
 
 	case '?':
 		p.mode = NewPagerModeSearch(p, SearchDirectionBackward, p.scrollPosition)
 		p.setTargetLine(nil)
-		p.searchString = ""
-		p.searchPattern = nil
+		p.search.Stop()
 
 	case '&':
 		if !p.isShowingHelp {
 			// Filtering the help text is not supported. Feel free to work on
 			// that if you feel that's time well spent.
 			p.mode = NewPagerModeFilter(p)
-			p.searchString = ""
-			p.searchPattern = nil
+			p.search.Stop()
 			p.filterPattern = nil
 		}
 

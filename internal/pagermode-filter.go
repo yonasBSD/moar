@@ -29,8 +29,7 @@ func (m PagerModeFilter) drawFooter(_ string, _ string) {
 
 func (m *PagerModeFilter) updateFilterPattern(text string) {
 	m.pager.filterPattern = toPattern(text)
-	m.pager.searchString = text
-	m.pager.searchPattern = toPattern(text)
+	m.pager.search.For(text)
 }
 
 func (m *PagerModeFilter) onKey(key twin.KeyCode) {
@@ -45,8 +44,7 @@ func (m *PagerModeFilter) onKey(key twin.KeyCode) {
 	case twin.KeyEscape:
 		m.pager.mode = PagerModeViewing{pager: m.pager}
 		m.pager.filterPattern = nil
-		m.pager.searchString = ""
-		m.pager.searchPattern = nil
+		m.pager.search.Stop()
 
 	case twin.KeyUp, twin.KeyDown, twin.KeyPgUp, twin.KeyPgDown:
 		viewing := PagerModeViewing{pager: m.pager}

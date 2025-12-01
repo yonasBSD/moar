@@ -9,6 +9,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/walles/moor/v2/internal/linemetadata"
 	"github.com/walles/moor/v2/internal/reader"
+	"github.com/walles/moor/v2/internal/search"
 	"github.com/walles/moor/v2/internal/textstyles"
 	"github.com/walles/moor/v2/twin"
 	"gotest.tools/v3/assert"
@@ -113,8 +114,8 @@ func TestEmpty(t *testing.T) {
 func TestSearchHighlight(t *testing.T) {
 	numberedLine := reader.NewFromTextForTesting("TestSearchHighlight", "x\"\"x").GetLine(linemetadata.Index{})
 	pager := Pager{
-		screen:        twin.NewFakeScreen(100, 10),
-		searchPattern: regexp.MustCompile("\""),
+		screen: twin.NewFakeScreen(100, 10),
+		search: search.For("\""),
 	}
 
 	rendered := pager.renderLine(*numberedLine, pager.getLineNumberPrefixLength(numberedLine.Number), true)
@@ -392,7 +393,7 @@ func testRenderLinesWithSearchHits(t *testing.T, input string, expectedBackgroun
 		BackingReader: pager.readers[pager.currentReader],
 		FilterPattern: &pager.filterPattern,
 	}
-	pager.searchPattern = regexp.MustCompile("xxx")
+	pager.search = search.For("xxx")
 	pager.ShowStatusBar = false
 	pager.mode = PagerModeViewing{&pager}
 	pager.showLineNumbers = false
