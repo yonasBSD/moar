@@ -26,6 +26,10 @@ func (search *Search) Stop() {
 	search.pattern = nil
 }
 
+func (search Search) Active() bool {
+	return search.pattern != nil
+}
+
 func (search Search) Inactive() bool {
 	return search.pattern == nil
 }

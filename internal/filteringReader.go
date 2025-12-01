@@ -3,13 +3,13 @@ package internal
 import (
 	"fmt"
 	"math"
-	"regexp"
 	"sync"
 	"time"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/walles/moor/v2/internal/linemetadata"
 	"github.com/walles/moor/v2/internal/reader"
+	"github.com/walles/moor/v2/internal/search"
 )
 
 // Filters lines based on the search query from the pager.
@@ -17,9 +17,9 @@ import (
 type FilteringReader struct {
 	BackingReader reader.Reader
 
-	// This is a reference to a reference so that we can track changes to the
-	// original pattern, including if it is set to nil.
-	FilterPattern **regexp.Regexp
+	// This is a reference so that we can track changes to the original pattern,
+	// including if it is set to nil.
+	Filter *search.Search
 
 	// Protects filteredLinesCache, unfilteredLineCountWhenCaching, and
 	// filterPatternWhenCaching.
@@ -35,7 +35,7 @@ type FilteringReader struct {
 
 	// This is the pattern that was used when we cached the lines. If it
 	// doesn't match the current pattern, then our cache needs to be rebuilt.
-	filterPatternWhenCaching *regexp.Regexp
+	filterWhenCaching search.Search
 }
 
 // Please hold the lock when calling this method.
@@ -43,17 +43,17 @@ func (f *FilteringReader) rebuildCache() {
 	t0 := time.Now()
 
 	cache := make([]reader.NumberedLine, 0)
-	filterPattern := *f.FilterPattern
+	filter := *f.Filter
 
 	// Mark cache base conditions
 	f.unfilteredLineCountWhenCaching = f.BackingReader.GetLineCount()
-	f.filterPatternWhenCaching = filterPattern
+	f.filterWhenCaching = filter
 
 	// Repopulate the cache
 	allBaseLines := f.BackingReader.GetLines(linemetadata.Index{}, math.MaxInt)
 	resultIndex := 0
 	for _, line := range allBaseLines.Lines {
-		if filterPattern != nil && len(filterPattern.String()) > 0 && !filterPattern.MatchString(line.Line.Plain(line.Index)) {
+		if filter.Active() && !filter.Matches(line.Line.Plain(line.Index)) {
 			// We have a pattern but it doesn't match
 			continue
 		}
@@ -86,13 +86,13 @@ func (f *FilteringReader) getAllLines() []reader.NumberedLine {
 		return *f.filteredLinesCache
 	}
 
-	var currentFilterPattern string
-	if *f.FilterPattern != nil {
-		currentFilterPattern = (*f.FilterPattern).String()
+	var currentFilterPattern search.Search
+	if (*f).Filter.Active() {
+		currentFilterPattern = *f.Filter
 	}
-	var cacheFilterPattern string
-	if f.filterPatternWhenCaching != nil {
-		cacheFilterPattern = f.filterPatternWhenCaching.String()
+	var cacheFilterPattern search.Search
+	if f.filterWhenCaching.Active() {
+		cacheFilterPattern = f.filterWhenCaching
 	}
 	if currentFilterPattern != cacheFilterPattern {
 		f.rebuildCache()
@@ -106,7 +106,7 @@ func (f *FilteringReader) shouldPassThrough() bool {
 	f.lock.Lock()
 	defer f.lock.Unlock()
 
-	if *f.FilterPattern == nil || len((*f.FilterPattern).String()) == 0 {
+	if f.Filter == nil || f.Filter.Inactive() {
 		// Cache is not needed
 		f.filteredLinesCache = nil
 
@@ -231,5 +231,5 @@ func (f *FilteringReader) SetBackingReader(r reader.Reader) {
 	// Invalidate caches so they will be rebuilt lazily on next access.
 	f.filteredLinesCache = nil
 	f.unfilteredLineCountWhenCaching = -1
-	f.filterPatternWhenCaching = nil
+	f.filterWhenCaching = search.Search{}
 }

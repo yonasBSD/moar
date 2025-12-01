@@ -3,7 +3,6 @@ package internal
 import (
 	"fmt"
 	"math"
-	"regexp"
 	"runtime/debug"
 	"sync"
 	"time"
@@ -70,7 +69,7 @@ type Pager struct {
 	// This should never be null while paging. Configured in NewPager().
 	searchHistory *SearchHistory
 
-	filterPattern *regexp.Regexp
+	filter search.Search
 
 	// We used to have a "Following" field here. If you want to follow, set
 	// TargetLineNumber to LineNumberMax() instead, see below.
@@ -242,7 +241,7 @@ func NewPager(readers ...*reader.ReaderImpl) *Pager {
 	pager.mode = PagerModeViewing{pager: &pager}
 	pager.filteringReader = FilteringReader{
 		BackingReader: readers[0], // Always start with the first reader
-		FilterPattern: &pager.filterPattern,
+		FilterPattern: &pager.filter,
 	}
 
 	searchHistory := BootSearchHistory("")
@@ -490,7 +489,7 @@ func (p *Pager) StartPaging(screen twin.Screen, chromaStyle *chroma.Style, chrom
 			select {
 			case <-p.readerSwitched:
 				// A different reader is now active
-				p.filterPattern = nil
+				p.filter = nil
 
 				p.readerLock.Lock()
 				r = p.readers[p.currentReader]
