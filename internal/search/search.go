@@ -6,12 +6,16 @@ import (
 )
 
 type Search struct {
-	String  string
+	findMe  string
 	pattern *regexp.Regexp
 }
 
 func (search Search) Equals(other Search) bool {
-	return search.String == other.String
+	return search.findMe == other.findMe
+}
+
+func (search Search) String() string {
+	return search.findMe
 }
 
 func For(s string) Search {
@@ -21,25 +25,25 @@ func For(s string) Search {
 }
 
 func (search *Search) For(s string) {
-	search.String = s
+	search.findMe = s
 	search.pattern = toPattern(s)
 }
 
 func (search *Search) Stop() {
-	search.String = ""
+	search.findMe = ""
 	search.pattern = nil
 }
 
 func (search Search) Active() bool {
-	return search.String != ""
+	return search.findMe != ""
 }
 
 func (search Search) Inactive() bool {
-	return search.String == ""
+	return search.findMe == ""
 }
 
 func (search Search) Matches(line string) bool {
-	if search.String == "" {
+	if search.findMe == "" {
 		return false
 	}
 	return search.pattern.MatchString(line)
