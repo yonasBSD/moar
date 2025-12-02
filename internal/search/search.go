@@ -73,6 +73,13 @@ func (search Search) Matches(line string) bool {
 		return strings.Contains(line, search.findMe)
 	}
 
+	if search.isSubstringSearch && !search.hasUppercase {
+		// Case insensitive substring search
+		lowerLine := strings.ToLower(line)
+		lowerFindMe := strings.ToLower(search.findMe)
+		return strings.Contains(lowerLine, lowerFindMe)
+	}
+
 	return search.pattern.MatchString(line)
 }
 
