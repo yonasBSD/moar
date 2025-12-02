@@ -48,11 +48,11 @@ func benchmarkMatch(b *testing.B, searchTerm string) {
 }
 
 func BenchmarkCaseSensitiveSubstringMatch(b *testing.B) {
-	// Same as in benchmarkSearch() in search-linescanner_test.go
 	benchmarkMatch(b, "This won't match anything")
 }
 
 func BenchmarkCaseInsensitiveSubstringMatch(b *testing.B) {
+	// Same as in benchmarkSearch() in search-linescanner_test.go
 	benchmarkMatch(b, "this won't match anything")
 }
 

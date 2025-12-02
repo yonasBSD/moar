@@ -107,8 +107,13 @@ func benchmarkSearch(b *testing.B, highlighted bool, warm bool) {
 	assert.NilError(b, benchMe.Wait())
 
 	// The target string is split to not match, remember we're searching through
-	// this very file. Same string as in BenchmarkMatch in search/search_test.go.
-	search := search.For("This won't match " + "anything")
+	// this very file. Same string as in BenchmarkCaseInsensitiveSubstringMatch
+	// in search/search_test.go.
+	//
+	// NOTE: The search term is all lowercase to trigger case-insensitive
+	// search. I believe this is the most common case, so that's what we should
+	// benchmark.
+	search := search.For("this won't match " + "anything")
 
 	reader.DisablePlainCachingForBenchmarking = !warm
 	if warm {
