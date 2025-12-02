@@ -2,11 +2,18 @@ package search
 
 import (
 	"regexp"
+	"strings"
 	"unicode"
 )
 
 type Search struct {
-	findMe  string
+	findMe string
+
+	// If this is false it means the input has to be interpreted as a regexp.
+	isSubstringSearch bool
+
+	hasUppercase bool
+
 	pattern *regexp.Regexp
 }
 
@@ -26,6 +33,20 @@ func For(s string) Search {
 
 func (search *Search) For(s string) {
 	search.findMe = s
+
+	hasSpecialChars := regexp.QuoteMeta(s) != s
+	_, err := regexp.Compile(s)
+	isValidRegexp := err == nil
+	search.isSubstringSearch = !hasSpecialChars || !isValidRegexp
+
+	search.hasUppercase = false
+	for _, char := range s {
+		if unicode.IsUpper(char) {
+			search.hasUppercase = true
+			break
+		}
+	}
+
 	search.pattern = toPattern(s)
 }
 
@@ -46,6 +67,12 @@ func (search Search) Matches(line string) bool {
 	if search.findMe == "" {
 		return false
 	}
+
+	if search.isSubstringSearch && search.hasUppercase {
+		// Case sensitive substring search
+		return strings.Contains(line, search.findMe)
+	}
+
 	return search.pattern.MatchString(line)
 }
 
