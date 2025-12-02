@@ -4,6 +4,8 @@ import (
 	"regexp"
 	"strings"
 	"unicode"
+
+	"github.com/charlievieth/strcase"
 )
 
 type Search struct {
@@ -75,9 +77,7 @@ func (search Search) Matches(line string) bool {
 
 	if search.isSubstringSearch && !search.hasUppercase {
 		// Case insensitive substring search
-		lowerLine := strings.ToLower(line)
-		lowerFindMe := strings.ToLower(search.findMe)
-		return strings.Contains(lowerLine, lowerFindMe)
+		return strcase.Contains(line, search.findMe)
 	}
 
 	return search.pattern.MatchString(line)
