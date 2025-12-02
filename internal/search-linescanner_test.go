@@ -106,9 +106,9 @@ func benchmarkSearch(b *testing.B, highlighted bool, warm bool) {
 	benchMe := reader.NewFromTextForTesting("hello", testString)
 	assert.NilError(b, benchMe.Wait())
 
-	// The [] around the 't' is there to make sure it doesn't match, remember
-	// we're searching through this very file.
-	search := search.For("This won'[t] match anything")
+	// The target string is split to not match, remember we're searching through
+	// this very file. Same string as in BenchmarkMatch in search/search_test.go.
+	search := search.For("This won't match " + "anything")
 
 	reader.DisablePlainCachingForBenchmarking = !warm
 	if warm {

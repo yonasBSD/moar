@@ -31,15 +31,15 @@ func (search *Search) Stop() {
 }
 
 func (search Search) Active() bool {
-	return search.pattern != nil
+	return search.String != ""
 }
 
 func (search Search) Inactive() bool {
-	return search.pattern == nil
+	return search.String == ""
 }
 
 func (search Search) Matches(line string) bool {
-	if search.pattern == nil {
+	if search.String == "" {
 		return false
 	}
 	return search.pattern.MatchString(line)
