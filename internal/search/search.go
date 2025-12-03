@@ -33,13 +33,20 @@ func For(s string) Search {
 	return search
 }
 
-func (search *Search) For(s string) {
+func (search *Search) For(s string) *Search {
 	search.findMe = s
+	if s == "" {
+		// No search
+		search.pattern = nil
+		return search
+	}
 
+	var err error
 	hasSpecialChars := regexp.QuoteMeta(s) != s
-	_, err := regexp.Compile(s)
+	search.pattern, err = regexp.Compile(s)
 	isValidRegexp := err == nil
-	search.isSubstringSearch = !hasSpecialChars || !isValidRegexp
+	regexpMatchingRequired := hasSpecialChars && isValidRegexp
+	search.isSubstringSearch = !regexpMatchingRequired
 
 	search.hasUppercase = false
 	for _, char := range s {
@@ -49,7 +56,21 @@ func (search *Search) For(s string) {
 		}
 	}
 
-	search.pattern = toPattern(s)
+	if search.isSubstringSearch {
+		// Pattern still needed for GetMatchRanges()
+		search.pattern, err = regexp.Compile(regexp.QuoteMeta(s))
+		if err != nil {
+			panic(err)
+		}
+
+		return search
+	}
+
+	// At this point we know it's a valid regexp, and that it does include
+	// regexp specific characters. We also know the pattern has been
+	// successfully compiled.
+
+	return search
 }
 
 func (search *Search) Stop() {
@@ -78,6 +99,14 @@ func (search Search) Matches(line string) bool {
 	if search.isSubstringSearch && !search.hasUppercase {
 		// Case insensitive substring search
 		return strcase.Contains(line, search.findMe)
+	}
+
+	// Regexp search
+
+	if !search.hasUppercase {
+		// Regexp is already lowercase, do the same to the line to make the
+		// search case insensitive
+		line = strings.ToLower(line)
 	}
 
 	return search.pattern.MatchString(line)
@@ -122,46 +151,4 @@ func toRunePositions(byteIndices [][]int, matchedString string) [][2]int {
 	}
 
 	return returnMe
-}
-
-// toPattern compiles a search string into a pattern.
-//
-// If the string contains only lower-case letter the pattern will be case insensitive.
-//
-// If the string is empty the pattern will be nil.
-//
-// If the string does not compile into a regexp the pattern will match the string verbatim
-func toPattern(compileMe string) *regexp.Regexp {
-	if len(compileMe) == 0 {
-		return nil
-	}
-
-	hasUppercase := false
-	for _, char := range compileMe {
-		if unicode.IsUpper(char) {
-			hasUppercase = true
-		}
-	}
-
-	// Smart case; be case insensitive unless there are upper case chars
-	// in the search string
-	prefix := "(?i)"
-	if hasUppercase {
-		prefix = ""
-	}
-
-	pattern, err := regexp.Compile(prefix + compileMe)
-	if err == nil {
-		// Search string is a regexp
-		return pattern
-	}
-
-	pattern, err = regexp.Compile(prefix + regexp.QuoteMeta(compileMe))
-	if err == nil {
-		// Pattern matching the string exactly
-		return pattern
-	}
-
-	// Unable to create a match-string-verbatim pattern
-	panic(err)
 }

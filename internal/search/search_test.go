@@ -9,23 +9,23 @@ import (
 )
 
 func TestToPattern(t *testing.T) {
-	assert.Assert(t, toPattern("") == nil)
+	assert.Assert(t, For("").pattern == nil)
 
 	// Test regexp matching
-	assert.Assert(t, toPattern("G.*S").MatchString("GRIIIS"))
-	assert.Assert(t, !toPattern("G.*S").MatchString("gRIIIS"))
+	assert.Assert(t, For("G.*S").Matches("GRIIIS"))
+	assert.Assert(t, !For("G.*S").Matches("gRIIIS"))
 
 	// Test case insensitive regexp matching
-	assert.Assert(t, toPattern("g.*s").MatchString("GRIIIS"))
-	assert.Assert(t, toPattern("g.*s").MatchString("gRIIIS"))
+	assert.Assert(t, For("g.*s").Matches("GRIIIS"))
+	assert.Assert(t, For("g.*s").Matches("gRIIIS"))
 
 	// Test non-regexp matching
-	assert.Assert(t, toPattern(")G").MatchString(")G"))
-	assert.Assert(t, !toPattern(")G").MatchString(")g"))
+	assert.Assert(t, For(")G").Matches(")G"))
+	assert.Assert(t, !For(")G").Matches(")g"))
 
 	// Test case insensitive non-regexp matching
-	assert.Assert(t, toPattern(")g").MatchString(")G"))
-	assert.Assert(t, toPattern(")g").MatchString(")g"))
+	assert.Assert(t, For(")g").Matches(")G"))
+	assert.Assert(t, For(")g").Matches(")g"))
 }
 
 func benchmarkMatch(b *testing.B, searchTerm string) {
