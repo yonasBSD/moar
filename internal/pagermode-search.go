@@ -85,16 +85,19 @@ func (m *PagerModeSearch) onKey(key twin.KeyCode) {
 	case twin.KeyEnter:
 		m.pager.searchHistory.addEntry(m.inputBox.text)
 		m.pager.mode = PagerModeViewing{pager: m.pager}
+		m.pager.setTargetLine(nil) // Viewing doesn't need all lines
 
 	case twin.KeyEscape:
 		m.pager.searchHistory.addEntry(m.inputBox.text)
 		m.pager.mode = PagerModeViewing{pager: m.pager}
 		m.pager.scrollPosition = m.initialScrollPosition
+		m.pager.setTargetLine(nil) // Viewing doesn't need all lines
 
 	case twin.KeyPgUp, twin.KeyPgDown:
 		m.pager.searchHistory.addEntry(m.inputBox.text)
 		m.pager.mode = PagerModeViewing{pager: m.pager}
 		m.pager.mode.onKey(key)
+		m.pager.setTargetLine(nil) // Viewing doesn't need all lines
 
 	case twin.KeyUp:
 		m.moveSearchHistoryIndex(-1)
