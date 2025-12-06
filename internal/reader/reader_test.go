@@ -663,6 +663,7 @@ func BenchmarkReadLargeFile(b *testing.B) {
 			})
 		assert.NilError(b, err)
 
+		<-readMe.MaybeDone
 		assert.NilError(b, readMe.Wait())
 		assert.NilError(b, readMe.Err)
 	}
