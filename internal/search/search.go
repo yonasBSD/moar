@@ -73,7 +73,7 @@ func (search *Search) For(s string) *Search {
 	return search
 }
 
-func (search *Search) Stop() {
+func (search *Search) Clear() {
 	search.findMe = ""
 	search.pattern = nil
 }

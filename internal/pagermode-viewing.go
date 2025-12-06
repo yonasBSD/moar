@@ -163,19 +163,19 @@ func (m PagerModeViewing) onRune(char rune) {
 	case '/':
 		p.mode = NewPagerModeSearch(p, SearchDirectionForward, p.scrollPosition)
 		p.setTargetLine(nil)
-		p.search.Stop()
+		p.search.Clear()
 
 	case '?':
 		p.mode = NewPagerModeSearch(p, SearchDirectionBackward, p.scrollPosition)
 		p.setTargetLine(nil)
-		p.search.Stop()
+		p.search.Clear()
 
 	case '&':
 		if !p.isShowingHelp {
 			// Filtering the help text is not supported. Feel free to work on
 			// that if you feel that's time well spent.
 			p.mode = NewPagerModeFilter(p)
-			p.search.Stop()
+			p.search.Clear()
 			p.filter = search.Search{}
 		}
 
