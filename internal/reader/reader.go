@@ -30,9 +30,12 @@ import (
 // negotiable.
 const MAX_HIGHLIGHT_SIZE int64 = 2_000_000
 
-// 140k lines took 20ms to search from a cold start. If we want to stay below
-// 100ms, we can do about 700k lines before pausing.
-const DEFAULT_PAUSE_AFTER_LINES = 700_000
+// To cap resource usage when not needed, start by reading this many lines into
+// memory. If the user scrolls near the end or starts searching, we'll read
+// more.
+//
+// Ref: https://github.com/walles/moor/issues/296
+const DEFAULT_PAUSE_AFTER_LINES = 50_000
 
 var DisablePlainCachingForBenchmarking = false
 

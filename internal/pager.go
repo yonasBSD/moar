@@ -619,6 +619,9 @@ func (p *Pager) StartPaging(screen twin.Screen, chromaStyle *chroma.Style, chrom
 			return
 
 		case eventMoreLinesAvailable:
+			// Without the isViewing() check, following will continue while
+			// searching, and I prefer it to stop so people can see what they
+			// are searching in.
 			if p.isViewing() && p.TargetLine != nil {
 				// The user wants to scroll down to a specific line number
 				if linemetadata.IndexFromLength(p.Reader().GetLineCount()).IsBefore(*p.TargetLine) {
