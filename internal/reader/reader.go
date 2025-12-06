@@ -244,7 +244,7 @@ func (reader *ReaderImpl) consumeLinesFromStream(stream io.Reader) {
 	reader.preAllocLines()
 
 	inspectionReader := inspectionReader{base: stream}
-	bufioReader := bufio.NewReader(&inspectionReader)
+	bufioReader := bufio.NewReaderSize(&inspectionReader, 64*1024)
 	completeLine := make([]byte, 0)
 
 	t0 := time.Now()
