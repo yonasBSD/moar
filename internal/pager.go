@@ -72,7 +72,7 @@ type Pager struct {
 	filter search.Search
 
 	// We used to have a "Following" field here. If you want to follow, set
-	// TargetLineNumber to LineNumberMax() instead, see below.
+	// TargetLineNumber to linemetadata.IndexMax() instead, see below.
 
 	isShowingHelp bool
 	preHelpState  *_PreHelpState
@@ -419,9 +419,8 @@ func (p *Pager) setTargetLine(targetLine *linemetadata.Index) {
 		return
 	}
 
-	// The value 1000 here is supposed to be larger than any possible screen
-	// height, to give us some lookahead and to avoid fetching too few lines.
-	targetValue := targetLine.Index() + 1000
+	// Set the target with some lookahead to avoid fetching too few lines.
+	targetValue := targetLine.Index() + reader.DEFAULT_PAUSE_AFTER_LINES/2
 	if targetValue < targetLine.Index() {
 		// Overflow detected, clip to max int
 		targetValue = math.MaxInt
@@ -620,7 +619,10 @@ func (p *Pager) StartPaging(screen twin.Screen, chromaStyle *chroma.Style, chrom
 			return
 
 		case eventMoreLinesAvailable:
-			if p.TargetLine != nil {
+			// Without the isViewing() check, following will continue while
+			// searching, and I prefer it to stop so people can see what they
+			// are searching in.
+			if p.isViewing() && p.TargetLine != nil {
 				// The user wants to scroll down to a specific line number
 				if linemetadata.IndexFromLength(p.Reader().GetLineCount()).IsBefore(*p.TargetLine) {
 					// Not there yet, keep scrolling

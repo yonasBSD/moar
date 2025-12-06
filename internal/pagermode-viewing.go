@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	log "github.com/sirupsen/logrus"
+	"github.com/walles/moor/v2/internal/linemetadata"
 	"github.com/walles/moor/v2/internal/search"
 	"github.com/walles/moor/v2/internal/textstyles"
 	"github.com/walles/moor/v2/twin"
@@ -162,20 +163,26 @@ func (m PagerModeViewing) onRune(char rune) {
 
 	case '/':
 		p.mode = NewPagerModeSearch(p, SearchDirectionForward, p.scrollPosition)
-		p.setTargetLine(nil)
-		p.search.Stop()
+		p.search.Clear()
+
+		// Searchers want to scan the whole file, start reading as much as we can
+		reallyHigh := linemetadata.IndexMax()
+		p.setTargetLine(&reallyHigh)
 
 	case '?':
 		p.mode = NewPagerModeSearch(p, SearchDirectionBackward, p.scrollPosition)
-		p.setTargetLine(nil)
-		p.search.Stop()
+		p.search.Clear()
+
+		// Searchers want to scan the whole file, start reading as much as we can
+		reallyHigh := linemetadata.IndexMax()
+		p.setTargetLine(&reallyHigh)
 
 	case '&':
 		if !p.isShowingHelp {
 			// Filtering the help text is not supported. Feel free to work on
 			// that if you feel that's time well spent.
 			p.mode = NewPagerModeFilter(p)
-			p.search.Stop()
+			p.search.Clear()
 			p.filter = search.Search{}
 		}
 
