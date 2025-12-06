@@ -241,11 +241,20 @@ func (reader *ReaderImpl) maybePause() {
 // It is used both during the initial read of the stream until it ends, and
 // while tailing files for changes.
 func (reader *ReaderImpl) consumeLinesFromStream(stream io.Reader) {
+	// This value affects BenchmarkReadLargeFile() performance. Validate changes
+	// like this:
+	//
+	//   go test -benchmem -run='^$' -bench 'BenchmarkReadLargeFile' ./internal/reader
+
+	const linePoolSize = 1000
+
 	reader.preAllocLines()
 
 	inspectionReader := inspectionReader{base: stream}
 	bufioReader := bufio.NewReaderSize(&inspectionReader, 64*1024)
 	completeLine := make([]byte, 0)
+
+	linePool := make([]Line, linePoolSize)
 
 	t0 := time.Now()
 	for {
@@ -295,16 +304,21 @@ func (reader *ReaderImpl) consumeLinesFromStream(stream io.Reader) {
 		}
 
 		newLineString := string(completeLine)
-		newLine := Line{raw: newLineString}
+		if len(linePool) == 0 {
+			linePool = make([]Line, linePoolSize)
+		}
+		newLine := &linePool[0]
+		linePool = linePool[1:]
+		newLine.raw = newLineString
 
 		reader.Lock()
 		if len(reader.lines) > 0 && !reader.endsWithNewline {
 			// The last line didn't end with a newline, append to it
 			newLineString = reader.lines[len(reader.lines)-1].raw + newLineString
-			newLine = Line{raw: newLineString}
-			reader.lines[len(reader.lines)-1] = &newLine
+			newLine = &Line{raw: newLineString}
+			reader.lines[len(reader.lines)-1] = newLine
 		} else {
-			reader.lines = append(reader.lines, &newLine)
+			reader.lines = append(reader.lines, newLine)
 		}
 		reader.endsWithNewline = true
 
