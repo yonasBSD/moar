@@ -277,14 +277,12 @@ func (reader *ReaderImpl) consumeLinesFromStream(stream io.Reader) {
 				}
 
 				reader.Lock()
-				if lineStart == 0 && !reader.endsWithNewline {
+				if lineStart == 0 && !reader.endsWithNewline && len(reader.lines) > 0 {
 					// Special case, append to the previous line
-					if len(reader.lines) > 0 {
-						baseLine := reader.lines[len(reader.lines)-1]
-						completeLine := make([]byte, len(baseLine.raw)+lineEndIndexExclusive)
-						copy(completeLine, baseLine.raw)
-						copy(completeLine[len(baseLine.raw):], byteBuffer[:lineEndIndexExclusive])
-					}
+					baseLine := reader.lines[len(reader.lines)-1]
+					completeLine := make([]byte, len(baseLine.raw)+lineEndIndexExclusive)
+					copy(completeLine, baseLine.raw)
+					copy(completeLine[len(baseLine.raw):], byteBuffer[:lineEndIndexExclusive])
 				} else {
 					// Get a new line from the pool
 					if len(linePool) == 0 {
