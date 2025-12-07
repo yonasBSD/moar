@@ -265,6 +265,7 @@ func (reader *ReaderImpl) consumeLinesFromStream(stream io.Reader) {
 		readBytes, err := inspectionReader.Read(byteBuffer)
 
 		// Error or not, handle the bytes that we got
+		reader.Lock()
 		lineStart := 0
 		for byteIndex := range readBytes {
 			if byteBuffer[byteIndex] == '\n' {
@@ -275,7 +276,6 @@ func (reader *ReaderImpl) consumeLinesFromStream(stream io.Reader) {
 					lineEndIndexExclusive--
 				}
 
-				reader.Lock()
 				if lineStart == 0 && !reader.endsWithNewline && len(reader.lines) > 0 {
 					// Special case, append to the previous line
 					baseLine := reader.lines[len(reader.lines)-1]
@@ -290,7 +290,6 @@ func (reader *ReaderImpl) consumeLinesFromStream(stream io.Reader) {
 					newLine := linePool.create(byteBuffer[lineStart:lineEndIndexExclusive])
 					reader.lines = append(reader.lines, newLine)
 				}
-				reader.Unlock()
 
 				lineStart = byteIndex + 1
 			}
@@ -300,7 +299,6 @@ func (reader *ReaderImpl) consumeLinesFromStream(stream io.Reader) {
 		if lineStart < readBytes {
 			// FIXME: Handle MSDOS line endings here too
 
-			reader.Lock()
 			if lineStart == 0 && !reader.endsWithNewline && len(reader.lines) > 0 {
 				// Special case, append to the previous line
 				baseLine := reader.lines[len(reader.lines)-1]
@@ -315,9 +313,8 @@ func (reader *ReaderImpl) consumeLinesFromStream(stream io.Reader) {
 				newLine := linePool.create(byteBuffer[lineStart:readBytes])
 				reader.lines = append(reader.lines, newLine)
 			}
-			reader.Unlock()
-
 		}
+		reader.Unlock()
 
 		reader.endsWithNewline = inspectionReader.endedWithNewline
 
