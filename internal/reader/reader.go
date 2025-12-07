@@ -306,19 +306,32 @@ func (reader *ReaderImpl) consumeLinesFromStream(stream io.Reader) {
 
 		// Handle any remaining bytes as a partial line
 		if lineStart < readBytes {
-			// Get a new line from the pool
-			if len(linePool) == 0 {
-				linePool = make([]Line, linePoolSize)
-			}
-			newLine := &linePool[0]
-			linePool = linePool[1:]
-
-			// FIXME: Strip any trailing \r here
-			newLine.raw = byteBuffer[lineStart:readBytes]
+			// FIXME: Handle MSDOS line endings here too
 
 			reader.Lock()
-			reader.lines = append(reader.lines, newLine)
+			if lineStart == 0 && !reader.endsWithNewline && len(reader.lines) > 0 {
+				// Special case, append to the previous line
+				baseLine := reader.lines[len(reader.lines)-1]
+
+				completeLine := make([]byte, len(baseLine.raw)+readBytes-lineStart)
+				copy(completeLine, baseLine.raw)
+				copy(completeLine[len(baseLine.raw):], byteBuffer[lineStart:readBytes])
+
+				baseLine.raw = completeLine
+				baseLine.plainTextCache.Store(nil) // Invalidate cache
+			} else {
+				// Get a new line from the pool
+				if len(linePool) == 0 {
+					linePool = make([]Line, linePoolSize)
+				}
+				newLine := &linePool[0]
+				linePool = linePool[1:]
+
+				newLine.raw = byteBuffer[lineStart:]
+				reader.lines = append(reader.lines, newLine)
+			}
 			reader.Unlock()
+
 		}
 
 		reader.endsWithNewline = inspectionReader.endedWithNewline
