@@ -19,6 +19,8 @@ var lineNumbersStyle = twin.StyleDefault.WithAttr(twin.AttrDim)
 // Status bar and EOF marker style
 var statusbarStyle = twin.StyleDefault.WithAttr(twin.AttrReverse)
 
+var statusbarfileStyle = twin.StyleDefault.WithAttr(twin.AttrReverse)
+
 var plainTextStyle = twin.StyleDefault
 
 var searchHitStyle = twin.StyleDefault.WithAttr(twin.AttrReverse)
@@ -191,6 +193,8 @@ func styleUI(terminalBackground *twin.Color, chromaStyle *chroma.Style, chromaFo
 	} else {
 		panic(fmt.Sprint("Unrecognized status bar style: ", statusbarOption))
 	}
+
+	statusbarfileStyle = statusbarStyle.WithAttr(twin.AttrUnderline)
 
 	configureHighlighting(terminalBackground, configureSearchHitLineBackground)
 }
