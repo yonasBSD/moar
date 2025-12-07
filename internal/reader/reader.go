@@ -243,18 +243,16 @@ func (reader *ReaderImpl) maybePause() time.Duration {
 // It is used both during the initial read of the stream until it ends, and
 // while tailing files for changes.
 func (reader *ReaderImpl) consumeLinesFromStream(stream io.Reader) {
-	// This value affects BenchmarkReadLargeFile() performance. Validate changes
+	// These values affect BenchmarkReadLargeFile() performance. Validate changes
 	// like this:
 	//
 	//   go test -benchmem -run='^$' -bench 'BenchmarkReadLargeFile' ./internal/reader
-
 	const linePoolSize = 1000
+	const byteBufferSize = 64 * 1024
 
 	reader.preAllocLines()
 
 	inspectionReader := inspectionReader{base: stream}
-	bufioReader := bufio.NewReaderSize(&inspectionReader, 64*1024)
-	completeLine := make([]byte, 0)
 
 	linePool := make([]Line, linePoolSize)
 
@@ -264,72 +262,61 @@ func (reader *ReaderImpl) consumeLinesFromStream(stream io.Reader) {
 		// spent reading.
 		t0 = t0.Add(reader.maybePause())
 
-		keepReadingLine := true
-		eof := false
+		byteBuffer := make([]byte, byteBufferSize)
+		readBytes, err := inspectionReader.Read(byteBuffer)
 
-		var lineBytes []byte
-		var err error
-		for keepReadingLine {
-			lineBytes, keepReadingLine, err = bufioReader.ReadLine()
-
-			if err == nil {
-				select {
-				// Async write, we probably already wrote to it during the last
-				// iteration
-				case reader.doneWaitingForFirstByte <- true:
-				default:
+		// Error or not, handle the bytes that we got
+		lineStart := 0
+		for byteIndex := 0; byteIndex < readBytes; byteIndex++ {
+			if byteBuffer[byteIndex] == '\n' {
+				// Line end
+				lineEndIndexExclusive := byteIndex
+				if byteIndex > 0 && byteBuffer[byteIndex-1] == '\r' {
+					// Handle MSDOS line endings
+					lineEndIndexExclusive--
 				}
 
-				completeLine = append(completeLine, lineBytes...)
-				continue
+				reader.Lock()
+				if lineStart == 0 && !reader.endsWithNewline {
+					// Special case, append to the previous line
+					if len(reader.lines) > 0 {
+						baseLine := reader.lines[len(reader.lines)-1]
+						completeLine := make([]byte, len(baseLine.raw)+lineEndIndexExclusive)
+						copy(completeLine, baseLine.raw)
+						copy(completeLine[len(baseLine.raw):], byteBuffer[:lineEndIndexExclusive])
+					}
+				} else {
+					// Get a new line from the pool
+					if len(linePool) == 0 {
+						linePool = make([]Line, linePoolSize)
+					}
+					newLine := &linePool[0]
+					linePool = linePool[1:]
+
+					newLine.raw = byteBuffer[lineStart:lineEndIndexExclusive]
+					reader.lines = append(reader.lines, newLine)
+				}
+				reader.Unlock()
+
+				lineStart = byteIndex + 1
 			}
+		}
 
-			// Something went wrong
-
-			if err == io.EOF {
-				eof = true
-				break
+		// Handle any remaining bytes as a partial line
+		if lineStart < readBytes {
+			// Get a new line from the pool
+			if len(linePool) == 0 {
+				linePool = make([]Line, linePoolSize)
 			}
+			newLine := &linePool[0]
+			linePool = linePool[1:]
 
-			reader.Lock()
-			if reader.Err == nil {
-				// Store the error unless it overwrites one we already have
-				reader.Err = fmt.Errorf("error reading line from input stream: %w", err)
-			}
-			reader.Unlock()
-		}
-
-		if eof {
-			break
-		}
-
-		if reader.Err != nil {
-			break
-		}
-
-		newLineBytes := append(make([]byte, 0), completeLine...)
-		if len(linePool) == 0 {
-			linePool = make([]Line, linePoolSize)
-		}
-		newLine := &linePool[0]
-		linePool = linePool[1:]
-		newLine.raw = newLineBytes
-
-		reader.Lock()
-		if len(reader.lines) > 0 && !reader.endsWithNewline {
-			// The last line didn't end with a newline, append to it
-			newLineBytes = append(reader.lines[len(reader.lines)-1].raw, newLineBytes...)
-			newLine = &Line{raw: newLineBytes}
-			reader.lines[len(reader.lines)-1] = newLine
-		} else {
+			// FIXME: Strip any trailing \r here
+			newLine.raw = byteBuffer[lineStart:readBytes]
 			reader.lines = append(reader.lines, newLine)
 		}
-		reader.endsWithNewline = true
 
-		reader.Unlock()
-
-		// Reset our line buffer
-		completeLine = completeLine[:0]
+		reader.endsWithNewline = inspectionReader.endedWithNewline
 
 		// This is how to do a non-blocking write to a channel:
 		// https://gobyexample.com/non-blocking-channel-operations
@@ -337,6 +324,20 @@ func (reader *ReaderImpl) consumeLinesFromStream(stream io.Reader) {
 		case reader.MoreLinesAdded <- true:
 		default:
 			// Default case required for the write to be non-blocking
+		}
+
+		if err == io.EOF {
+			// Done!
+			break
+		}
+
+		if err != nil {
+			reader.Lock()
+			if reader.Err == nil {
+				// Store the error unless it overwrites one we already have
+				reader.Err = fmt.Errorf("error reading from input stream: %w", err)
+			}
+			reader.Unlock()
 		}
 	}
 
@@ -353,8 +354,6 @@ func (reader *ReaderImpl) consumeLinesFromStream(stream io.Reader) {
 	case reader.doneWaitingForFirstByte <- true:
 	default:
 	}
-
-	reader.endsWithNewline = inspectionReader.endedWithNewline
 
 	log.Info("Stream read in ", time.Since(t0), ", have ", reader.GetLineCount(), " lines")
 }
@@ -1049,7 +1048,7 @@ func (reader *ReaderImpl) PumpToStdout() {
 				continue
 			}
 
-			fmt.Println(line.Line.raw)
+			fmt.Println(string(line.Line.raw))
 			printed = true
 			firstNotPrintedLine = lineIndex.NonWrappingAdd(1)
 		}
