@@ -82,7 +82,7 @@ type Reader interface {
 }
 
 type Line struct {
-	raw            string
+	raw            []byte
 	plainTextCache atomic.Pointer[string] // Use line.Plain() to access this field
 }
 
@@ -307,19 +307,19 @@ func (reader *ReaderImpl) consumeLinesFromStream(stream io.Reader) {
 			break
 		}
 
-		newLineString := string(completeLine)
+		newLineBytes := append(make([]byte, 0), completeLine...)
 		if len(linePool) == 0 {
 			linePool = make([]Line, linePoolSize)
 		}
 		newLine := &linePool[0]
 		linePool = linePool[1:]
-		newLine.raw = newLineString
+		newLine.raw = newLineBytes
 
 		reader.Lock()
 		if len(reader.lines) > 0 && !reader.endsWithNewline {
 			// The last line didn't end with a newline, append to it
-			newLineString = reader.lines[len(reader.lines)-1].raw + newLineString
-			newLine = &Line{raw: newLineString}
+			newLineBytes = append(reader.lines[len(reader.lines)-1].raw, newLineBytes...)
+			newLine = &Line{raw: newLineBytes}
 			reader.lines[len(reader.lines)-1] = newLine
 		} else {
 			reader.lines = append(reader.lines, newLine)
@@ -536,7 +536,7 @@ func NewFromTextForTesting(name string, text string) *ReaderImpl {
 	lines := []*Line{}
 	if len(noExternalNewlines) > 0 {
 		for _, lineString := range strings.Split(noExternalNewlines, "\n") {
-			line := Line{raw: lineString}
+			line := Line{raw: []byte(lineString)}
 			lines = append(lines, &line)
 		}
 	}
@@ -692,31 +692,30 @@ func (reader *ReaderImpl) Wait() error {
 func textAsString(reader *ReaderImpl, shouldFormat bool) string {
 	reader.RLock()
 
-	text := strings.Builder{}
+	text := []byte{}
 	for _, line := range reader.lines {
-		text.WriteString(line.raw)
-		text.WriteString("\n")
+		text = append(text, line.raw...)
+		text = append(text, '\n')
 	}
-	result := text.String()
 	reader.RUnlock()
 
 	var jsonData any
-	err := json.Unmarshal([]byte(result), &jsonData)
+	err := json.Unmarshal(text, &jsonData)
 	if err != nil {
 		// Not JSON, return the text as-is
-		return result
+		return string(text)
 	}
 
 	if !shouldFormat {
 		log.Info("Try the --reformat flag for automatic JSON reformatting")
-		return result
+		return string(text)
 	}
 
 	// Pretty print the JSON
 	prettyJSON, err := json.MarshalIndent(jsonData, "", "  ")
 	if err != nil {
 		log.Debug("Failed to pretty print JSON: ", err)
-		return result
+		return string(text)
 	}
 
 	log.Debug("Got the --reformat flag, reformatted JSON input")
@@ -883,7 +882,7 @@ func (line *Line) Plain(index linemetadata.Index) string {
 		return *fromCache
 	}
 
-	plain := textstyles.StripFormatting(line.raw, index)
+	plain := textstyles.StripFormatting(string(line.raw), index)
 
 	// If this succeeds, all good. If it fails it means some other goroutine
 	// populated the cache before us, which is also fine.
@@ -1085,7 +1084,7 @@ func (reader *ReaderImpl) PumpToStdout() {
 func (reader *ReaderImpl) setText(text string) {
 	lines := []*Line{}
 	for _, lineString := range strings.Split(text, "\n") {
-		line := Line{raw: lineString}
+		line := Line{raw: []byte(lineString)}
 		lines = append(lines, &line)
 	}
 
