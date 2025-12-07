@@ -243,18 +243,17 @@ func (reader *ReaderImpl) maybePause() time.Duration {
 // It is used both during the initial read of the stream until it ends, and
 // while tailing files for changes.
 func (reader *ReaderImpl) consumeLinesFromStream(stream io.Reader) {
-	// These values affect BenchmarkReadLargeFile() performance. Validate changes
+	// This value affects BenchmarkReadLargeFile() performance. Validate changes
 	// like this:
 	//
 	//   go test -benchmem -run='^$' -bench 'BenchmarkReadLargeFile' ./internal/reader
-	const linePoolSize = 1000
-	const byteBufferSize = 64 * 1024
+	const byteBufferSize = 16 * 1024
 
 	reader.preAllocLines()
 
 	inspectionReader := inspectionReader{base: stream}
 
-	linePool := make([]Line, linePoolSize)
+	linePool := linePool{}
 
 	t0 := time.Now()
 	for {
@@ -288,14 +287,7 @@ func (reader *ReaderImpl) consumeLinesFromStream(stream io.Reader) {
 					baseLine.raw = completeLine
 					baseLine.plainTextCache.Store(nil) // Invalidate cache
 				} else {
-					// Get a new line from the pool
-					if len(linePool) == 0 {
-						linePool = make([]Line, linePoolSize)
-					}
-					newLine := &linePool[0]
-					linePool = linePool[1:]
-
-					newLine.raw = byteBuffer[lineStart:lineEndIndexExclusive]
+					newLine := linePool.create(byteBuffer[lineStart:lineEndIndexExclusive])
 					reader.lines = append(reader.lines, newLine)
 				}
 				reader.Unlock()
@@ -320,14 +312,7 @@ func (reader *ReaderImpl) consumeLinesFromStream(stream io.Reader) {
 				baseLine.raw = completeLine
 				baseLine.plainTextCache.Store(nil) // Invalidate cache
 			} else {
-				// Get a new line from the pool
-				if len(linePool) == 0 {
-					linePool = make([]Line, linePoolSize)
-				}
-				newLine := &linePool[0]
-				linePool = linePool[1:]
-
-				newLine.raw = byteBuffer[lineStart:]
+				newLine := linePool.create(byteBuffer[lineStart:readBytes])
 				reader.lines = append(reader.lines, newLine)
 			}
 			reader.Unlock()
