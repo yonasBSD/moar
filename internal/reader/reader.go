@@ -267,7 +267,7 @@ func (reader *ReaderImpl) consumeLinesFromStream(stream io.Reader) {
 
 		// Error or not, handle the bytes that we got
 		lineStart := 0
-		for byteIndex := 0; byteIndex < readBytes; byteIndex++ {
+		for byteIndex := range readBytes {
 			if byteBuffer[byteIndex] == '\n' {
 				// Line end
 				lineEndIndexExclusive := byteIndex
@@ -311,7 +311,10 @@ func (reader *ReaderImpl) consumeLinesFromStream(stream io.Reader) {
 
 			// FIXME: Strip any trailing \r here
 			newLine.raw = byteBuffer[lineStart:readBytes]
+
+			reader.Lock()
 			reader.lines = append(reader.lines, newLine)
+			reader.Unlock()
 		}
 
 		reader.endsWithNewline = inspectionReader.endedWithNewline
