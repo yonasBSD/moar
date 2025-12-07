@@ -280,9 +280,13 @@ func (reader *ReaderImpl) consumeLinesFromStream(stream io.Reader) {
 				if lineStart == 0 && !reader.endsWithNewline && len(reader.lines) > 0 {
 					// Special case, append to the previous line
 					baseLine := reader.lines[len(reader.lines)-1]
+
 					completeLine := make([]byte, len(baseLine.raw)+lineEndIndexExclusive)
 					copy(completeLine, baseLine.raw)
 					copy(completeLine[len(baseLine.raw):], byteBuffer[:lineEndIndexExclusive])
+
+					baseLine.raw = completeLine
+					baseLine.plainTextCache.Store(nil) // Invalidate cache
 				} else {
 					// Get a new line from the pool
 					if len(linePool) == 0 {

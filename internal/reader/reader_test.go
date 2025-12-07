@@ -214,8 +214,8 @@ func TestGetLongLine(t *testing.T) {
 	assert.Equal(t, len(lines.Lines), 1)
 
 	line := lines.Lines[0]
-	assert.Assert(t, strings.HasPrefix(line.Plain(), "1 2 3 4"), "<%s>", line)
-	assert.Assert(t, strings.HasSuffix(line.Plain(), "0123456789"), line)
+	assert.Assert(t, strings.HasPrefix(line.Plain(), "1 2 3 4"), "<%s>", line.Plain())
+	assert.Assert(t, strings.HasSuffix(line.Plain(), "0123456789"), line.Plain())
 
 	assert.Equal(t, len(line.Plain()), 100021)
 }
@@ -550,7 +550,7 @@ func TestReadUpdatingFile_HalfUtf8(t *testing.T) {
 	assert.NilError(t, err)
 
 	// Give the reader some time to react
-	for i := 0; i < 20; i++ {
+	for range 20 {
 		allLines := testMe.GetLines(linemetadata.Index{}, 10)
 		if len(allLines.Lines) == 2 {
 			break
