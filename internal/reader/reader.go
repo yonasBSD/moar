@@ -237,6 +237,36 @@ func (reader *ReaderImpl) maybePause() time.Duration {
 	}
 }
 
+// Assume write lock held. Add a new line.
+func (reader *ReaderImpl) assumeLockAndAddLine(line []byte, considerAppending bool, linePool *linePool) {
+	// Line end
+	if len(line) > 0 && line[len(line)-1] == '\r' {
+		line = line[:len(line)-1] // Handle MSDOS line endings
+	}
+
+	if len(reader.lines) == 0 {
+		// Can't append if there are no previous lines
+		considerAppending = false
+	}
+
+	if !considerAppending {
+		newLine := linePool.create(line)
+		reader.lines = append(reader.lines, newLine)
+		return
+	}
+
+	// Special case, append to the previous line
+	baseLine := reader.lines[len(reader.lines)-1]
+
+	// Build the complete line
+	completeLine := make([]byte, len(baseLine.raw)+len(line))
+	copy(completeLine, baseLine.raw)
+	copy(completeLine[len(baseLine.raw):], line)
+
+	baseLine.raw = completeLine
+	baseLine.plainTextCache.Store(nil) // Invalidate cache
+}
+
 // This function will update the Reader struct. It is expected to run in a
 // goroutine.
 //
@@ -269,27 +299,8 @@ func (reader *ReaderImpl) consumeLinesFromStream(stream io.Reader) {
 		lineStart := 0
 		for byteIndex := range readBytes {
 			if byteBuffer[byteIndex] == '\n' {
-				// Line end
-				lineEndIndexExclusive := byteIndex
-				if byteIndex > 0 && byteBuffer[byteIndex-1] == '\r' {
-					// Handle MSDOS line endings
-					lineEndIndexExclusive--
-				}
-
-				if lineStart == 0 && !reader.endsWithNewline && len(reader.lines) > 0 {
-					// Special case, append to the previous line
-					baseLine := reader.lines[len(reader.lines)-1]
-
-					completeLine := make([]byte, len(baseLine.raw)+lineEndIndexExclusive)
-					copy(completeLine, baseLine.raw)
-					copy(completeLine[len(baseLine.raw):], byteBuffer[:lineEndIndexExclusive])
-
-					baseLine.raw = completeLine
-					baseLine.plainTextCache.Store(nil) // Invalidate cache
-				} else {
-					newLine := linePool.create(byteBuffer[lineStart:lineEndIndexExclusive])
-					reader.lines = append(reader.lines, newLine)
-				}
+				considerAppending := lineStart == 0 && !reader.endsWithNewline
+				reader.assumeLockAndAddLine(byteBuffer[lineStart:byteIndex], considerAppending, &linePool)
 
 				lineStart = byteIndex + 1
 			}
@@ -297,22 +308,8 @@ func (reader *ReaderImpl) consumeLinesFromStream(stream io.Reader) {
 
 		// Handle any remaining bytes as a partial line
 		if lineStart < readBytes {
-			// FIXME: Handle MSDOS line endings here too
-
-			if lineStart == 0 && !reader.endsWithNewline && len(reader.lines) > 0 {
-				// Special case, append to the previous line
-				baseLine := reader.lines[len(reader.lines)-1]
-
-				completeLine := make([]byte, len(baseLine.raw)+readBytes-lineStart)
-				copy(completeLine, baseLine.raw)
-				copy(completeLine[len(baseLine.raw):], byteBuffer[lineStart:readBytes])
-
-				baseLine.raw = completeLine
-				baseLine.plainTextCache.Store(nil) // Invalidate cache
-			} else {
-				newLine := linePool.create(byteBuffer[lineStart:readBytes])
-				reader.lines = append(reader.lines, newLine)
-			}
+			considerAppending := lineStart == 0 && !reader.endsWithNewline
+			reader.assumeLockAndAddLine(byteBuffer[lineStart:readBytes], considerAppending, &linePool)
 		}
 		reader.Unlock()
 
