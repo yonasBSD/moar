@@ -972,7 +972,8 @@ func clipRangeToLength(start linemetadata.Index, wantedCount int, maxIndex int) 
 // GetLines gets the indicated lines from the input
 func (reader *ReaderImpl) GetLines(firstLine linemetadata.Index, wantedLineCount int) InputLines {
 	reader.RLock()
-	if len(reader.lines) == 0 || wantedLineCount == 0 {
+	lineCount := len(reader.lines)
+	if lineCount == 0 || wantedLineCount == 0 {
 		statusText := reader.createStatusUnlocked(firstLine)
 		reader.RUnlock()
 
@@ -982,7 +983,7 @@ func (reader *ReaderImpl) GetLines(firstLine linemetadata.Index, wantedLineCount
 	}
 	reader.RUnlock()
 
-	firstLineIndex, lastLineIndex := clipRangeToLength(firstLine, wantedLineCount, len(reader.lines)-1)
+	firstLineIndex, lastLineIndex := clipRangeToLength(firstLine, wantedLineCount, lineCount-1)
 	wantedLineCount = lastLineIndex - firstLineIndex + 1
 
 	resultLines := make([]NumberedLine, 0, wantedLineCount)
