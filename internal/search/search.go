@@ -118,6 +118,12 @@ func (search Search) GetMatchRanges(String string) *MatchRanges {
 		return nil
 	}
 
+	if !search.hasUppercase {
+		// Case insensitive search, lowercase the string. The pattern is already
+		// lowercase whenever hasUppercase is false.
+		String = strings.ToLower(String)
+	}
+
 	return &MatchRanges{
 		Matches: toRunePositions(search.pattern.FindAllStringIndex(String, -1), String),
 	}

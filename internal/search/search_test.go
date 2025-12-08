@@ -8,7 +8,7 @@ import (
 	"gotest.tools/v3/assert"
 )
 
-func TestToPattern(t *testing.T) {
+func TestSearchForMatch(t *testing.T) {
 	assert.Assert(t, For("").pattern == nil)
 
 	// Test regexp matching

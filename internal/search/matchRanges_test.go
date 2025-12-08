@@ -86,3 +86,37 @@ func TestRealWorldBug(t *testing.T) {
 	assert.DeepEqual(t, matchRanges.Matches[1][0], 2) // Second match starts at 2
 	assert.DeepEqual(t, matchRanges.Matches[1][1], 3) // And ends on 3 exclusive
 }
+
+func TestMatchRanges_CaseSensitiveRegex(t *testing.T) {
+	matchRanges := For("G.*S").GetMatchRanges("GRIIIS")
+	assert.Assert(t, len(matchRanges.Matches) > 0)
+
+	matchRangesLower := For("G.*S").GetMatchRanges("griiis")
+	assert.Assert(t, matchRangesLower == nil || len(matchRangesLower.Matches) == 0)
+}
+
+func TestMatchRanges_CaseInsensitiveRegex(t *testing.T) {
+	testString := "GRIIIS"
+	matchRanges := For("g.*s").GetMatchRanges(testString)
+	assert.Assert(t, len(matchRanges.Matches) > 0)
+}
+
+func TestMatchRanges_CaseSensitiveSubstring(t *testing.T) {
+	matchRanges := For(")G").GetMatchRanges(")G")
+	assert.Assert(t, len(matchRanges.Matches) == 1)
+
+	matchRangesLower := For(")G").GetMatchRanges(")g")
+	assert.Assert(t, matchRangesLower == nil || len(matchRangesLower.Matches) == 0)
+}
+
+func TestMatchRanges_CaseInsensitiveSubstring(t *testing.T) {
+	testString := ")G"
+	matchRanges := For(")g").GetMatchRanges(testString)
+	assert.Assert(t, len(matchRanges.Matches) == 1)
+}
+
+func TestMatchRanges_EmptyPattern(t *testing.T) {
+	testString := "anything"
+	matchRanges := For("").GetMatchRanges(testString)
+	assert.Assert(t, matchRanges == nil)
+}
