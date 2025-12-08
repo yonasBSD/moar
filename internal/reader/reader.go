@@ -218,27 +218,27 @@ func (reader *ReaderImpl) readStream(stream io.Reader, formatter chroma.Formatte
 
 // Pause if we should pause, otherwise not. Pausing means waiting for
 // pauseAfterLinesUpdated to be signalled in SetPauseAfterLines().
-func (reader *ReaderImpl) maybePause() time.Duration {
-	t0 := time.Now()
-
+func (reader *ReaderImpl) assumeLockAndMaybePause() {
 	for {
-		reader.RLock()
 		shouldPause := len(reader.lines) >= reader.pauseAfterLines
-		reader.RUnlock()
 
 		if !shouldPause {
 			// Not there yet, no pause
 			reader.setPauseStatus(false)
-			return time.Since(t0)
+			return
 		}
 
+		// Release lock while pausing
+		reader.Unlock()
 		reader.setPauseStatus(true)
 		<-reader.pauseAfterLinesUpdated
+		reader.Lock()
 	}
 }
 
-// Assume write lock held. Add a new line.
-func (reader *ReaderImpl) assumeLockAndAddLine(line []byte, considerAppending bool, linePool *linePool) {
+// Assume write lock held. Add a new line. If this function paused, it will
+// return the pause duration.
+func (reader *ReaderImpl) assumeLockAndAddLine(line []byte, considerAppending bool, linePool *linePool) time.Duration {
 	// Line end
 	if len(line) > 0 && line[len(line)-1] == '\r' {
 		line = line[:len(line)-1] // Handle MSDOS line endings
@@ -250,9 +250,16 @@ func (reader *ReaderImpl) assumeLockAndAddLine(line []byte, considerAppending bo
 	}
 
 	if !considerAppending {
+		t0 := time.Now()
+
+		// We are about to add a new line, check if we should pause first?
+		reader.assumeLockAndMaybePause()
+		pauseDuration := time.Since(t0)
+
 		newLine := linePool.create(line)
 		reader.lines = append(reader.lines, newLine)
-		return
+
+		return pauseDuration
 	}
 
 	// Special case, append to the previous line
@@ -265,6 +272,8 @@ func (reader *ReaderImpl) assumeLockAndAddLine(line []byte, considerAppending bo
 
 	baseLine.raw = completeLine
 	baseLine.plainTextCache.Store(nil) // Invalidate cache
+
+	return 0
 }
 
 // This function will update the Reader struct. It is expected to run in a
@@ -287,10 +296,6 @@ func (reader *ReaderImpl) consumeLinesFromStream(stream io.Reader) {
 
 	t0 := time.Now()
 	for {
-		// Deduct pause times so the final number says how much time we actually
-		// spent reading.
-		t0 = t0.Add(reader.maybePause())
-
 		byteBuffer := make([]byte, byteBufferSize)
 		readBytes, err := inspectionReader.Read(byteBuffer)
 
@@ -300,7 +305,8 @@ func (reader *ReaderImpl) consumeLinesFromStream(stream io.Reader) {
 		for byteIndex := range readBytes {
 			if byteBuffer[byteIndex] == '\n' {
 				considerAppending := lineStart == 0 && !reader.endsWithNewline
-				reader.assumeLockAndAddLine(byteBuffer[lineStart:byteIndex], considerAppending, &linePool)
+				pauseDuration := reader.assumeLockAndAddLine(byteBuffer[lineStart:byteIndex], considerAppending, &linePool)
+				t0 = t0.Add(pauseDuration)
 
 				lineStart = byteIndex + 1
 			}
@@ -309,7 +315,8 @@ func (reader *ReaderImpl) consumeLinesFromStream(stream io.Reader) {
 		// Handle any remaining bytes as a partial line
 		if lineStart < readBytes {
 			considerAppending := lineStart == 0 && !reader.endsWithNewline
-			reader.assumeLockAndAddLine(byteBuffer[lineStart:readBytes], considerAppending, &linePool)
+			pauseDuration := reader.assumeLockAndAddLine(byteBuffer[lineStart:readBytes], considerAppending, &linePool)
+			t0 = t0.Add(pauseDuration)
 		}
 		reader.Unlock()
 
