@@ -313,14 +313,22 @@ func (reader *ReaderImpl) consumeLinesFromStream(stream io.Reader) {
 		// Error or not, handle the bytes that we got
 		reader.Lock()
 		lineStart := 0
-		for byteIndex := range readBytes {
-			if byteBuffer[byteIndex] == '\n' {
-				considerAppending := lineStart == 0 && !reader.endsWithNewline
-				pauseDuration := reader.assumeLockAndAddLine(byteBuffer[lineStart:byteIndex], considerAppending, &linePool)
-				t0 = t0.Add(pauseDuration)
-
-				lineStart = byteIndex + 1
+		byteIndex := 0
+		for readBytes > 0 {
+			relativeNewlineLocation := bytes.IndexByte(byteBuffer[byteIndex:readBytes], '\n')
+			if relativeNewlineLocation == -1 {
+				// No more newlines in this buffer
+				break
 			}
+
+			byteIndex += relativeNewlineLocation
+
+			considerAppending := lineStart == 0 && !reader.endsWithNewline
+			pauseDuration := reader.assumeLockAndAddLine(byteBuffer[lineStart:byteIndex], considerAppending, &linePool)
+			t0 = t0.Add(pauseDuration)
+
+			lineStart = byteIndex + 1
+			byteIndex = lineStart
 		}
 
 		// Handle any remaining bytes as a partial line
