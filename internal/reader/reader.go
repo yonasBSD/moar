@@ -295,9 +295,20 @@ func (reader *ReaderImpl) consumeLinesFromStream(stream io.Reader) {
 
 	linePool := linePool{}
 
+	awaitingFirstByte := true
 	for {
 		byteBuffer := make([]byte, byteBufferSize)
 		readBytes, err := inspectionReader.Read(byteBuffer)
+
+		if awaitingFirstByte && readBytes > 0 {
+			// We got our first byte!
+			select {
+			case reader.doneWaitingForFirstByte <- true:
+			default:
+			}
+
+			awaitingFirstByte = false
+		}
 
 		// Error or not, handle the bytes that we got
 		reader.Lock()
@@ -343,6 +354,7 @@ func (reader *ReaderImpl) consumeLinesFromStream(stream io.Reader) {
 				reader.Err = fmt.Errorf("error reading from input stream: %w", err)
 			}
 			reader.Unlock()
+			break
 		}
 	}
 
@@ -352,12 +364,14 @@ func (reader *ReaderImpl) consumeLinesFromStream(stream io.Reader) {
 		reader.Unlock()
 	}
 
-	// If the stream was empty we never got any first byte. Make sure people
-	// stop waiting in this case. Async write since it might already have been
-	// written to.
-	select {
-	case reader.doneWaitingForFirstByte <- true:
-	default:
+	if awaitingFirstByte {
+		// If the stream was empty we never got any first byte. Make sure people
+		// stop waiting in this case. Async write since it might already have been
+		// written to.
+		select {
+		case reader.doneWaitingForFirstByte <- true:
+		default:
+		}
 	}
 
 	log.Info("Stream read in ", time.Since(t0), ", have ", reader.GetLineCount(), " lines")
