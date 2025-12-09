@@ -250,12 +250,11 @@ func (reader *ReaderImpl) assumeLockAndAddLine(line []byte, considerAppending bo
 	}
 
 	if !considerAppending {
-		t0 := time.Now()
-
 		newLine := linePool.create(line)
 		reader.lines = append(reader.lines, newLine)
 
 		// New line added, time for a break?
+		t0 := time.Now()
 		reader.assumeLockAndMaybePause()
 		pauseDuration := time.Since(t0)
 
@@ -319,9 +318,10 @@ func (reader *ReaderImpl) consumeLinesFromStream(stream io.Reader) {
 			pauseDuration := reader.assumeLockAndAddLine(byteBuffer[lineStart:readBytes], considerAppending, &linePool)
 			t0 = t0.Add(pauseDuration)
 		}
-		reader.Unlock()
 
 		reader.endsWithNewline = inspectionReader.endedWithNewline
+
+		reader.Unlock()
 
 		// This is how to do a non-blocking write to a channel:
 		// https://gobyexample.com/non-blocking-channel-operations
