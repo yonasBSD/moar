@@ -17,7 +17,7 @@ func (line *Line) HighlightedTokens(
 ) textstyles.StyledRunesWithTrailer {
 	matchRanges := search.GetMatchRanges(line.Plain(lineIndex))
 
-	fromString := textstyles.StyledRunesFromString(plainTextStyle, line.raw, &lineIndex)
+	fromString := textstyles.StyledRunesFromString(plainTextStyle, string(line.raw), &lineIndex)
 	returnRunes := make([]textstyles.CellWithMetadata, 0, len(fromString.StyledRunes))
 	lastWasSearchHit := false
 	for _, token := range fromString.StyledRunes {
@@ -45,5 +45,5 @@ func (line *Line) HighlightedTokens(
 }
 
 func (line *Line) HasManPageFormatting() bool {
-	return textstyles.HasManPageFormatting(line.raw)
+	return textstyles.HasManPageFormatting(string(line.raw))
 }

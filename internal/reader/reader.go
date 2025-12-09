@@ -82,7 +82,7 @@ type Reader interface {
 }
 
 type Line struct {
-	raw            string
+	raw            []byte
 	plainTextCache atomic.Pointer[string] // Use line.Plain() to access this field
 }
 
@@ -218,23 +218,61 @@ func (reader *ReaderImpl) readStream(stream io.Reader, formatter chroma.Formatte
 
 // Pause if we should pause, otherwise not. Pausing means waiting for
 // pauseAfterLinesUpdated to be signalled in SetPauseAfterLines().
-func (reader *ReaderImpl) maybePause() time.Duration {
-	t0 := time.Now()
-
+func (reader *ReaderImpl) assumeLockAndMaybePause() {
 	for {
-		reader.RLock()
 		shouldPause := len(reader.lines) >= reader.pauseAfterLines
-		reader.RUnlock()
 
 		if !shouldPause {
 			// Not there yet, no pause
 			reader.setPauseStatus(false)
-			return time.Since(t0)
+			return
 		}
 
+		// Release lock while pausing
+		reader.Unlock()
 		reader.setPauseStatus(true)
 		<-reader.pauseAfterLinesUpdated
+		reader.Lock()
 	}
+}
+
+// Assume write lock held. Add a new line. If this function paused, it will
+// return the pause duration.
+func (reader *ReaderImpl) assumeLockAndAddLine(line []byte, considerAppending bool, linePool *linePool) time.Duration {
+	// Line end
+	if len(line) > 0 && line[len(line)-1] == '\r' {
+		line = line[:len(line)-1] // Handle MSDOS line endings
+	}
+
+	if len(reader.lines) == 0 {
+		// Can't append if there are no previous lines
+		considerAppending = false
+	}
+
+	if !considerAppending {
+		newLine := linePool.create(line)
+		reader.lines = append(reader.lines, newLine)
+
+		// New line added, time for a break?
+		t0 := time.Now()
+		reader.assumeLockAndMaybePause()
+		pauseDuration := time.Since(t0)
+
+		return pauseDuration
+	}
+
+	// Special case, append to the previous line
+	baseLine := reader.lines[len(reader.lines)-1]
+
+	// Build the complete line
+	completeLine := make([]byte, len(baseLine.raw)+len(line))
+	copy(completeLine, baseLine.raw)
+	copy(completeLine[len(baseLine.raw):], line)
+
+	baseLine.raw = completeLine
+	baseLine.plainTextCache.Store(nil) // Invalidate cache
+
+	return 0
 }
 
 // This function will update the Reader struct. It is expected to run in a
@@ -247,89 +285,54 @@ func (reader *ReaderImpl) consumeLinesFromStream(stream io.Reader) {
 	// like this:
 	//
 	//   go test -benchmem -run='^$' -bench 'BenchmarkReadLargeFile' ./internal/reader
+	const byteBufferSize = 16 * 1024
 
-	const linePoolSize = 1000
+	t0 := time.Now()
 
 	reader.preAllocLines()
 
 	inspectionReader := inspectionReader{base: stream}
-	bufioReader := bufio.NewReaderSize(&inspectionReader, 64*1024)
-	completeLine := make([]byte, 0)
 
-	linePool := make([]Line, linePoolSize)
+	linePool := linePool{}
 
-	t0 := time.Now()
+	awaitingFirstByte := true
 	for {
-		// Deduct pause times so the final number says how much time we actually
-		// spent reading.
-		t0 = t0.Add(reader.maybePause())
+		byteBuffer := make([]byte, byteBufferSize)
+		readBytes, err := inspectionReader.Read(byteBuffer)
 
-		keepReadingLine := true
-		eof := false
-
-		var lineBytes []byte
-		var err error
-		for keepReadingLine {
-			lineBytes, keepReadingLine, err = bufioReader.ReadLine()
-
-			if err == nil {
-				select {
-				// Async write, we probably already wrote to it during the last
-				// iteration
-				case reader.doneWaitingForFirstByte <- true:
-				default:
-				}
-
-				completeLine = append(completeLine, lineBytes...)
-				continue
+		if awaitingFirstByte && readBytes > 0 {
+			// We got our first byte!
+			select {
+			case reader.doneWaitingForFirstByte <- true:
+			default:
 			}
 
-			// Something went wrong
-
-			if err == io.EOF {
-				eof = true
-				break
-			}
-
-			reader.Lock()
-			if reader.Err == nil {
-				// Store the error unless it overwrites one we already have
-				reader.Err = fmt.Errorf("error reading line from input stream: %w", err)
-			}
-			reader.Unlock()
+			awaitingFirstByte = false
 		}
 
-		if eof {
-			break
-		}
-
-		if reader.Err != nil {
-			break
-		}
-
-		newLineString := string(completeLine)
-		if len(linePool) == 0 {
-			linePool = make([]Line, linePoolSize)
-		}
-		newLine := &linePool[0]
-		linePool = linePool[1:]
-		newLine.raw = newLineString
-
+		// Error or not, handle the bytes that we got
 		reader.Lock()
-		if len(reader.lines) > 0 && !reader.endsWithNewline {
-			// The last line didn't end with a newline, append to it
-			newLineString = reader.lines[len(reader.lines)-1].raw + newLineString
-			newLine = &Line{raw: newLineString}
-			reader.lines[len(reader.lines)-1] = newLine
-		} else {
-			reader.lines = append(reader.lines, newLine)
+		lineStart := 0
+		for byteIndex := range readBytes {
+			if byteBuffer[byteIndex] == '\n' {
+				considerAppending := lineStart == 0 && !reader.endsWithNewline
+				pauseDuration := reader.assumeLockAndAddLine(byteBuffer[lineStart:byteIndex], considerAppending, &linePool)
+				t0 = t0.Add(pauseDuration)
+
+				lineStart = byteIndex + 1
+			}
 		}
-		reader.endsWithNewline = true
+
+		// Handle any remaining bytes as a partial line
+		if lineStart < readBytes {
+			considerAppending := lineStart == 0 && !reader.endsWithNewline
+			pauseDuration := reader.assumeLockAndAddLine(byteBuffer[lineStart:readBytes], considerAppending, &linePool)
+			t0 = t0.Add(pauseDuration)
+		}
+
+		reader.endsWithNewline = inspectionReader.endedWithNewline
 
 		reader.Unlock()
-
-		// Reset our line buffer
-		completeLine = completeLine[:0]
 
 		// This is how to do a non-blocking write to a channel:
 		// https://gobyexample.com/non-blocking-channel-operations
@@ -337,6 +340,21 @@ func (reader *ReaderImpl) consumeLinesFromStream(stream io.Reader) {
 		case reader.MoreLinesAdded <- true:
 		default:
 			// Default case required for the write to be non-blocking
+		}
+
+		if err == io.EOF {
+			// Done!
+			break
+		}
+
+		if err != nil {
+			reader.Lock()
+			if reader.Err == nil {
+				// Store the error unless it overwrites one we already have
+				reader.Err = fmt.Errorf("error reading from input stream: %w", err)
+			}
+			reader.Unlock()
+			break
 		}
 	}
 
@@ -346,15 +364,15 @@ func (reader *ReaderImpl) consumeLinesFromStream(stream io.Reader) {
 		reader.Unlock()
 	}
 
-	// If the stream was empty we never got any first byte. Make sure people
-	// stop waiting in this case. Async write since it might already have been
-	// written to.
-	select {
-	case reader.doneWaitingForFirstByte <- true:
-	default:
+	if awaitingFirstByte {
+		// If the stream was empty we never got any first byte. Make sure people
+		// stop waiting in this case. Async write since it might already have been
+		// written to.
+		select {
+		case reader.doneWaitingForFirstByte <- true:
+		default:
+		}
 	}
-
-	reader.endsWithNewline = inspectionReader.endedWithNewline
 
 	log.Info("Stream read in ", time.Since(t0), ", have ", reader.GetLineCount(), " lines")
 }
@@ -536,7 +554,7 @@ func NewFromTextForTesting(name string, text string) *ReaderImpl {
 	lines := []*Line{}
 	if len(noExternalNewlines) > 0 {
 		for _, lineString := range strings.Split(noExternalNewlines, "\n") {
-			line := Line{raw: lineString}
+			line := Line{raw: []byte(lineString)}
 			lines = append(lines, &line)
 		}
 	}
@@ -692,31 +710,30 @@ func (reader *ReaderImpl) Wait() error {
 func textAsString(reader *ReaderImpl, shouldFormat bool) string {
 	reader.RLock()
 
-	text := strings.Builder{}
+	text := []byte{}
 	for _, line := range reader.lines {
-		text.WriteString(line.raw)
-		text.WriteString("\n")
+		text = append(text, line.raw...)
+		text = append(text, '\n')
 	}
-	result := text.String()
 	reader.RUnlock()
 
 	var jsonData any
-	err := json.Unmarshal([]byte(result), &jsonData)
+	err := json.Unmarshal(text, &jsonData)
 	if err != nil {
 		// Not JSON, return the text as-is
-		return result
+		return string(text)
 	}
 
 	if !shouldFormat {
 		log.Info("Try the --reformat flag for automatic JSON reformatting")
-		return result
+		return string(text)
 	}
 
 	// Pretty print the JSON
 	prettyJSON, err := json.MarshalIndent(jsonData, "", "  ")
 	if err != nil {
 		log.Debug("Failed to pretty print JSON: ", err)
-		return result
+		return string(text)
 	}
 
 	log.Debug("Got the --reformat flag, reformatted JSON input")
@@ -883,7 +900,7 @@ func (line *Line) Plain(index linemetadata.Index) string {
 		return *fromCache
 	}
 
-	plain := textstyles.StripFormatting(line.raw, index)
+	plain := textstyles.StripFormatting(string(line.raw), index)
 
 	// If this succeeds, all good. If it fails it means some other goroutine
 	// populated the cache before us, which is also fine.
@@ -1050,7 +1067,7 @@ func (reader *ReaderImpl) PumpToStdout() {
 				continue
 			}
 
-			fmt.Println(line.Line.raw)
+			fmt.Println(string(line.Line.raw))
 			printed = true
 			firstNotPrintedLine = lineIndex.NonWrappingAdd(1)
 		}
@@ -1085,7 +1102,7 @@ func (reader *ReaderImpl) PumpToStdout() {
 func (reader *ReaderImpl) setText(text string) {
 	lines := []*Line{}
 	for _, lineString := range strings.Split(text, "\n") {
-		line := Line{raw: lineString}
+		line := Line{raw: []byte(lineString)}
 		lines = append(lines, &line)
 	}
 
