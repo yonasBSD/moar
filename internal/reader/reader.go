@@ -288,13 +288,14 @@ func (reader *ReaderImpl) consumeLinesFromStream(stream io.Reader) {
 	//   go test -benchmem -run='^$' -bench 'BenchmarkReadLargeFile' ./internal/reader
 	const byteBufferSize = 16 * 1024
 
+	t0 := time.Now()
+
 	reader.preAllocLines()
 
 	inspectionReader := inspectionReader{base: stream}
 
 	linePool := linePool{}
 
-	t0 := time.Now()
 	for {
 		byteBuffer := make([]byte, byteBufferSize)
 		readBytes, err := inspectionReader.Read(byteBuffer)
