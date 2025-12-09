@@ -252,12 +252,12 @@ func (reader *ReaderImpl) assumeLockAndAddLine(line []byte, considerAppending bo
 	if !considerAppending {
 		t0 := time.Now()
 
-		// We are about to add a new line, check if we should pause first?
-		reader.assumeLockAndMaybePause()
-		pauseDuration := time.Since(t0)
-
 		newLine := linePool.create(line)
 		reader.lines = append(reader.lines, newLine)
+
+		// New line added, time for a break?
+		reader.assumeLockAndMaybePause()
+		pauseDuration := time.Since(t0)
 
 		return pauseDuration
 	}
