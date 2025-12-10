@@ -151,40 +151,6 @@ type InputLines struct {
 	StatusText string
 }
 
-// Count lines in the original file and preallocate space for them.  Good
-// performance improvement:
-//
-// go test -benchmem -benchtime=10s -run='^$' -bench 'ReadLargeFile'
-func (reader *ReaderImpl) preAllocLines() {
-	if reader.FileName == nil {
-		return
-	}
-
-	if reader.GetLineCount() > 0 {
-		// We already have lines, could be because we're tailing some file. Too
-		// late for pre-allocation.
-		return
-	}
-
-	lineCount, err := countLines(*reader.FileName)
-	if err != nil {
-		log.Warn("Line counting failed: ", err)
-		return
-	}
-
-	reader.Lock()
-	defer reader.Unlock()
-
-	if len(reader.lines) != 0 {
-		// I don't understand how this could happen.
-		log.Warnf("Already had %d lines by the time counting was done", len(reader.lines))
-		return
-	}
-
-	// We had no lines since before, this is the expected happy path.
-	reader.lines = make([]*Line, 0, lineCount)
-}
-
 // This is the reader's main function. It will be run in a goroutine. First it
 // reads the stream until the end, then starts tailing.
 func (reader *ReaderImpl) readStream(stream io.Reader, formatter chroma.Formatter, options ReaderOptions) {
@@ -289,11 +255,29 @@ func (reader *ReaderImpl) consumeLinesFromStream(stream io.Reader) {
 
 	t0 := time.Now()
 
-	reader.preAllocLines()
+	// Preallocating the line pool and the lines slice improves large file
+	// reading performance by 10%.
+	linePool := linePool{}
+	if reader.FileName != nil && reader.GetLineCount() == 0 {
+		lineCount, err := countLines(*reader.FileName)
+		if err != nil {
+			log.Warn("Failed to count lines in file: ", err)
+		} else {
+			// We have a line count...
+			reader.Lock()
+			if len(reader.lines) == 0 {
+				// ... and still no lines have been read, so preallocate both
+				// the lines slice...
+				reader.lines = make([]*Line, 0, lineCount)
+
+				// ... and the line pool.
+				linePool.pool = make([]Line, lineCount)
+			}
+			reader.Unlock()
+		}
+	}
 
 	inspectionReader := inspectionReader{base: stream}
-
-	linePool := linePool{}
 
 	awaitingFirstByte := true
 	for {
