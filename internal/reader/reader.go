@@ -95,7 +95,7 @@ type Line struct {
 type ReaderImpl struct {
 	sync.RWMutex
 
-	lines []*Line
+	lines []Line
 
 	// Display name for the buffer. If not set, no buffer name will be shown.
 	//
@@ -182,7 +182,7 @@ func (reader *ReaderImpl) preAllocLines() {
 	}
 
 	// We had no lines since before, this is the expected happy path.
-	reader.lines = make([]*Line, 0, lineCount)
+	reader.lines = make([]Line, 0, lineCount)
 }
 
 // This is the reader's main function. It will be run in a goroutine. First it
@@ -238,7 +238,7 @@ func (reader *ReaderImpl) assumeLockAndMaybePause() {
 
 // Assume write lock held. Add a new line. If this function paused, it will
 // return the pause duration.
-func (reader *ReaderImpl) assumeLockAndAddLine(line []byte, considerAppending bool, linePool *linePool) time.Duration {
+func (reader *ReaderImpl) assumeLockAndAddLine(line []byte, considerAppending bool) time.Duration {
 	// Line end
 	if len(line) > 0 && line[len(line)-1] == '\r' {
 		line = line[:len(line)-1] // Handle MSDOS line endings
@@ -250,8 +250,9 @@ func (reader *ReaderImpl) assumeLockAndAddLine(line []byte, considerAppending bo
 	}
 
 	if !considerAppending {
-		newLine := linePool.create(line)
-		reader.lines = append(reader.lines, newLine)
+		reader.lines = append(reader.lines, Line{
+			raw: line,
+		})
 
 		// New line added, time for a break?
 		t0 := time.Now()
@@ -262,15 +263,15 @@ func (reader *ReaderImpl) assumeLockAndAddLine(line []byte, considerAppending bo
 	}
 
 	// Special case, append to the previous line
-	baseLine := reader.lines[len(reader.lines)-1]
+	baseText := reader.lines[len(reader.lines)-1].raw
 
 	// Build the complete line
-	completeLine := make([]byte, len(baseLine.raw)+len(line))
-	copy(completeLine, baseLine.raw)
-	copy(completeLine[len(baseLine.raw):], line)
+	completeLine := make([]byte, len(baseText)+len(line))
+	copy(completeLine, baseText)
+	copy(completeLine[len(baseText):], line)
 
-	baseLine.raw = completeLine
-	baseLine.plainTextCache.Store(nil) // Invalidate cache
+	reader.lines[len(reader.lines)-1].raw = completeLine
+	reader.lines[len(reader.lines)-1].plainTextCache.Store(nil) // Invalidate cache
 
 	return 0
 }
@@ -292,8 +293,6 @@ func (reader *ReaderImpl) consumeLinesFromStream(stream io.Reader) {
 	reader.preAllocLines()
 
 	inspectionReader := inspectionReader{base: stream}
-
-	linePool := linePool{}
 
 	awaitingFirstByte := true
 	for {
@@ -324,7 +323,7 @@ func (reader *ReaderImpl) consumeLinesFromStream(stream io.Reader) {
 			byteIndex += relativeNewlineLocation
 
 			considerAppending := lineStart == 0 && !reader.endsWithNewline
-			pauseDuration := reader.assumeLockAndAddLine(byteBuffer[lineStart:byteIndex], considerAppending, &linePool)
+			pauseDuration := reader.assumeLockAndAddLine(byteBuffer[lineStart:byteIndex], considerAppending)
 			t0 = t0.Add(pauseDuration)
 
 			lineStart = byteIndex + 1
@@ -334,7 +333,7 @@ func (reader *ReaderImpl) consumeLinesFromStream(stream io.Reader) {
 		// Handle any remaining bytes as a partial line
 		if lineStart < readBytes {
 			considerAppending := lineStart == 0 && !reader.endsWithNewline
-			pauseDuration := reader.assumeLockAndAddLine(byteBuffer[lineStart:readBytes], considerAppending, &linePool)
+			pauseDuration := reader.assumeLockAndAddLine(byteBuffer[lineStart:readBytes], considerAppending)
 			t0 = t0.Add(pauseDuration)
 		}
 
@@ -559,11 +558,10 @@ func newReaderFromStream(reader io.Reader, originalFileName *string, formatter c
 // asynchronous ops will be performed.
 func NewFromTextForTesting(name string, text string) *ReaderImpl {
 	noExternalNewlines := strings.Trim(text, "\n")
-	lines := []*Line{}
+	lines := []Line{}
 	if len(noExternalNewlines) > 0 {
 		for _, lineString := range strings.Split(noExternalNewlines, "\n") {
-			line := Line{raw: []byte(lineString)}
-			lines = append(lines, &line)
+			lines = append(lines, Line{raw: []byte(lineString)})
 		}
 	}
 	readingDone := atomic.Bool{}
@@ -719,8 +717,8 @@ func textAsString(reader *ReaderImpl, shouldFormat bool) string {
 	reader.RLock()
 
 	text := []byte{}
-	for _, line := range reader.lines {
-		text = append(text, line.raw...)
+	for i := 0; i < len(reader.lines); i++ {
+		text = append(text, reader.lines[i].raw...)
 		text = append(text, '\n')
 	}
 	reader.RUnlock()
@@ -758,8 +756,8 @@ func highlightFromMemory(reader *ReaderImpl, formatter chroma.Formatter, options
 	// Is the buffer small enough?
 	var byteCount int64
 	reader.RLock()
-	for _, line := range reader.lines {
-		byteCount += int64(len(line.raw))
+	for i := 0; i < len(reader.lines); i++ {
+		byteCount += int64(len(reader.lines[i].raw))
 
 		if byteCount > MAX_HIGHLIGHT_SIZE {
 			log.Info("File too large for highlighting: ", byteCount)
@@ -948,13 +946,12 @@ func (reader *ReaderImpl) GetLine(index linemetadata.Index) *NumberedLine {
 		return nil
 	}
 
-	returnLine := reader.lines[index.Index()]
-	reader.RUnlock()
+	defer reader.RUnlock()
 
 	return &NumberedLine{
 		Index:  index,
 		Number: linemetadata.NumberFromZeroBased(index.Index()),
-		Line:   returnLine,
+		Line:   &reader.lines[index.Index()],
 	}
 }
 
@@ -1043,11 +1040,11 @@ func (reader *ReaderImpl) GetLinesPreallocated(firstLine linemetadata.Index, res
 
 	statusText := reader.createStatusUnlocked(linemetadata.IndexFromZeroBased(lastLineIndex))
 
-	for loopIndex, returnLine := range reader.lines[firstLineIndex : lastLineIndex+1] {
+	for loopIndex := range reader.lines[firstLineIndex : lastLineIndex+1] {
 		*resultLines = append(*resultLines, NumberedLine{
 			Index:  linemetadata.IndexFromZeroBased(firstLineIndex + loopIndex),
 			Number: linemetadata.NumberFromZeroBased(firstLineIndex + loopIndex),
-			Line:   returnLine,
+			Line:   &reader.lines[firstLineIndex+loopIndex],
 		})
 	}
 
@@ -1108,10 +1105,9 @@ func (reader *ReaderImpl) PumpToStdout() {
 // Replace reader contents with the given text. Consider setting
 // HighlightingDone and signalling the MaybeDone channel afterwards.
 func (reader *ReaderImpl) setText(text string) {
-	lines := []*Line{}
+	lines := []Line{}
 	for _, lineString := range strings.Split(text, "\n") {
-		line := Line{raw: []byte(lineString)}
-		lines = append(lines, &line)
+		lines = append(lines, Line{raw: []byte(lineString)})
 	}
 
 	if len(lines) > 0 && strings.HasSuffix(text, "\n") {
