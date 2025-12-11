@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -651,6 +652,9 @@ func BenchmarkReadLargeFile(b *testing.B) {
 	targetLineCount := largeSizeBytes * 2
 
 	b.SetBytes(int64(totalBytesWritten))
+
+	// Try making the whole run more predictable
+	runtime.GC()
 
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
