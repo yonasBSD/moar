@@ -190,7 +190,6 @@ func (reader *ReaderImpl) assumeLockAndMaybePause() {
 
 		if !shouldPause {
 			// Not there yet, no pause
-			reader.setPauseStatus(false)
 			return
 		}
 
@@ -198,6 +197,7 @@ func (reader *ReaderImpl) assumeLockAndMaybePause() {
 		reader.Unlock()
 		reader.setPauseStatus(true)
 		<-reader.pauseAfterLinesUpdated
+		reader.setPauseStatus(false)
 		reader.Lock()
 	}
 }
