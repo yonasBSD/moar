@@ -340,7 +340,7 @@ func (p *Pager) setFooter(prefix string, filename string, status string, help st
 	}
 
 	// percentage,
-	for _, token := range " " + status + " " {
+	for _, token := range status + "  " {
 		pos += p.screen.SetCell(pos, height-1, twin.NewStyledRune(token, statusbarStyle))
 	}
 

@@ -254,7 +254,8 @@ func TestStatusText(t *testing.T) {
 	if line.Lines != nil {
 		t.Error("line.lines is should have been nil when reading from an empty stream")
 	}
-	assert.Equal(t, line.StatusText, "empty: <empty>")
+	assert.Equal(t, line.FilenameText, "empty")
+	assert.Equal(t, line.StatusText, ": <empty>")
 }
 
 func testCompressedFile(t *testing.T, filename string) {

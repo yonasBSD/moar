@@ -48,7 +48,7 @@ func TestViewingFooter_WithSpinner(t *testing.T) {
 	// Drive the footer rendering directly via PagerModeViewing
 	mode := PagerModeViewing{pager: pager}
 	spinner := "<->"
-	mode.drawFooter("1 line  100%", spinner)
+	mode.drawFooter("", "1 line  100%", spinner)
 
 	footer := rowToString(screen.GetRow(9))
 
