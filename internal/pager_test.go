@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"fmt"
 	"os"
 	"path"
 	"runtime"
@@ -97,16 +98,24 @@ func TestBrokenUtf8(t *testing.T) {
 
 func startPaging(t *testing.T, reader *reader.ReaderImpl) *twin.FakeScreen {
 	// 0 means default tab size. Defaults to 8 to be like less.
-	return startPagingWithTabSize(t, 0, reader)
+	return startPagingWithTabSizeAndScreen(t, 0, twin.NewFakeScreen(20, 10), reader)
 }
 
 func startPagingWithTabSize(t *testing.T, tabSize int, reader *reader.ReaderImpl) *twin.FakeScreen {
+	return startPagingWithTabSizeAndScreen(t, tabSize, twin.NewFakeScreen(20, 10), reader)
+}
+
+func startPagingWithScreen(t *testing.T, screen *twin.FakeScreen, reader *reader.ReaderImpl) *twin.FakeScreen {
+	// 0 means default tab size. Defaults to 8 to be like less.
+	return startPagingWithTabSizeAndScreen(t, 0, screen, reader)
+}
+
+func startPagingWithTabSizeAndScreen(t *testing.T, tabSize int, screen *twin.FakeScreen, reader *reader.ReaderImpl) *twin.FakeScreen {
 	err := reader.Wait()
 	if err != nil {
 		t.Fatalf("Failed waiting for reader: %v", err)
 	}
 
-	screen := twin.NewFakeScreen(20, 10)
 	pager := NewPager(reader)
 	pager.TabSize = tabSize
 	pager.ShowLineNumbers = false
@@ -652,4 +661,22 @@ func TestTerminalFg(t *testing.T) {
 
 	assertRunesEqual(t, styleAnswer, startPagingWithTerminalFg(t, reader, false).GetRow(0)[0])
 	assertRunesEqual(t, terminalAnswer, startPagingWithTerminalFg(t, reader, true).GetRow(0)[0])
+}
+
+func testFooter(t *testing.T, filename string, contents string, expectedFooter string) {
+	reader := reader.NewFromTextForTesting(filename, contents)
+	screen := startPagingWithScreen(t, twin.NewFakeScreen(999, 10), reader)
+	footer := rowToString(screen.GetRow(9))
+	assert.Equal(t, expectedFooter, footer, fmt.Sprintf("filename='%s', contents='%s'", filename, contents))
+}
+
+func TestFooter(t *testing.T) {
+	help := "Press ESC / q to exit, / to search, & to filter, h for help"
+
+	testFooter(t, "filename", "", "filename: <empty>  "+help)
+	testFooter(t, "", "", "<empty>  "+help)
+	testFooter(t, "", "text", "1 line  100%  "+help)
+	testFooter(t, "filename", "text", "filename: 1 line  100%  "+help)
+
+	testFooter(t, "", "line 1\nline 2", "2 lines  100%  "+help)
 }
