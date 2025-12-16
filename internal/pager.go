@@ -737,7 +737,7 @@ func (p *Pager) fitsOnOneScreen() bool {
 
 	lines := reader.GetLines(linemetadata.Index{}, reader.GetLineCount())
 	for _, line := range lines.Lines {
-		rendered := line.HighlightedTokens(twin.StyleDefault, twin.StyleDefault, search.Search{}).StyledRunes
+		rendered := line.HighlightedTokens(twin.StyleDefault, twin.StyleDefault, search.Search{}, width+1).StyledRunes
 		if len(rendered) > width {
 			// This line is too long to fit on one screen line, no fit
 			return false

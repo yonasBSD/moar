@@ -171,7 +171,7 @@ func parseUnprintableStyle(styleOption string) (textstyles.UnprintableStyleT, er
 func parseScrollHint(scrollHint string) (textstyles.CellWithMetadata, error) {
 	scrollHint = strings.ReplaceAll(scrollHint, "ESC", "\x1b")
 
-	parsedTokens := textstyles.StyledRunesFromString(twin.StyleDefault, scrollHint, nil).StyledRunes
+	parsedTokens := textstyles.StyledRunesFromString(twin.StyleDefault, scrollHint, nil, 0).StyledRunes
 	if len(parsedTokens) == 1 {
 		return parsedTokens[0], nil
 	}

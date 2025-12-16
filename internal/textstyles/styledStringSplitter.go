@@ -17,6 +17,9 @@ type styledStringSplitter struct {
 	lineIndex      *linemetadata.Index // Used for error reporting
 	plainTextStyle twin.Style
 
+	minRunesCount      int
+	reportedRunesCount int
+
 	nextByteIndex     int
 	previousByteIndex int
 
@@ -32,7 +35,10 @@ type styledStringSplitter struct {
 // Returns the style of the line's trailer.
 //
 // The lineIndex is only used for error reporting.
-func styledStringsFromString(plainTextStyle twin.Style, s string, lineIndex *linemetadata.Index, callback func(string, twin.Style)) twin.Style {
+//
+// minRunesCount: at least this many runes will be included in the result. If 0,
+// do all runes. For BenchmarkRenderHugeLine() performance.
+func styledStringsFromString(plainTextStyle twin.Style, s string, lineIndex *linemetadata.Index, minRunesCount int, callback func(string, twin.Style)) twin.Style {
 	if !strings.ContainsAny(s, "\x1b") {
 		// This shortcut makes BenchmarkPlainTextSearch() perform a lot better
 		callback(s, plainTextStyle)
@@ -43,6 +49,7 @@ func styledStringsFromString(plainTextStyle twin.Style, s string, lineIndex *lin
 		input:           s,
 		lineIndex:       lineIndex,
 		plainTextStyle:  plainTextStyle, // How plain text should be styled
+		minRunesCount:   minRunesCount,
 		inProgressStyle: plainTextStyle, // Plain text style until something else comes along
 		callback:        callback,
 		trailer:         plainTextStyle, // Plain text style until something else comes along
@@ -409,5 +416,12 @@ func (s *styledStringSplitter) finalizeCurrentPart() {
 		return
 	}
 
-	s.callback(s.inProgressString.String(), s.inProgressStyle)
+	partString := s.inProgressString.String()
+	s.callback(partString, s.inProgressStyle)
+	s.reportedRunesCount += utf8.RuneCountInString(partString)
+
+	if s.minRunesCount > 0 && s.reportedRunesCount >= s.minRunesCount {
+		// We've reported enough runes, stop processing any further input
+		s.nextByteIndex = len(s.input)
+	}
 }

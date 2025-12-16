@@ -64,7 +64,7 @@ func twinStyleFromChroma(terminalBackground *twin.Color, chromaStyle *chroma.Sty
 	}
 
 	formatted := stringBuilder.String()
-	cells := textstyles.StyledRunesFromString(twin.StyleDefault, formatted, nil).StyledRunes
+	cells := textstyles.StyledRunesFromString(twin.StyleDefault, formatted, nil, 0).StyledRunes
 	if len(cells) != 1 {
 		log.Warnf("Chroma formatter didn't return exactly one cell: %#v", cells)
 		return nil
@@ -262,7 +262,7 @@ func configureHighlighting(terminalBackground *twin.Color, configureSearchHitLin
 
 func TermcapToStyle(termcap string) (twin.Style, error) {
 	// Add a character to be sure we have one to take the format from
-	cells := textstyles.StyledRunesFromString(twin.StyleDefault, termcap+"x", nil).StyledRunes
+	cells := textstyles.StyledRunesFromString(twin.StyleDefault, termcap+"x", nil, 0).StyledRunes
 	if len(cells) != 1 {
 		return twin.StyleDefault, fmt.Errorf("Expected styling only and no text")
 	}
