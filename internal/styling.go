@@ -19,7 +19,7 @@ var lineNumbersStyle = twin.StyleDefault.WithAttr(twin.AttrDim)
 // Status bar and EOF marker style
 var statusbarStyle = twin.StyleDefault.WithAttr(twin.AttrReverse)
 
-var statusbarFileStyle = twin.StyleDefault.WithAttr(twin.AttrReverse)
+var statusbarFileStyle = twin.StyleDefault.WithAttr(twin.AttrReverse).WithAttr(twin.AttrUnderline)
 
 var plainTextStyle = twin.StyleDefault
 
