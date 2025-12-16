@@ -19,7 +19,7 @@ import (
 type PagerMode interface {
 	onKey(key twin.KeyCode)
 	onRune(char rune)
-	drawFooter(statusText string, spinner string)
+	drawFooter(filenameText string, statusText string, spinner string)
 }
 
 type StatusBarOption int
@@ -320,15 +320,27 @@ func renderHelpText(help string) []twin.StyledRune {
 //
 // Single quoted parts of the help text will be bolded.
 //
-// footer example value: "file.txt: 123 lines  0%"
+// prefix example value: "[1/3] "
+// filename example value: "file.txt"
+// status example value: ": 123 lines  0%"
 // help example value: "Press 'h' for help, 'q' to quit"
-func (p *Pager) setFooter(footer string, help string) {
+func (p *Pager) setFooter(prefix string, filename string, status string, help string) {
 	width, height := p.screen.Size()
 
 	pos := 0
 
-	// File name and percentage, no keyboard shortcut highlighting
-	for _, token := range footer + "  " {
+	// Prefix (multiple open files)
+	for _, token := range prefix {
+		pos += p.screen.SetCell(pos, height-1, twin.NewStyledRune(token, statusbarStyle))
+	}
+
+	// File name
+	for _, token := range filename {
+		pos += p.screen.SetCell(pos, height-1, twin.NewStyledRune(token, statusbarFileStyle))
+	}
+
+	// percentage,
+	for _, token := range status + "  " {
 		pos += p.screen.SetCell(pos, height-1, twin.NewStyledRune(token, statusbarStyle))
 	}
 

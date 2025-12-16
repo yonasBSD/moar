@@ -35,6 +35,7 @@ type renderedScreen struct {
 	lines             []renderedLine
 	inputLines        []reader.NumberedLine
 	numberPrefixWidth int // Including padding. 0 means no line numbers.
+	filenameText      string
 	statusText        string
 }
 
@@ -68,7 +69,7 @@ func (p *Pager) redraw(spinner string) {
 		column += p.screen.SetCell(column, lastUpdatedScreenLineNumber+1, cell.ToStyledRune())
 	}
 
-	p.mode.drawFooter(renderedScreen.statusText, spinner)
+	p.mode.drawFooter(renderedScreen.filenameText, renderedScreen.statusText, spinner)
 
 	p.screen.Show()
 }
@@ -112,7 +113,7 @@ func (p *Pager) internalRenderLines(highlightSearchHitLines bool) renderedScreen
 	inputLines := p.Reader().GetLines(lineIndexToShow, p.visibleHeight())
 	if len(inputLines.Lines) == 0 {
 		// Empty input, empty output
-		return renderedScreen{statusText: inputLines.StatusText}
+		return renderedScreen{filenameText: inputLines.FilenameText, statusText: inputLines.StatusText}
 	}
 
 	lastVisibleLineNumber := inputLines.Lines[len(inputLines.Lines)-1].Number
@@ -195,6 +196,7 @@ func (p *Pager) internalRenderLines(highlightSearchHitLines bool) renderedScreen
 
 	return renderedScreen{
 		lines:             allLines,
+		filenameText:      inputLines.FilenameText,
 		statusText:        inputLines.StatusText,
 		inputLines:        inputLines.Lines,
 		numberPrefixWidth: numberPrefixLength,

@@ -14,7 +14,7 @@ type PagerModeViewing struct {
 	pager *Pager
 }
 
-func (m PagerModeViewing) drawFooter(statusText string, spinner string) {
+func (m PagerModeViewing) drawFooter(filenameText string, statusText string, spinner string) {
 	prefix := ""
 	colonHelp := ""
 	m.pager.readerLock.Lock()
@@ -39,7 +39,7 @@ func (m PagerModeViewing) drawFooter(statusText string, spinner string) {
 		if len(spinner) > 0 {
 			spinner = "  " + spinner
 		}
-		m.pager.setFooter(prefix+statusText+spinner, helpText)
+		m.pager.setFooter(prefix, filenameText, statusText+spinner, helpText)
 	}
 }
 
