@@ -348,32 +348,31 @@ func runesFromStyledString(styledString _StyledString) string {
 // minRunesCount: at least this many runes will be included in the result. If 0,
 // do all runes. For BenchmarkRenderHugeLine() performance.
 func tokensFromStyledString(styledString _StyledString, minRunesCount int) []twin.StyledRune {
-	runes := []rune(styledString.String)
-
-	hasBackspace := false
-	for _, runeValue := range runes {
-		if runeValue == BACKSPACE {
-			hasBackspace = true
-			break
+	var runes []rune
+	if minRunesCount > 0 {
+		// Only decode up to minRunesCount runes to avoid unnecessary work. This
+		// makes BenchmarkRenderHugeLine() 2x faster.
+		runes = make([]rune, 0, minRunesCount)
+		count := 0
+		for _, r := range styledString.String {
+			runes = append(runes, r)
+			count++
+			if count >= minRunesCount {
+				break
+			}
 		}
+	} else {
+		runes = []rune(styledString.String)
 	}
 
-	maxTokens := len(runes)
-	if minRunesCount > 0 && minRunesCount < maxTokens {
-		maxTokens = minRunesCount
-	}
-	tokens := make([]twin.StyledRune, 0, maxTokens)
-	if !hasBackspace {
+	tokens := make([]twin.StyledRune, 0, len(runes))
+	if !slices.Contains(runes, BACKSPACE) {
 		// Shortcut when there's no backspace based formatting to worry about
 		for _, runeValue := range runes {
 			tokens = append(tokens, twin.StyledRune{
 				Rune:  runeValue,
 				Style: styledString.Style,
 			})
-
-			if len(tokens) >= maxTokens {
-				break
-			}
 		}
 		return tokens
 	}
@@ -381,10 +380,6 @@ func tokensFromStyledString(styledString _StyledString, minRunesCount int) []twi
 	// Special handling for man page formatted lines. If this is updated you
 	// must update HasManPageFormatting() as well.
 	for index := 0; index < len(runes); index++ {
-		if len(tokens) >= maxTokens {
-			break
-		}
-
 		nextIndex, token := consumeBullet(runes, index)
 		if nextIndex != index {
 			tokens = append(tokens, *token)
