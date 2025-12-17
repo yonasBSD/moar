@@ -18,8 +18,10 @@ func (nl *NumberedLine) Plain() string {
 	return nl.Line.Plain(nl.Index)
 }
 
-func (nl *NumberedLine) HighlightedTokens(plainTextStyle twin.Style, searchHitStyle twin.Style, search search.Search) textstyles.StyledRunesWithTrailer {
-	return nl.Line.HighlightedTokens(plainTextStyle, searchHitStyle, search, nl.Index)
+// minRunesCount: at least this many runes will be included in the result. If 0,
+// do all runes. For BenchmarkRenderHugeLine() performance.
+func (nl *NumberedLine) HighlightedTokens(plainTextStyle twin.Style, searchHitStyle twin.Style, search search.Search, minRunesCount int) textstyles.StyledRunesWithTrailer {
+	return nl.Line.HighlightedTokens(plainTextStyle, searchHitStyle, search, nl.Index, minRunesCount)
 }
 
 func (nl *NumberedLine) DisplayWidth() int {

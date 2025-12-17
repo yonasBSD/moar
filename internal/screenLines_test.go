@@ -12,6 +12,8 @@ import (
 	"github.com/walles/moor/v2/internal/textstyles"
 	"github.com/walles/moor/v2/twin"
 	"gotest.tools/v3/assert"
+
+	log "github.com/sirupsen/logrus"
 )
 
 // NOTE: You can find related tests in pager_test.go.
@@ -27,6 +29,8 @@ func renderedToString(row []textstyles.CellWithMetadata) string {
 }
 
 func testHorizontalCropping(t *testing.T, contents string, firstVisibleColumn int, lastVisibleColumn int, expected string) {
+	log.SetLevel(log.WarnLevel) // Stop info logs from polluting benchmark output
+
 	reader := reader.NewFromTextForTesting("testHorizontalCropping", contents)
 	assert.NilError(t, reader.Wait())
 
@@ -414,6 +418,31 @@ func BenchmarkRenderLines(b *testing.B) {
 	input := reader.NewFromTextForTesting(
 		"BenchmarkRenderLine()",
 		strings.Repeat("This is a line with text and some more text to make it long enough.\n", 100))
+	pager := NewPager(input)
+	pager.screen = twin.NewFakeScreen(80, 25)
+
+	assert.NilError(b, input.Wait())
+
+	pager.renderLines() // Warm up
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		pager.renderLines()
+	}
+}
+
+// Inspired by https://github.com/walles/moor/issues/358
+func BenchmarkRenderHugeLine(b *testing.B) {
+	const megabytes = 5
+	builder := strings.Builder{}
+	for builder.Len() < megabytes*1024*1024 {
+		builder.WriteString("Romani ite domum. ")
+	}
+	b.SetBytes(int64(builder.Len()))
+
+	input := reader.NewFromTextForTesting(
+		"BenchmarkRenderHugeLine()",
+		builder.String())
 	pager := NewPager(input)
 	pager.screen = twin.NewFakeScreen(80, 25)
 

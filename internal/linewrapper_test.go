@@ -12,7 +12,7 @@ import (
 )
 
 func tokenize(input string) []textstyles.CellWithMetadata {
-	return textstyles.StyledRunesFromString(twin.StyleDefault, input, nil).StyledRunes
+	return textstyles.StyledRunesFromString(twin.StyleDefault, input, nil, 0).StyledRunes
 }
 
 func rowsToString(cellLines []textstyles.CellWithMetadataSlice) string {

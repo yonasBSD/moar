@@ -63,7 +63,7 @@ func (p *Pager) redraw(spinner string) {
 		// This happens when we're done
 		eofSpinner = "---"
 	}
-	spinnerLine := textstyles.StyledRunesFromString(statusbarStyle, eofSpinner, nil).StyledRunes
+	spinnerLine := textstyles.StyledRunesFromString(statusbarStyle, eofSpinner, nil, 0).StyledRunes
 	column := 0
 	for _, cell := range spinnerLine {
 		column += p.screen.SetCell(column, lastUpdatedScreenLineNumber+1, cell.ToStyledRune())
@@ -211,12 +211,22 @@ func (p *Pager) internalRenderLines(highlightSearchHitLines bool) renderedScreen
 // lineNumber and numberPrefixLength are required for knowing how much to
 // indent, and to (optionally) render the line number.
 func (p *Pager) renderLine(line reader.NumberedLine, numberPrefixLength int, highlightSearchHitLines bool) []renderedLine {
-	highlighted := line.HighlightedTokens(plainTextStyle, searchHitStyle, p.search)
+	width, _ := p.screen.Size()
 	var wrapped []textstyles.StyledRunesWithTrailer
+	var highlighted textstyles.StyledRunesWithTrailer
 	if p.WrapLongLines {
-		width, _ := p.screen.Size()
+		highlighted = line.HighlightedTokens(plainTextStyle, searchHitStyle, p.search, 0)
+
 		wrapped = wrapLine(width-numberPrefixLength, highlighted.StyledRunes)
 	} else {
+		// Request only screen width tokens plus whatever is needed on the left
+		// due to horizontal scrolling. Also, get one extra to the right so we
+		// can know whether to show overflow markers.
+		//
+		// This is a huge performance gain when dealing with files with
+		// extremeny long lines: https://github.com/walles/moor/issues/358
+		highlighted = line.HighlightedTokens(plainTextStyle, searchHitStyle, p.search, width+p.leftColumnZeroBased+1)
+
 		// All on one line
 		wrapped = []textstyles.StyledRunesWithTrailer{{
 			StyledRunes:       highlighted.StyledRunes,

@@ -63,7 +63,7 @@ func StripFormatting(s string, lineIndex linemetadata.Index) string {
 	stripped.Grow(len(s)) // This makes BenchmarkStripFormatting 6% faster
 	runeCount := 0
 
-	styledStringsFromString(twin.StyleDefault, s, &lineIndex, func(str string, style twin.Style) {
+	styledStringsFromString(twin.StyleDefault, s, &lineIndex, 0, func(str string, style twin.Style) {
 		for _, runeValue := range runesFromStyledString(_StyledString{String: str, Style: style}) {
 			switch runeValue {
 
@@ -112,7 +112,10 @@ func StripFormatting(s string, lineIndex linemetadata.Index) string {
 //
 // The prefix will be prepended to the string before parsing. The lineIndex is
 // used for error reporting.
-func StyledRunesFromString(plainTextStyle twin.Style, s string, lineIndex *linemetadata.Index) StyledRunesWithTrailer {
+//
+// minRunesCount: at least this many runes will be included in the result. If 0,
+// do all runes. For BenchmarkRenderHugeLine() performance.
+func StyledRunesFromString(plainTextStyle twin.Style, s string, lineIndex *linemetadata.Index, minRunesCount int) StyledRunesWithTrailer {
 	manPageHeading := manPageHeadingFromString(s)
 	if manPageHeading != nil {
 		return *manPageHeading
@@ -123,8 +126,8 @@ func StyledRunesFromString(plainTextStyle twin.Style, s string, lineIndex *linem
 	// Specs: https://en.wikipedia.org/wiki/ANSI_escape_code#3-bit_and_4-bit
 	styleUnprintable := twin.StyleDefault.WithBackground(twin.NewColor16(1)).WithForeground(twin.NewColor16(7))
 
-	trailer := styledStringsFromString(plainTextStyle, s, lineIndex, func(str string, style twin.Style) {
-		for _, token := range tokensFromStyledString(_StyledString{String: str, Style: style}) {
+	trailer := styledStringsFromString(plainTextStyle, s, lineIndex, minRunesCount, func(str string, style twin.Style) {
+		for _, token := range tokensFromStyledString(_StyledString{String: str, Style: style}, minRunesCount) {
 			switch token.Rune {
 
 			case '\x09': // TAB
@@ -332,7 +335,7 @@ func runesFromStyledString(styledString _StyledString) string {
 	}
 
 	// Special handling for man page formatted lines
-	cells := tokensFromStyledString(styledString)
+	cells := tokensFromStyledString(styledString, 0)
 	returnMe := strings.Builder{}
 	returnMe.Grow(len(cells))
 	for _, cell := range cells {
@@ -342,19 +345,28 @@ func runesFromStyledString(styledString _StyledString) string {
 	return returnMe.String()
 }
 
-func tokensFromStyledString(styledString _StyledString) []twin.StyledRune {
-	runes := []rune(styledString.String)
-
-	hasBackspace := false
-	for _, runeValue := range runes {
-		if runeValue == BACKSPACE {
-			hasBackspace = true
-			break
+// minRunesCount: at least this many runes will be included in the result. If 0,
+// do all runes. For BenchmarkRenderHugeLine() performance.
+func tokensFromStyledString(styledString _StyledString, minRunesCount int) []twin.StyledRune {
+	var runes []rune
+	if minRunesCount > 0 {
+		// Only decode up to minRunesCount runes to avoid unnecessary work. This
+		// makes BenchmarkRenderHugeLine() 2x faster.
+		runes = make([]rune, 0, minRunesCount)
+		count := 0
+		for _, r := range styledString.String {
+			runes = append(runes, r)
+			count++
+			if count >= minRunesCount {
+				break
+			}
 		}
+	} else {
+		runes = []rune(styledString.String)
 	}
 
 	tokens := make([]twin.StyledRune, 0, len(runes))
-	if !hasBackspace {
+	if !slices.Contains(runes, BACKSPACE) {
 		// Shortcut when there's no backspace based formatting to worry about
 		for _, runeValue := range runes {
 			tokens = append(tokens, twin.StyledRune{

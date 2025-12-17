@@ -21,7 +21,7 @@ func TestHighlightedTokensWithManPageHeading(t *testing.T) {
 		manPageHeading += string(char) + "\b" + string(char)
 	}
 
-	highlighted := textstyles.StyledRunesFromString(twin.StyleDefault, manPageHeading, nil).StyledRunes
+	highlighted := textstyles.StyledRunesFromString(twin.StyleDefault, manPageHeading, nil, 0).StyledRunes
 
 	assert.Equal(t, len(highlighted), len(headingText))
 	for i, cell := range highlighted {
@@ -42,7 +42,7 @@ func TestSearchHitSpanningWrapBoundary(t *testing.T) {
 	searchHitStyle := twin.StyleDefault.WithForeground(twin.NewColor16(3))
 
 	// Match runs from indices 3..8 inclusive ("345678")
-	highlighted := line.HighlightedTokens(twin.StyleDefault, searchHitStyle, search.For("345678"), linemetadata.Index{})
+	highlighted := line.HighlightedTokens(twin.StyleDefault, searchHitStyle, search.For("345678"), linemetadata.Index{}, 0)
 
 	// Sanity: overall line reports having a search hit
 	assert.Assert(t, highlighted.ContainsSearchHit, "Expected overall line to contain search hit")
