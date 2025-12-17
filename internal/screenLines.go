@@ -220,11 +220,12 @@ func (p *Pager) renderLine(line reader.NumberedLine, numberPrefixLength int, hig
 		wrapped = wrapLine(width-numberPrefixLength, highlighted.StyledRunes)
 	} else {
 		// Request only screen width tokens plus whatever is needed on the left
-		// due to horizontal scrolling.
+		// due to horizontal scrolling. Also, get one extra to the right so we
+		// can know whether to show overflow markers.
 		//
 		// This is a huge performance gain when dealing with files with
 		// extremeny long lines: https://github.com/walles/moor/issues/358
-		highlighted = line.HighlightedTokens(plainTextStyle, searchHitStyle, p.search, width+p.leftColumnZeroBased)
+		highlighted = line.HighlightedTokens(plainTextStyle, searchHitStyle, p.search, width+p.leftColumnZeroBased+1)
 
 		// All on one line
 		wrapped = []textstyles.StyledRunesWithTrailer{{

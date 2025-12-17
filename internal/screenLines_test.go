@@ -12,6 +12,8 @@ import (
 	"github.com/walles/moor/v2/internal/textstyles"
 	"github.com/walles/moor/v2/twin"
 	"gotest.tools/v3/assert"
+
+	log "github.com/sirupsen/logrus"
 )
 
 // NOTE: You can find related tests in pager_test.go.
@@ -27,6 +29,8 @@ func renderedToString(row []textstyles.CellWithMetadata) string {
 }
 
 func testHorizontalCropping(t *testing.T, contents string, firstVisibleColumn int, lastVisibleColumn int, expected string) {
+	log.SetLevel(log.WarnLevel) // Stop info logs from polluting benchmark output
+
 	reader := reader.NewFromTextForTesting("testHorizontalCropping", contents)
 	assert.NilError(t, reader.Wait())
 
