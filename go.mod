@@ -6,7 +6,7 @@ toolchain go1.24.4
 
 require (
 	github.com/adrg/xdg v0.5.3
-	github.com/alecthomas/chroma/v2 v2.20.1-0.20250921220508-b05fcfb98fa2
+	github.com/alecthomas/chroma/v2 v2.21.0
 	github.com/charlievieth/strcase v0.0.5
 	github.com/davecgh/go-spew v1.1.1
 	github.com/google/go-cmp v0.5.9
