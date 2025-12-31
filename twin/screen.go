@@ -85,19 +85,6 @@ type lastRendered struct {
 	cells  [][]StyledRune
 }
 
-type Logger interface {
-	Debug(message string)
-
-	// This level and up is recommended for adding to panic reports
-	Info(message string)
-
-	// If an error is logged, then something went wrong that the user should
-	// know
-	Error(message string)
-}
-
-var log Logger
-
 type UnixScreen struct {
 	widthAccessFromSizeOnly  int // Access from Size() method only
 	heightAccessFromSizeOnly int // Access from Size() method only
@@ -139,20 +126,24 @@ var mouseEventRegex = regexp.MustCompile("^\x1b\\[<([0-9]+);([0-9]+);([0-9]+)M")
 
 // NewScreen() requires Close() to be called after you are done with your new
 // screen, most likely somewhere in your shutdown code.
-func NewScreen() (Screen, error) {
-	return NewScreenWithMouseMode(MouseModeAuto)
+func NewScreen(logger Logger) (Screen, error) {
+	return NewScreenWithMouseMode(MouseModeAuto, logger)
 }
 
-func NewScreenWithMouseMode(mouseMode MouseMode) (Screen, error) {
+func NewScreenWithMouseMode(mouseMode MouseMode, loggger Logger) (Screen, error) {
 	terminalColorCount := ColorCount24bit
 	if os.Getenv("COLORTERM") != "truecolor" && strings.Contains(os.Getenv("TERM"), "256") {
 		// Covers "xterm-256color" as used by the macOS Terminal
 		terminalColorCount = ColorCount256
 	}
-	return NewScreenWithMouseModeAndColorCount(mouseMode, terminalColorCount)
+	return NewScreenWithMouseModeAndColorCount(mouseMode, terminalColorCount, loggger)
 }
 
-func NewScreenWithMouseModeAndColorCount(mouseMode MouseMode, terminalColorCount ColorCount) (Screen, error) {
+func NewScreenWithMouseModeAndColorCount(mouseMode MouseMode, terminalColorCount ColorCount, logger Logger) (Screen, error) {
+	if logger != nil {
+		log = logger
+	}
+
 	if !term.IsTerminal(int(os.Stdout.Fd())) {
 		return nil, fmt.Errorf("stdout (fd=%d) must be a terminal for paging to work", os.Stdout.Fd())
 	}
