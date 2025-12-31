@@ -128,26 +128,20 @@ var mouseEventRegex = regexp.MustCompile("^\x1b\\[<([0-9]+);([0-9]+);([0-9]+)M")
 // screen, most likely somewhere in your shutdown code. Pass nil for logger to
 // use a no-op logger, or provide a custom Logger implementation to receive log
 // messages from the screen.
-func NewScreen(logger Logger) (Screen, error) {
-	return NewScreenWithMouseMode(MouseModeAuto, logger)
+func NewScreen() (Screen, error) {
+	return NewScreenWithMouseMode(MouseModeAuto)
 }
 
-func NewScreenWithMouseMode(mouseMode MouseMode, logger Logger) (Screen, error) {
+func NewScreenWithMouseMode(mouseMode MouseMode) (Screen, error) {
 	terminalColorCount := ColorCount24bit
 	if os.Getenv("COLORTERM") != "truecolor" && strings.Contains(os.Getenv("TERM"), "256") {
 		// Covers "xterm-256color" as used by the macOS Terminal
 		terminalColorCount = ColorCount256
 	}
-	return NewScreenWithMouseModeAndColorCount(mouseMode, terminalColorCount, logger)
+	return NewScreenWithMouseModeAndColorCount(mouseMode, terminalColorCount)
 }
 
-func NewScreenWithMouseModeAndColorCount(mouseMode MouseMode, terminalColorCount ColorCount, logger Logger) (Screen, error) {
-	if logger != nil {
-		log = logger
-	} else {
-		log = &NoopLogger{}
-	}
-
+func NewScreenWithMouseModeAndColorCount(mouseMode MouseMode, terminalColorCount ColorCount) (Screen, error) {
 	if !term.IsTerminal(int(os.Stdout.Fd())) {
 		return nil, fmt.Errorf("stdout (fd=%d) must be a terminal for paging to work", os.Stdout.Fd())
 	}

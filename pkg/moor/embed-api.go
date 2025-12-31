@@ -159,7 +159,7 @@ func pageFromReader(reader *internalReader.ReaderImpl, options Options) error {
 	pager.ShowLineNumbers = !options.NoLineNumbers
 	pager.QuitIfOneScreen = options.QuitIfOneScreen
 
-	screen, e := twin.NewScreen(options.Logger)
+	screen, e := twin.NewScreen()
 	if e != nil {
 		// Screen setup failed
 		return e

@@ -11,12 +11,21 @@ type Logger interface {
 	Error(message string)
 }
 
-type NoopLogger struct{}
+type noopLogger struct{}
 
-func (l *NoopLogger) Debug(message string) {}
+func (l *noopLogger) Debug(message string) {}
 
-func (l *NoopLogger) Info(message string) {}
+func (l *noopLogger) Info(message string) {}
 
-func (l *NoopLogger) Error(message string) {}
+func (l *noopLogger) Error(message string) {}
 
-var log Logger = &NoopLogger{}
+var log Logger = &noopLogger{}
+
+// Call to get log messages from the twin package. Pass nil to disable logging.
+func SetLogger(newLogger Logger) {
+	if newLogger != nil {
+		log = newLogger
+	} else {
+		log = &noopLogger{}
+	}
+}
