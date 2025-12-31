@@ -125,23 +125,27 @@ type UnixScreen struct {
 var mouseEventRegex = regexp.MustCompile("^\x1b\\[<([0-9]+);([0-9]+);([0-9]+)M")
 
 // NewScreen() requires Close() to be called after you are done with your new
-// screen, most likely somewhere in your shutdown code.
+// screen, most likely somewhere in your shutdown code. Pass nil for logger to
+// use a no-op logger, or provide a custom Logger implementation to receive log
+// messages from the screen.
 func NewScreen(logger Logger) (Screen, error) {
 	return NewScreenWithMouseMode(MouseModeAuto, logger)
 }
 
-func NewScreenWithMouseMode(mouseMode MouseMode, loggger Logger) (Screen, error) {
+func NewScreenWithMouseMode(mouseMode MouseMode, logger Logger) (Screen, error) {
 	terminalColorCount := ColorCount24bit
 	if os.Getenv("COLORTERM") != "truecolor" && strings.Contains(os.Getenv("TERM"), "256") {
 		// Covers "xterm-256color" as used by the macOS Terminal
 		terminalColorCount = ColorCount256
 	}
-	return NewScreenWithMouseModeAndColorCount(mouseMode, terminalColorCount, loggger)
+	return NewScreenWithMouseModeAndColorCount(mouseMode, terminalColorCount, logger)
 }
 
 func NewScreenWithMouseModeAndColorCount(mouseMode MouseMode, terminalColorCount ColorCount, logger Logger) (Screen, error) {
 	if logger != nil {
 		log = logger
+	} else {
+		log = &NoopLogger{}
 	}
 
 	if !term.IsTerminal(int(os.Stdout.Fd())) {
