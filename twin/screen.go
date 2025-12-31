@@ -125,9 +125,7 @@ type UnixScreen struct {
 var mouseEventRegex = regexp.MustCompile("^\x1b\\[<([0-9]+);([0-9]+);([0-9]+)M")
 
 // NewScreen() requires Close() to be called after you are done with your new
-// screen, most likely somewhere in your shutdown code. Pass nil for logger to
-// use a no-op logger, or provide a custom Logger implementation to receive log
-// messages from the screen.
+// screen, most likely somewhere in your shutdown code.
 func NewScreen() (Screen, error) {
 	return NewScreenWithMouseMode(MouseModeAuto)
 }
