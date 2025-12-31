@@ -1,11 +1,14 @@
 package twin
 
-// NOTE: This file should be identical to m/panicHandler.go
+import "fmt"
+
+// NOTE: This file should do the same thing as internal/panicHandler.go as much
+// as possible.
 
 func panicHandler(goroutineName string, recoverResult any, stackTrace []byte) {
 	if recoverResult == nil {
 		return
 	}
 
-	log.Error("Goroutine panicked: " + goroutineName + "\n" + string(stackTrace))
+	log.Error(fmt.Sprintf("Goroutine panicked: %s: %v\n%s", goroutineName, recoverResult, string(stackTrace)))
 }
