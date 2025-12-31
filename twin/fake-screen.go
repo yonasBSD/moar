@@ -11,7 +11,7 @@ type FakeScreen struct {
 
 func NewFakeScreen(width int, height int) *FakeScreen {
 	rows := make([][]StyledRune, height)
-	for i := 0; i < height; i++ {
+	for i := range height {
 		rows[i] = make([]StyledRune, width)
 	}
 

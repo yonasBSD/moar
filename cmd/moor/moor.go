@@ -23,6 +23,7 @@ import (
 	"github.com/walles/moor/v2/internal/linemetadata"
 	"github.com/walles/moor/v2/internal/reader"
 	"github.com/walles/moor/v2/internal/textstyles"
+	"github.com/walles/moor/v2/internal/util"
 	"github.com/walles/moor/v2/twin"
 )
 
@@ -649,6 +650,7 @@ func main() {
 	var loglines internal.LogWriter
 	logsRequested := false
 	log.SetOutput(&loglines)
+	twin.SetLogger(&util.TwinLogger{})
 	russiaNotSupported()
 
 	defer func() {

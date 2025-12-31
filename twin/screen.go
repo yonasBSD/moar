@@ -12,7 +12,6 @@ import (
 	"time"
 	"unicode/utf8"
 
-	log "github.com/sirupsen/logrus"
 	"golang.org/x/term"
 )
 
@@ -171,7 +170,7 @@ func NewScreenWithMouseModeAndColorCount(mouseMode MouseMode, terminalColorCount
 	if err != nil {
 		restoreErr := screen.restoreTtyInTtyOut()
 		if restoreErr != nil {
-			log.Warn("Problem restoring TTY state after failed interruptable reader setup: ", restoreErr)
+			log.Error(fmt.Sprint("Problem restoring TTY state after failed interruptable reader setup: ", restoreErr))
 		}
 		return nil, fmt.Errorf("problem setting up TTY reader: %w", err)
 	}
@@ -232,7 +231,7 @@ func (screen *UnixScreen) Close() {
 		// * https://github.com/walles/moor/issues/145
 		// * https://github.com/walles/moor/issues/149
 		// * https://github.com/walles/moor/issues/150
-		log.Info("Problem restoring TTY state: ", err)
+		log.Info(fmt.Sprint("Problem restoring TTY state: ", err))
 	}
 }
 
@@ -291,7 +290,7 @@ func (screen *UnixScreen) onWindowResized() {
 		// This likely means that the user isn't processing events
 		// quickly enough. Maybe the user's queue will get flooded if
 		// the window is resized too quickly?
-		log.Warn("Unable to deliver EventResize, event queue full")
+		log.Info("Unable to deliver EventResize, event queue full")
 	}
 }
 
@@ -479,7 +478,7 @@ func (screen *UnixScreen) mainLoop() {
 			// * https://github.com/walles/moor/issues/145
 			// * https://github.com/walles/moor/issues/149
 			// * https://github.com/walles/moor/issues/150
-			log.Info("ttyin read error, twin giving up: ", err)
+			log.Info(fmt.Sprint("ttyin read error, twin giving up: ", err))
 
 			screen.events <- EventExit{}
 			return
@@ -493,7 +492,7 @@ func (screen *UnixScreen) mainLoop() {
 				if bg != nil {
 					screen.terminalBackgroundLock.Lock()
 					screen.terminalBackground = bg
-					log.Debug("Terminal background color detected as ", bg, " after ", time.Since(*screen.terminalBackgroundQuery))
+					log.Debug(fmt.Sprint("Terminal background color detected as ", bg, " after ", time.Since(*screen.terminalBackgroundQuery)))
 					screen.terminalBackgroundLock.Unlock()
 
 					expectingTerminalBackgroundColor = false
@@ -509,12 +508,12 @@ func (screen *UnixScreen) mainLoop() {
 
 		if count > maxBytesRead {
 			maxBytesRead = count
-			log.Trace("ttyin high watermark bumped to ", maxBytesRead, " bytes")
+			log.Debug(fmt.Sprint("ttyin high watermark bumped to ", maxBytesRead, " bytes"))
 		}
 
 		encodedKeyCodeSequences := string(buffer[0:count])
 		if !utf8.ValidString(encodedKeyCodeSequences) {
-			log.Warn("Got invalid UTF-8 sequence on ttyin: ", encodedKeyCodeSequences)
+			log.Info(fmt.Sprint("Got invalid UTF-8 sequence on ttyin: ", encodedKeyCodeSequences))
 			continue
 		}
 
@@ -534,7 +533,7 @@ func (screen *UnixScreen) mainLoop() {
 			default:
 				// If this happens, consider increasing the channel size in
 				// NewScreen()
-				log.Debugf("Events buffer (size %d) full, events are being dropped", cap(screen.events))
+				log.Info(fmt.Sprintf("Events buffer (size %d) full, events are being dropped", cap(screen.events)))
 			}
 		}
 	}
@@ -580,10 +579,10 @@ func consumeEncodedEvent(encodedEventSequences string) (*Event, string) {
 			return &event, strings.TrimPrefix(encodedEventSequences, mouseMatch[0])
 		}
 
-		log.Debug(
+		log.Debug(fmt.Sprint(
 			"Unhandled multi character mouse escape sequence(s): {",
 			humanizeLowASCII(encodedEventSequences),
-			"}")
+			"}"))
 		return nil, ""
 	}
 
@@ -597,10 +596,10 @@ func consumeEncodedEvent(encodedEventSequences string) (*Event, string) {
 		if len(runes) != 1 {
 			// This means one or more sequences should be added to
 			// escapeSequenceToKeyCode in keys.go.
-			log.Debug(
+			log.Debug(fmt.Sprint(
 				"Unhandled multi character terminal escape sequence(s): {",
 				humanizeLowASCII(encodedEventSequences),
-				"}")
+				"}"))
 
 			// Mark everything as consumed since we don't know how to proceed otherwise.
 			return nil, ""
@@ -721,45 +720,45 @@ func parseTerminalBgColorResponse(responseBytes []byte) (*Color, bool) {
 
 	response := string(responseBytes)
 	if !strings.HasPrefix(response, prefix) {
-		log.Info("Got unexpected prefix in bg color response from terminal: <", humanizeLowASCII(string(responseBytes)), ">")
+		log.Info(fmt.Sprint("Got unexpected prefix in bg color response from terminal: <", humanizeLowASCII(string(responseBytes)), ">"))
 		return nil, false // Invalid
 	}
 	response = strings.TrimPrefix(response, prefix)
 
 	isComplete := strings.HasSuffix(response, suffix1) || strings.HasSuffix(response, suffix2)
 	if !isComplete && (len(responseBytes) < len(sampleResponse1) || len(responseBytes) < len(sampleResponse2)) {
-		log.Trace("Terminal bg color response received so far: <", humanizeLowASCII(response), ">")
+		log.Debug(fmt.Sprint("Terminal bg color response received so far: <", humanizeLowASCII(response), ">"))
 		return nil, true // Incomplete but valid
 	}
 
 	if !isComplete {
-		log.Info("Got unexpected suffix in bg color response from terminal: <", humanizeLowASCII(string(responseBytes)), ">")
+		log.Info(fmt.Sprint("Got unexpected suffix in bg color response from terminal: <", humanizeLowASCII(string(responseBytes)), ">"))
 		return nil, false // Invalid
 	}
 	response = strings.TrimSuffix(response, suffix1)
 	response = strings.TrimSuffix(response, suffix2)
 
 	if len(response) != 14 {
-		log.Info("Got unexpected length bg color response from terminal: <", humanizeLowASCII(string(responseBytes)), ">")
+		log.Info(fmt.Sprint("Got unexpected length bg color response from terminal: <", humanizeLowASCII(string(responseBytes)), ">"))
 		return nil, false // Invalid
 	}
 
 	// response is now "RRRR/GGGG/BBBB"
 	red, err := strconv.ParseUint(response[0:4], 16, 16)
 	if err != nil {
-		log.Info("Failed parsing red in bg color response from terminal: <", humanizeLowASCII(string(responseBytes)), ">: ", err)
+		log.Info(fmt.Sprint("Failed parsing red in bg color response from terminal: <", humanizeLowASCII(string(responseBytes)), ">: ", err))
 		return nil, false // Invalid
 	}
 
 	green, err := strconv.ParseUint(response[5:9], 16, 16)
 	if err != nil {
-		log.Info("Failed parsing green in bg color response from terminal: <", humanizeLowASCII(string(responseBytes)), ">: ", err)
+		log.Info(fmt.Sprint("Failed parsing green in bg color response from terminal: <", humanizeLowASCII(string(responseBytes)), ">: ", err))
 		return nil, false // Invalid
 	}
 
 	blue, err := strconv.ParseUint(response[10:14], 16, 16)
 	if err != nil {
-		log.Info("Failed parsing blue in bg color response from terminal: <", humanizeLowASCII(string(responseBytes)), ">: ", err)
+		log.Info(fmt.Sprint("Failed parsing blue in bg color response from terminal: <", humanizeLowASCII(string(responseBytes)), ">: ", err))
 		return nil, false // Invalid
 	}
 

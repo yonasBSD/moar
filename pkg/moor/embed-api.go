@@ -44,6 +44,9 @@ type Options struct {
 	// The default is to always start the pager. If this is set to true, short
 	// input will just be printed, and no paging will happen.
 	QuitIfOneScreen bool
+
+	// Set this to receive log messages from the pager
+	Logger twin.Logger
 }
 
 // If stdout is not a terminal, the stream contents will just be printed to
@@ -155,6 +158,7 @@ func pageFromReader(reader *internalReader.ReaderImpl, options Options) error {
 	pager.WrapLongLines = options.WrapLongLines
 	pager.ShowLineNumbers = !options.NoLineNumbers
 	pager.QuitIfOneScreen = options.QuitIfOneScreen
+	twin.SetLogger(options.Logger)
 
 	screen, e := twin.NewScreen()
 	if e != nil {

@@ -11,7 +11,6 @@ import (
 	"syscall"
 	"time"
 
-	log "github.com/sirupsen/logrus"
 	"golang.org/x/sys/windows"
 	"golang.org/x/term"
 )
@@ -83,7 +82,7 @@ func (screen *UnixScreen) setupSigwinchNotification() {
 
 			width, height, err := term.GetSize(int(screen.ttyOut.Fd()))
 			if err != nil {
-				log.Debug("Failed to get terminal size: ", err)
+				log.Debug(fmt.Sprint("Failed to get terminal size: ", err))
 				continue
 			}
 
@@ -143,13 +142,13 @@ func (screen *UnixScreen) setupTtyInTtyOut() error {
 	if err != nil {
 		return err
 	}
-	log.Info("ttyin terminal state: ", fmt.Sprintf("%+v", ttyInTerminalState))
+	log.Info(fmt.Sprintf("ttyin terminal state: %+v", ttyInTerminalState))
 
 	ttyOutTerminalState, err := term.GetState(int(screen.ttyOut.Fd()))
 	if err != nil {
 		return err
 	}
-	log.Info("ttyout terminal state: ", fmt.Sprintf("%+v", ttyOutTerminalState))
+	log.Info(fmt.Sprintf("ttyout terminal state: %+v", ttyOutTerminalState))
 
 	return nil
 }
