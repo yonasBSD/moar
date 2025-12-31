@@ -158,6 +158,7 @@ func pageFromReader(reader *internalReader.ReaderImpl, options Options) error {
 	pager.WrapLongLines = options.WrapLongLines
 	pager.ShowLineNumbers = !options.NoLineNumbers
 	pager.QuitIfOneScreen = options.QuitIfOneScreen
+	twin.SetLogger(options.Logger)
 
 	screen, e := twin.NewScreen()
 	if e != nil {
