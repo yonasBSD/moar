@@ -45,6 +45,14 @@ type Screen interface {
 	// overflowing onto the next line.
 	SetCell(column int, row int, styledRune StyledRune) int
 
+	// Returns the StyledRune at the given screen position.
+	//
+	// Note that this does not read cells from the physical screen, but rather
+	// from what was previously set using SetCell().
+	//
+	// For out-of-bounds requests, a space with default style is returned.
+	GetCell(column int, row int) StyledRune
+
 	// Render our contents into the terminal window
 	Show()
 
@@ -799,6 +807,25 @@ func (screen *UnixScreen) SetCell(column int, row int, styledRune StyledRune) in
 		return 1
 	}
 	return runeWidth
+}
+
+func (screen *UnixScreen) GetCell(column int, row int) StyledRune {
+	if column < 0 {
+		return NewStyledRune(' ', StyleDefault)
+	}
+	if row < 0 {
+		return NewStyledRune(' ', StyleDefault)
+	}
+
+	width, height := screen.Size()
+	if column >= width {
+		return NewStyledRune(' ', StyleDefault)
+	}
+	if row >= height {
+		return NewStyledRune(' ', StyleDefault)
+	}
+
+	return screen.cells[row][column]
 }
 
 func (screen *UnixScreen) Clear() {

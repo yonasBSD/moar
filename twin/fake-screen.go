@@ -40,7 +40,7 @@ func (screen *FakeScreen) Clear() {
 }
 
 func (screen *FakeScreen) SetCell(column int, row int, styledRune StyledRune) int {
-	// This method's contents has been copied from UnixScreen.Clear()
+	// This method's contents has been copied from UnixScreen.SetCell()
 
 	if column < 0 {
 		return styledRune.Width()
@@ -66,6 +66,27 @@ func (screen *FakeScreen) SetCell(column int, row int, styledRune StyledRune) in
 	screen.cells[row][column] = styledRune
 
 	return styledRune.Width()
+}
+
+func (screen *FakeScreen) GetCell(column int, row int) StyledRune {
+	// This method's contents has been copied from UnixScreen.GetCell()
+
+	if column < 0 {
+		return NewStyledRune(' ', StyleDefault)
+	}
+	if row < 0 {
+		return NewStyledRune(' ', StyleDefault)
+	}
+
+	width, height := screen.Size()
+	if column >= width {
+		return NewStyledRune(' ', StyleDefault)
+	}
+	if row >= height {
+		return NewStyledRune(' ', StyleDefault)
+	}
+
+	return screen.cells[row][column]
 }
 
 func (screen *FakeScreen) Show() {
