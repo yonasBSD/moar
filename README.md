@@ -104,12 +104,11 @@ More info [here](https://packages.gentoo.org/packages/sys-apps/moor).
 
 ## Using [Arch Linux](https://archlinux.org/)
 
-Install `moor` with your [AUR helper](https://wiki.archlinux.org/title/AUR_helpers)
-of choice or follow the instructions
-[here](https://wiki.archlinux.org/title/Arch_User_Repository) to install the
-official way.
+```sh
+pacman -S moor
+```
 
-More info [here](https://aur.archlinux.org/packages/moor).
+More info [here](https://archlinux.org/packages/extra/x86_64/moor/).
 
 ## Debian / Ubuntu
 
