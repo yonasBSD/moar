@@ -338,6 +338,23 @@ func TestRawUpdateStyleResetDoesNotAffectHyperlink(t *testing.T) {
 	assert.Equal(t, *updated.HyperlinkURL(), url)
 }
 
+// Ref: https://github.com/walles/moor/issues/372
+func TestIssue372(t *testing.T) {
+	const minRunesCount = 10
+
+	// Load test data once
+	data, err := os.ReadFile(path.Join(samplesDir, "issue-372.txt"))
+	assert.NilError(t, err)
+
+	// Expect one newline terminated line
+	lines := strings.Split(string(data), "\n")
+	assert.Equal(t, 2, len(lines))
+	assert.Equal(t, 0, len(lines[1]))
+
+	styled := StyledRunesFromString(twin.StyleDefault, lines[0], nil, minRunesCount).StyledRunes
+	assert.Equal(t, len(styled), minRunesCount)
+}
+
 // Benchmark stripping formatting from a colored git diff sample.
 // To run:
 //
