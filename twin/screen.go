@@ -229,6 +229,7 @@ func (screen *UnixScreen) Close() {
 	// Tell our main loop to exit
 	screen.ttyInReader.Interrupt()
 
+	screen.write("\x1b[m")
 	screen.hideCursor(false)
 	screen.enableMouseTracking(false)
 	screen.setAlternateScreenMode(false)
