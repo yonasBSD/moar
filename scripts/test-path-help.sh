@@ -39,4 +39,6 @@ cat "$WORKDIR/help-printout.txt"
 echo
 echo "Actual:   <$(cat "$WORKDIR/actual")>"
 echo "Expected: <$(cat "$WORKDIR/expected")>"
+echo
+env | sort
 exit 1
