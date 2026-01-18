@@ -379,8 +379,17 @@ func runesFromStyledString(styledString _StyledString) string {
 func tokensFromStyledString(styledString _StyledString, maxTokensCount int) []twin.StyledRune {
 	if !strings.ContainsRune(styledString.String, BACKSPACE) {
 		// Shortcut when there's no backspace based formatting to worry about
-		tokens := make([]twin.StyledRune, 0, len(styledString.String))
+		returnTokensCount := len(styledString.String)
+		if maxTokensCount > 0 && returnTokensCount > maxTokensCount {
+			returnTokensCount = maxTokensCount
+		}
+		tokens := make([]twin.StyledRune, 0, returnTokensCount)
 		for _, runeValue := range styledString.String {
+			if len(tokens) == cap(tokens) {
+				// We have enough runes, stop here
+				break
+			}
+
 			tokens = append(tokens, twin.StyledRune{
 				Rune:  runeValue,
 				Style: styledString.Style,
