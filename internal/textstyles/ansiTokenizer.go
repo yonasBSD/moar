@@ -377,7 +377,14 @@ func runesFromStyledString(styledString _StyledString) string {
 // maxTokensCount: at most this many tokens will be included in the result. If
 // 0, do all runes. For BenchmarkRenderHugeLine() performance.
 func tokensFromStyledString(styledString _StyledString, maxTokensCount int) []twin.StyledRune {
-	if !strings.ContainsRune(styledString.String, BACKSPACE) {
+	maxBackspaceCheck := len(styledString.String)
+	if maxTokensCount > 0 && maxTokensCount < maxBackspaceCheck {
+		maxBackspaceCheck = maxTokensCount + 20 // Some extra to account for backspaces further out
+	}
+	if maxBackspaceCheck > len(styledString.String) {
+		maxBackspaceCheck = len(styledString.String)
+	}
+	if !strings.ContainsRune(styledString.String[:maxBackspaceCheck], BACKSPACE) {
 		// Shortcut when there's no backspace based formatting to worry about
 		returnTokensCount := len(styledString.String)
 		if maxTokensCount > 0 && returnTokensCount > maxTokensCount {
