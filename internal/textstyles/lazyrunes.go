@@ -40,8 +40,8 @@ func (l *lazyRunes) hasNext() bool {
 
 // Move the base rune index forward by one rune.
 func (l *lazyRunes) next() {
-	if l.getRelative(1) == nil {
-		// No more runes
+	if l.getRelative(0) == nil {
+		// Already past the end
 		return
 	}
 
