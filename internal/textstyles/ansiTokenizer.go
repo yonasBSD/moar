@@ -113,9 +113,9 @@ func StripFormatting(s string, lineIndex linemetadata.Index) string {
 // The prefix will be prepended to the string before parsing. The lineIndex is
 // used for error reporting.
 //
-// minRunesCount: at least this many runes will be included in the result. If 0,
-// do all runes. For BenchmarkRenderHugeLine() performance.
-func StyledRunesFromString(plainTextStyle twin.Style, s string, lineIndex *linemetadata.Index, minRunesCount int) StyledRunesWithTrailer {
+// maxTokensCount: at most this many tokens will be included in the result. If
+// 0, do all runes. For BenchmarkRenderHugeLine() performance.
+func StyledRunesFromString(plainTextStyle twin.Style, s string, lineIndex *linemetadata.Index, maxTokensCount int) StyledRunesWithTrailer {
 	manPageHeading := manPageHeadingFromString(s)
 	if manPageHeading != nil {
 		return *manPageHeading
@@ -126,8 +126,8 @@ func StyledRunesFromString(plainTextStyle twin.Style, s string, lineIndex *linem
 	// Specs: https://en.wikipedia.org/wiki/ANSI_escape_code#3-bit_and_4-bit
 	styleUnprintable := twin.StyleDefault.WithBackground(twin.NewColor16(1)).WithForeground(twin.NewColor16(7))
 
-	trailer := styledStringsFromString(plainTextStyle, s, lineIndex, minRunesCount, func(str string, style twin.Style) {
-		for _, token := range tokensFromStyledString(_StyledString{String: str, Style: style}, minRunesCount) {
+	trailer := styledStringsFromString(plainTextStyle, s, lineIndex, maxTokensCount, func(str string, style twin.Style) {
+		for _, token := range tokensFromStyledString(_StyledString{String: str, Style: style}, maxTokensCount) {
 			switch token.Rune {
 
 			case '\x09': // TAB
@@ -202,30 +202,30 @@ func StyledRunesFromString(plainTextStyle twin.Style, s string, lineIndex *linem
 }
 
 // Consume '_<x<x', where '<' is backspace and the result is a bold underlined 'x'
-func consumeBoldUnderline(runes []rune, index int) (int, *twin.StyledRune) {
-	if index+4 >= len(runes) {
+func consumeBoldUnderline(runes *lazyRunes) *twin.StyledRune {
+	if runes.getRelative(4) == nil {
 		// Not enough runes left for a bold underline
-		return index, nil
+		return nil
 	}
 
-	if runes[index] != '_' {
+	if *runes.getRelative(0) != '_' {
 		// No initial underscore
-		return index, nil
+		return nil
 	}
 
-	if runes[index+1] != BACKSPACE {
+	if *runes.getRelative(1) != BACKSPACE {
 		// No first backspace
-		return index, nil
+		return nil
 	}
 
-	if runes[index+2] != runes[index+4] {
+	if *runes.getRelative(2) != *runes.getRelative(4) {
 		// Runes don't match
-		return index, nil
+		return nil
 	}
 
-	if runes[index+3] != BACKSPACE {
+	if *runes.getRelative(3) != BACKSPACE {
 		// No second backspace
-		return index, nil
+		return nil
 	}
 
 	// Merge ManPageUnderline attributes into ManPageBold to form boldUnderline.
@@ -239,74 +239,95 @@ func consumeBoldUnderline(runes []rune, index int) (int, *twin.StyledRune) {
 	}
 
 	// We have a match!
-	return index + 5, &twin.StyledRune{
-		Rune:  runes[index+4],
+	result := &twin.StyledRune{
+		Rune:  *runes.getRelative(4),
 		Style: boldUnderline,
 	}
+
+	runes.next() // Skip underscore
+	runes.next() // Skip first backspace
+	runes.next() // Skip first rune
+	runes.next() // Skip second backspace
+	// Do not skip last rune, our caller will do that
+
+	return result
 }
 
 // Consume 'x<x', where '<' is backspace and the result is a bold 'x'
-func consumeBold(runes []rune, index int) (int, *twin.StyledRune) {
-	if index+2 >= len(runes) {
+func consumeBold(runes *lazyRunes) *twin.StyledRune {
+	if runes.getRelative(2) == nil {
 		// Not enough runes left for a bold
-		return index, nil
+		return nil
 	}
 
-	if runes[index+1] != BACKSPACE {
+	if *runes.getRelative(1) != BACKSPACE {
 		// No backspace in the middle, never mind
-		return index, nil
+		return nil
 	}
 
-	if runes[index] != runes[index+2] {
+	if *runes.getRelative(0) != *runes.getRelative(2) {
 		// First and last rune not the same, never mind
-		return index, nil
+		return nil
 	}
 
-	// We have a match!
-	return index + 3, &twin.StyledRune{
-		Rune:  runes[index],
+	result := &twin.StyledRune{
+		Rune:  *runes.getRelative(0),
 		Style: ManPageBold,
 	}
+
+	runes.next() // Skip first rune
+	runes.next() // Skip backspace
+	// Do not skip last rune, our caller will do that
+
+	return result
 }
 
 // Consume '_<x', where '<' is backspace and the result is an underlined 'x'
-func consumeUnderline(runes []rune, index int) (int, *twin.StyledRune) {
-	if index+2 >= len(runes) {
+func consumeUnderline(runes *lazyRunes) *twin.StyledRune {
+	if runes.getRelative(2) == nil {
 		// Not enough runes left for a underline
-		return index, nil
+		return nil
 	}
 
-	if runes[index+1] != BACKSPACE {
+	if *runes.getRelative(1) != BACKSPACE {
 		// No backspace in the middle, never mind
-		return index, nil
+		return nil
 	}
 
-	if runes[index] != '_' {
+	if *runes.getRelative(0) != '_' {
 		// No underline, never mind
-		return index, nil
+		return nil
 	}
 
 	// We have a match!
-	return index + 3, &twin.StyledRune{
-		Rune:  runes[index+2],
+	result := &twin.StyledRune{
+		Rune:  *runes.getRelative(2),
 		Style: ManPageUnderline,
 	}
+
+	runes.next() // Skip underscore
+	runes.next() // Skip backspace
+	// Do not skip last rune, our caller will do that
+
+	return result
 }
 
 // Consume '+<+<o<o' / '+<o', where '<' is backspace and the result is a unicode bullet.
 //
 // Used on man pages, try "man printf" on macOS for one example.
-func consumeBullet(runes []rune, index int) (int, *twin.StyledRune) {
-	patterns := [][]byte{[]byte("+\bo"), []byte("+\b+\bo\bo")}
+func consumeBullet(runes *lazyRunes) *twin.StyledRune {
+	patterns := [][]rune{[]rune("+\bo"), []rune("+\b+\bo\bo")}
 	for _, pattern := range patterns {
-		if index+len(pattern) > len(runes) {
-			// Not enough runes left for a bullet
-			continue
-		}
-
 		mismatch := false
-		for delta, patternByte := range pattern {
-			if patternByte != byte(runes[index+delta]) {
+		for delta, patternRune := range pattern {
+			char := runes.getRelative(delta)
+			if char == nil {
+				// Not enough runes left for bullet pattern
+				mismatch = true
+				break
+			}
+
+			if patternRune != *char {
 				// Bullet pattern mismatch, never mind
 				mismatch = true
 				break
@@ -317,13 +338,21 @@ func consumeBullet(runes []rune, index int) (int, *twin.StyledRune) {
 		}
 
 		// We have a match!
-		return index + len(pattern), &twin.StyledRune{
+		retsult := &twin.StyledRune{
 			Rune:  '•', // Unicode bullet point
 			Style: twin.StyleDefault,
 		}
+
+		// Skip all runes in the pattern except the last one, since our caller
+		// will skip that
+		for i := 0; i < len(pattern)-1; i++ {
+			runes.next()
+		}
+
+		return retsult
 	}
 
-	return index, nil
+	return nil
 }
 
 func runesFromStyledString(styledString _StyledString) string {
@@ -345,30 +374,29 @@ func runesFromStyledString(styledString _StyledString) string {
 	return returnMe.String()
 }
 
-// minRunesCount: at least this many runes will be included in the result. If 0,
-// do all runes. For BenchmarkRenderHugeLine() performance.
-func tokensFromStyledString(styledString _StyledString, minRunesCount int) []twin.StyledRune {
-	var runes []rune
-	if minRunesCount > 0 {
-		// Only decode up to minRunesCount runes to avoid unnecessary work. This
-		// makes BenchmarkRenderHugeLine() 2x faster.
-		runes = make([]rune, 0, minRunesCount)
-		count := 0
-		for _, r := range styledString.String {
-			runes = append(runes, r)
-			count++
-			if count >= minRunesCount {
+// maxTokensCount: at most this many tokens will be included in the result. If
+// 0, do all runes. For BenchmarkRenderHugeLine() performance.
+func tokensFromStyledString(styledString _StyledString, maxTokensCount int) []twin.StyledRune {
+	maxBackspaceCheck := len(styledString.String)
+	if maxTokensCount > 0 && maxTokensCount < maxBackspaceCheck {
+		maxBackspaceCheck = maxTokensCount + 20 // Some extra to account for backspaces further out
+	}
+	if maxBackspaceCheck > len(styledString.String) {
+		maxBackspaceCheck = len(styledString.String)
+	}
+	if !strings.ContainsRune(styledString.String[:maxBackspaceCheck], BACKSPACE) {
+		// Shortcut when there's no backspace based formatting to worry about
+		returnTokensCount := len(styledString.String)
+		if maxTokensCount > 0 && returnTokensCount > maxTokensCount {
+			returnTokensCount = maxTokensCount
+		}
+		tokens := make([]twin.StyledRune, 0, returnTokensCount)
+		for _, runeValue := range styledString.String {
+			if len(tokens) == cap(tokens) {
+				// We have enough runes, stop here
 				break
 			}
-		}
-	} else {
-		runes = []rune(styledString.String)
-	}
 
-	tokens := make([]twin.StyledRune, 0, len(runes))
-	if !slices.Contains(runes, BACKSPACE) {
-		// Shortcut when there's no backspace based formatting to worry about
-		for _, runeValue := range runes {
 			tokens = append(tokens, twin.StyledRune{
 				Rune:  runeValue,
 				Style: styledString.Style,
@@ -377,39 +405,42 @@ func tokensFromStyledString(styledString _StyledString, minRunesCount int) []twi
 		return tokens
 	}
 
+	tokens := make([]twin.StyledRune, 0, maxTokensCount)
+
 	// Special handling for man page formatted lines. If this is updated you
 	// must update HasManPageFormatting() as well.
-	for index := 0; index < len(runes); index++ {
-		nextIndex, token := consumeBullet(runes, index)
-		if nextIndex != index {
+	for runes := (lazyRunes{str: styledString.String}); runes.getRelative(0) != nil; runes.next() {
+		if maxTokensCount > 0 && len(tokens) >= maxTokensCount {
+			// We have enough runes, stop here
+			break
+		}
+
+		token := consumeBullet(&runes)
+		if token != nil {
 			tokens = append(tokens, *token)
-			index = nextIndex - 1
 			continue
 		}
 
-		nextIndex, token = consumeBoldUnderline(runes, index)
-		if nextIndex != index {
+		token = consumeBoldUnderline(&runes)
+		if token != nil {
 			tokens = append(tokens, *token)
-			index = nextIndex - 1
 			continue
 		}
 
-		nextIndex, token = consumeBold(runes, index)
-		if nextIndex != index {
+		token = consumeBold(&runes)
+		if token != nil {
 			tokens = append(tokens, *token)
-			index = nextIndex - 1
 			continue
 		}
 
-		nextIndex, token = consumeUnderline(runes, index)
-		if nextIndex != index {
+		token = consumeUnderline(&runes)
+		if token != nil {
 			tokens = append(tokens, *token)
-			index = nextIndex - 1
 			continue
 		}
 
 		tokens = append(tokens, twin.StyledRune{
-			Rune:  runes[index],
+			Rune:  *runes.getRelative(0),
 			Style: styledString.Style,
 		})
 	}
@@ -419,25 +450,24 @@ func tokensFromStyledString(styledString _StyledString, minRunesCount int) []twi
 
 // Like tokensFromStyledString(), but only checks without building any formatting
 func HasManPageFormatting(s string) bool {
-	runes := []rune(s)
-	for index := range runes {
-		nextIndex, _ := consumeBullet(runes, index)
-		if nextIndex != index {
+	for runes := (lazyRunes{str: s}); runes.getRelative(0) != nil; runes.next() {
+		consumed := consumeBullet(&runes)
+		if consumed != nil {
 			return true
 		}
 
-		nextIndex, _ = consumeBoldUnderline(runes, index)
-		if nextIndex != index {
+		consumed = consumeBoldUnderline(&runes)
+		if consumed != nil {
 			return true
 		}
 
-		nextIndex, _ = consumeBold(runes, index)
-		if nextIndex != index {
+		consumed = consumeBold(&runes)
+		if consumed != nil {
 			return true
 		}
 
-		nextIndex, _ = consumeUnderline(runes, index)
-		if nextIndex != index {
+		consumed = consumeUnderline(&runes)
+		if consumed != nil {
 			return true
 		}
 	}
