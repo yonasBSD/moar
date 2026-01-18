@@ -2,9 +2,6 @@ package textstyles
 
 import "unicode/utf8"
 
-// Length of the long consumeBullet() pattern
-const lookaheadBufferSize = 7
-
 // Lazily iterate a string by runes. Init by setting str only.
 type lazyRunes struct {
 	str string
@@ -16,30 +13,40 @@ type lazyRunes struct {
 }
 
 func (l *lazyRunes) getRelative(runeIndex int) *rune {
-	FIXME
+	for runeIndex >= len(l.lookaheadBuffer) {
+		// Need to add one more rune to the lookahead buffer
+
+		if l.nextByteIndex >= len(l.str) {
+			// No more runes
+			return nil
+		}
+
+		newRune, runeSize := utf8.DecodeRuneInString(l.str[l.nextByteIndex:])
+		if runeSize == 0 {
+			panic("We just checked, there should be more runes")
+		}
+
+		// Append the new rune to the lookahead buffer
+		l.lookaheadBuffer = append(l.lookaheadBuffer, newRune)
+		l.nextByteIndex += runeSize
+	}
+
+	return &l.lookaheadBuffer[runeIndex]
 }
 
 func (l *lazyRunes) hasNext() bool {
-	return l.nextByteIndex < len(l.str)
+	return l.getRelative(1) != nil
 }
 
+// Move the base rune index forward by one rune.
 func (l *lazyRunes) next() {
-	if l.lookaheadBuffer == nil {
-		// We're just getting started
-		l.lookaheadBuffer = make([]rune, 0, lookaheadBufferSize)
-	}
-
-	nextRune, runeSize := utf8.DecodeRuneInString(l.str[l.nextByteIndex:])
-	if runeSize == 0 {
-		// We are done
+	if l.getRelative(1) == nil {
+		// No more runes
 		return
 	}
 
 	// Shift the lookahead buffer down
-	if len(l.lookaheadBuffer) == cap(l.lookaheadBuffer) {
+	if len(l.lookaheadBuffer) > 0 {
 		l.lookaheadBuffer = l.lookaheadBuffer[1:]
 	}
-	l.lookaheadBuffer = append(l.lookaheadBuffer, nextRune)
-
-	l.nextByteIndex += runeSize
 }
