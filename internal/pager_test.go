@@ -42,6 +42,8 @@ func TestUnicodeRendering(t *testing.T) {
 }
 
 func assertRunesEqual(t *testing.T, expected twin.StyledRune, actual twin.StyledRune) {
+	t.Helper()
+
 	if actual.Rune == expected.Rune && actual.Style == expected.Style {
 		return
 	}
@@ -308,6 +310,8 @@ func resetManPageFormat() {
 }
 
 func testManPageFormatting(t *testing.T, input string, expected twin.StyledRune) {
+	t.Helper()
+
 	reader := reader.NewFromTextForTesting("", input)
 
 	// Without these lines the man page tests will fail if either of these

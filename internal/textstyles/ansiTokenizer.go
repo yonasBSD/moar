@@ -265,7 +265,7 @@ func consumeBold(runes *lazyRunes) *twin.StyledRune {
 		return nil
 	}
 
-	if runes.getRelative(0) != runes.getRelative(2) {
+	if *runes.getRelative(0) != *runes.getRelative(2) {
 		// First and last rune not the same, never mind
 		return nil
 	}
