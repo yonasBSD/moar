@@ -3,6 +3,9 @@ package textstyles
 import "unicode/utf8"
 
 // Lazily iterate a string by runes. Init by setting str only.
+//
+// Use getRelative(0) to get the current rune, and do next() to advance to the
+// next rune.
 type lazyRunes struct {
 	str string
 
@@ -12,6 +15,7 @@ type lazyRunes struct {
 	lookaheadBuffer []rune
 }
 
+// Get rune at index runeIndex relative to the current rune
 func (l *lazyRunes) getRelative(runeIndex int) *rune {
 	for runeIndex >= len(l.lookaheadBuffer) {
 		// Need to add one more rune to the lookahead buffer
@@ -32,10 +36,6 @@ func (l *lazyRunes) getRelative(runeIndex int) *rune {
 	}
 
 	return &l.lookaheadBuffer[runeIndex]
-}
-
-func (l *lazyRunes) hasNext() bool {
-	return l.getRelative(1) != nil
 }
 
 // Move the base rune index forward by one rune.

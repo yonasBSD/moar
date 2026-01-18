@@ -381,7 +381,7 @@ func tokensFromStyledString(styledString _StyledString, minRunesCount int) []twi
 
 	// Special handling for man page formatted lines. If this is updated you
 	// must update HasManPageFormatting() as well.
-	for runes := (lazyRunes{str: styledString.String}); runes.hasNext(); runes.next() {
+	for runes := (lazyRunes{str: styledString.String}); runes.getRelative(0) != nil; runes.next() {
 		token := consumeBullet(&runes)
 		if token != nil {
 			tokens = append(tokens, *token)
@@ -417,7 +417,7 @@ func tokensFromStyledString(styledString _StyledString, minRunesCount int) []twi
 
 // Like tokensFromStyledString(), but only checks without building any formatting
 func HasManPageFormatting(s string) bool {
-	for runes := (lazyRunes{str: s}); runes.hasNext(); runes.next() {
+	for runes := (lazyRunes{str: s}); runes.getRelative(0) != nil; runes.next() {
 		consumed := consumeBullet(&runes)
 		if consumed != nil {
 			return true
