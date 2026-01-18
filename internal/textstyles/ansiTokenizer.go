@@ -113,9 +113,9 @@ func StripFormatting(s string, lineIndex linemetadata.Index) string {
 // The prefix will be prepended to the string before parsing. The lineIndex is
 // used for error reporting.
 //
-// minRunesCount: at least this many runes will be included in the result. If 0,
-// do all runes. For BenchmarkRenderHugeLine() performance.
-func StyledRunesFromString(plainTextStyle twin.Style, s string, lineIndex *linemetadata.Index, minRunesCount int) StyledRunesWithTrailer {
+// maxTokensCount: at most this many tokens will be included in the result. If
+// 0, do all runes. For BenchmarkRenderHugeLine() performance.
+func StyledRunesFromString(plainTextStyle twin.Style, s string, lineIndex *linemetadata.Index, maxTokensCount int) StyledRunesWithTrailer {
 	manPageHeading := manPageHeadingFromString(s)
 	if manPageHeading != nil {
 		return *manPageHeading
@@ -126,8 +126,8 @@ func StyledRunesFromString(plainTextStyle twin.Style, s string, lineIndex *linem
 	// Specs: https://en.wikipedia.org/wiki/ANSI_escape_code#3-bit_and_4-bit
 	styleUnprintable := twin.StyleDefault.WithBackground(twin.NewColor16(1)).WithForeground(twin.NewColor16(7))
 
-	trailer := styledStringsFromString(plainTextStyle, s, lineIndex, minRunesCount, func(str string, style twin.Style) {
-		for _, token := range tokensFromStyledString(_StyledString{String: str, Style: style}, minRunesCount) {
+	trailer := styledStringsFromString(plainTextStyle, s, lineIndex, maxTokensCount, func(str string, style twin.Style) {
+		for _, token := range tokensFromStyledString(_StyledString{String: str, Style: style}, maxTokensCount) {
 			switch token.Rune {
 
 			case '\x09': // TAB
@@ -374,15 +374,15 @@ func runesFromStyledString(styledString _StyledString) string {
 	return returnMe.String()
 }
 
-// minRunesCount: at least this many runes will be included in the result. If 0,
-// do all runes. For BenchmarkRenderHugeLine() performance.
-func tokensFromStyledString(styledString _StyledString, minRunesCount int) []twin.StyledRune {
-	tokens := make([]twin.StyledRune, 0, minRunesCount)
+// maxTokensCount: at most this many tokens will be included in the result. If
+// 0, do all runes. For BenchmarkRenderHugeLine() performance.
+func tokensFromStyledString(styledString _StyledString, maxTokensCount int) []twin.StyledRune {
+	tokens := make([]twin.StyledRune, 0, maxTokensCount)
 
 	// Special handling for man page formatted lines. If this is updated you
 	// must update HasManPageFormatting() as well.
 	for runes := (lazyRunes{str: styledString.String}); runes.getRelative(0) != nil; runes.next() {
-		if minRunesCount > 0 && len(tokens) >= minRunesCount {
+		if maxTokensCount > 0 && len(tokens) >= maxTokensCount {
 			// We have enough runes, stop here
 			break
 		}

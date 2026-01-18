@@ -17,7 +17,7 @@ type styledStringSplitter struct {
 	lineIndex      *linemetadata.Index // Used for error reporting
 	plainTextStyle twin.Style
 
-	minRunesCount      int
+	maxTokensCount     int
 	reportedRunesCount int
 
 	nextByteIndex     int
@@ -36,9 +36,9 @@ type styledStringSplitter struct {
 //
 // The lineIndex is only used for error reporting.
 //
-// minRunesCount: at least this many runes will be included in the result. If 0,
-// do all runes. For BenchmarkRenderHugeLine() performance.
-func styledStringsFromString(plainTextStyle twin.Style, s string, lineIndex *linemetadata.Index, minRunesCount int, callback func(string, twin.Style)) twin.Style {
+// maxTokensCount: at most this many tokens will be included in the result. If
+// 0, do all runes. For BenchmarkRenderHugeLine() performance.
+func styledStringsFromString(plainTextStyle twin.Style, s string, lineIndex *linemetadata.Index, maxTokensCount int, callback func(string, twin.Style)) twin.Style {
 	if !strings.ContainsAny(s, "\x1b") {
 		// This shortcut makes BenchmarkPlainTextSearch() perform a lot better
 		callback(s, plainTextStyle)
@@ -49,7 +49,7 @@ func styledStringsFromString(plainTextStyle twin.Style, s string, lineIndex *lin
 		input:           s,
 		lineIndex:       lineIndex,
 		plainTextStyle:  plainTextStyle, // How plain text should be styled
-		minRunesCount:   minRunesCount,
+		maxTokensCount:  maxTokensCount,
 		inProgressStyle: plainTextStyle, // Plain text style until something else comes along
 		callback:        callback,
 		trailer:         plainTextStyle, // Plain text style until something else comes along
@@ -420,7 +420,7 @@ func (s *styledStringSplitter) finalizeCurrentPart() {
 	s.callback(partString, s.inProgressStyle)
 	s.reportedRunesCount += utf8.RuneCountInString(partString)
 
-	if s.minRunesCount > 0 && s.reportedRunesCount >= s.minRunesCount {
+	if s.maxTokensCount > 0 && s.reportedRunesCount >= s.maxTokensCount {
 		// We've reported enough runes, stop processing any further input
 		s.nextByteIndex = len(s.input)
 	}
