@@ -27,6 +27,7 @@ type interruptableReaderImpl struct {
 func (r *interruptableReaderImpl) Read(p []byte) (n int, err error) {
 	for {
 		if r.interrupted.Load() {
+			log.Info("Interruptable reader already interrupted, returning fabricated EOF")
 			return 0, io.EOF
 		}
 
@@ -68,7 +69,9 @@ func (r *interruptableReaderImpl) read(p []byte) (n int, err error) {
 		closeErr := r.shutdownPipeReader.Close()
 		if closeErr != nil {
 			// This should never happen, but if it does we should log it
-			log.Info(fmt.Sprint("Failed to close shutdown pipe reader: ", closeErr))
+			log.Error(fmt.Sprint("Failed to close shutdown pipe reader: ", closeErr))
+		} else {
+			log.Info("Interruptable reader shutdown pipe reader closed, returning fabricated EOF")
 		}
 
 		err = io.EOF
@@ -78,7 +81,13 @@ func (r *interruptableReaderImpl) read(p []byte) (n int, err error) {
 
 	if readFds.IsSet(int(r.base.Fd())) {
 		// Base has stuff
-		return r.base.Read(p)
+		n, err = r.base.Read(p)
+
+		if err == io.EOF {
+			log.Info("Interruptable reader base returned a genuine EOF")
+		}
+
+		return
 	}
 
 	// Neither base nor shutdown pipe was ready, this should never happen
@@ -92,7 +101,10 @@ func (r *interruptableReaderImpl) Interrupt() {
 	if err != nil {
 		// This should never happen, but if it does we should log it
 		log.Info(fmt.Sprint("Failed to close shutdown pipe writer: ", err))
+		return
 	}
+
+	log.Info("Interruptable reader interrupted")
 }
 
 func newInterruptableReader(base *os.File) (interruptableReader, error) {
