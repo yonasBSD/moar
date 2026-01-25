@@ -81,7 +81,13 @@ func (r *interruptableReaderImpl) read(p []byte) (n int, err error) {
 
 	if readFds.IsSet(int(r.base.Fd())) {
 		// Base has stuff
-		return r.base.Read(p)
+		n, err = r.base.Read(p)
+
+		if err == io.EOF {
+			log.Info("Interruptable reader base returned a genuine EOF")
+		}
+
+		return
 	}
 
 	// Neither base nor shutdown pipe was ready, this should never happen
