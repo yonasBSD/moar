@@ -654,6 +654,14 @@ func (screen *UnixScreen) Size() (width int, height int) {
 		return screen.widthAccessFromSizeOnly, screen.heightAccessFromSizeOnly
 	}
 
+	oldHeight := screen.heightAccessFromSizeOnly
+	if (oldHeight == 1) != (height == 1) {
+		// For help debugging this: https://github.com/walles/moor/issues/378
+		//
+		// A one-high screen may or may not have been part of that issue.
+		log.Info(fmt.Sprintf("Screen height changed from %d to %d", oldHeight, height))
+	}
+
 	newCells := make([][]StyledRune, height)
 	for rowNumber := range height {
 		newCells[rowNumber] = make([]StyledRune, width)
