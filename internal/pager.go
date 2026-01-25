@@ -666,6 +666,8 @@ func (p *Pager) StartPaging(screen twin.Screen, chromaStyle *chroma.Style, chrom
 			log.Warnf("Unhandled event type: %v", event)
 		}
 	}
+
+	log.Info("Pager main loop done")
 }
 
 // The height parameter is the terminal height minus the height of the user's
