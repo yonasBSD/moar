@@ -671,7 +671,7 @@ func main() {
 
 		if err != nil {
 			fmt.Fprintln(os.Stderr)
-			fmt.Fprintln(os.Stderr, "Panic recovery timestamp:", time.Now())
+			fmt.Fprintln(os.Stderr, "Panic recovery timestamp:", time.Now().String())
 			fmt.Fprintln(os.Stderr)
 			panic(err)
 		}
