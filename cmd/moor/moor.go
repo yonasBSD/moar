@@ -57,11 +57,6 @@ func printProblemsHeader() {
 	fmt.Fprintln(os.Stderr, "Version      :", getVersion())
 	fmt.Fprintln(os.Stderr, "LANG         :", os.Getenv("LANG"))
 	fmt.Fprintln(os.Stderr, "TERM         :", os.Getenv("TERM"))
-	if moorEnvVarName() == "MOAR" {
-		fmt.Fprintln(os.Stderr, "MOAR (legacy):", os.Getenv("MOAR"))
-	} else {
-		fmt.Fprintln(os.Stderr, "MOOR         :", os.Getenv("MOOR"))
-	}
 	fmt.Fprintln(os.Stderr, "EDITOR       :", os.Getenv("EDITOR"))
 	fmt.Fprintln(os.Stderr, "TERM_PROGRAM :", os.Getenv("TERM_PROGRAM"))
 	fmt.Fprintln(os.Stderr)
@@ -92,6 +87,12 @@ func printProblemsHeader() {
 	fmt.Fprintln(os.Stderr, "Stdin  is a terminal:", term.IsTerminal(int(os.Stdin.Fd())))
 	fmt.Fprintln(os.Stderr, "Stdout is a terminal:", term.IsTerminal(int(os.Stdout.Fd())))
 	fmt.Fprintln(os.Stderr)
+
+	if moorEnvVarName() == "MOAR" {
+		fmt.Fprintln(os.Stderr, "MOAR (legacy):", os.Getenv("MOAR"))
+	} else {
+		fmt.Fprintln(os.Stderr, "MOOR:", os.Getenv("MOOR"))
+	}
 	fmt.Fprintf(os.Stderr, "Commandline: %#v\n", os.Args)
 }
 
