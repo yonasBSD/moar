@@ -91,6 +91,8 @@ func printProblemsHeader() {
 	fmt.Fprintln(os.Stderr)
 	fmt.Fprintln(os.Stderr, "Stdin  is a terminal:", term.IsTerminal(int(os.Stdin.Fd())))
 	fmt.Fprintln(os.Stderr, "Stdout is a terminal:", term.IsTerminal(int(os.Stdout.Fd())))
+	fmt.Fprintln(os.Stderr)
+	fmt.Fprintf(os.Stderr, "Commandline: %#v\n", os.Args)
 }
 
 func parseLexerOption(lexerOption string) (chroma.Lexer, error) {
