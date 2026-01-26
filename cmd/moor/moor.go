@@ -726,13 +726,20 @@ func flagSetFunc[T any](flagSet *flag.FlagSet, name string, defaultValue T, usag
 
 func startPaging(pager *internal.Pager, screen twin.Screen, chromaStyle *chroma.Style, chromaFormatter *chroma.Formatter) {
 	defer func() {
+		panicMessage := recover()
+		if panicMessage != nil {
+			// Clarify that any screen shutdown logs are from panic handling,
+			// not something the user or some external thing did.
+			log.Info("Panic detected, closing screen before informing the user...")
+		}
+
 		// Restore screen...
 		screen.Close()
 
 		// ... before printing any panic() output, otherwise the output will
 		// have broken linefeeds and be hard to follow.
-		if err := recover(); err != nil {
-			panic(err)
+		if panicMessage != nil {
+			panic(panicMessage)
 		}
 
 		if !pager.DeInit {
