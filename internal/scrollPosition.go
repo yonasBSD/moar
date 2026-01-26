@@ -346,6 +346,15 @@ func (p *Pager) isScrolledToEnd() bool {
 	lastInputLineIndex := *linemetadata.IndexFromLength(inputLineCount)
 
 	visibleLines := p.renderLines().lines
+	if len(visibleLines) == 0 {
+		// This can happen when terminal height is 1. In that case, the status
+		// bar takes up that single line, leaving no room for contents.
+		//
+		// The actual return value here was picked based on that it prevents the
+		// crash reported here: https://github.com/walles/moor/issues/378
+		return true
+	}
+
 	lastVisibleLine := visibleLines[len(visibleLines)-1]
 	if lastVisibleLine.inputLineIndex != lastInputLineIndex {
 		// Last input line is not on the screen
