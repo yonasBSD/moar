@@ -664,7 +664,7 @@ func (screen *UnixScreen) Size() (width int, height int) {
 	}
 
 	oldHeight := screen.heightAccessFromSizeOnly
-	if ((oldHeight <= 1) != (height <= 1)) || oldHeight <= 1 || height <= 1 {
+	if (height != oldHeight) && (oldHeight <= 1 || height <= 1) {
 		// For help debugging this: https://github.com/walles/moor/issues/378
 		//
 		// A one-high screen may or may not have been part of that issue.
