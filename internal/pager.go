@@ -416,6 +416,32 @@ func (p *Pager) handleScrolledDown() {
 	}
 }
 
+func (p *Pager) handleMoreLinesAvailable() {
+	// Without the isViewing() check, following will continue while
+	// searching, and I prefer it to stop so people can see what they
+	// are searching in.
+	if !p.isViewing() || p.TargetLine == nil {
+		return
+	}
+
+	// The user wants to scroll down to a specific line number
+	lineCount := p.Reader().GetLineCount()
+	if lineCount == 0 {
+		// No lines yet, keep waiting
+		return
+	}
+
+	if linemetadata.IndexFromLength(lineCount).IsBefore(*p.TargetLine) {
+		// Not there yet, keep scrolling
+		p.scrollToEnd()
+		return
+	}
+
+	// We see the target, scroll to it
+	p.scrollPosition = NewScrollPositionFromIndex(*p.TargetLine, "goToTargetLine")
+	p.setTargetLine(nil)
+}
+
 // Except for setting TargetLine, this method also syncs with the reader so that
 // the reader knows how many lines it needs to fetch.
 func (p *Pager) setTargetLine(targetLine *linemetadata.Index) {
@@ -631,20 +657,7 @@ func (p *Pager) StartPaging(screen twin.Screen, chromaStyle *chroma.Style, chrom
 			return
 
 		case eventMoreLinesAvailable:
-			// Without the isViewing() check, following will continue while
-			// searching, and I prefer it to stop so people can see what they
-			// are searching in.
-			if p.isViewing() && p.TargetLine != nil {
-				// The user wants to scroll down to a specific line number
-				if linemetadata.IndexFromLength(p.Reader().GetLineCount()).IsBefore(*p.TargetLine) {
-					// Not there yet, keep scrolling
-					p.scrollToEnd()
-				} else {
-					// We see the target, scroll to it
-					p.scrollPosition = NewScrollPositionFromIndex(*p.TargetLine, "goToTargetLine")
-					p.setTargetLine(nil)
-				}
-			}
+			p.handleMoreLinesAvailable()
 
 		case eventMaybeDone:
 			// Man pages come pre-formatted for the screen width, and line

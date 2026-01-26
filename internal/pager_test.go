@@ -684,3 +684,24 @@ func TestFooter(t *testing.T) {
 
 	testFooter(t, "", "line 1\nline 2", "2 lines  100%  "+help)
 }
+
+// Regression test for crash when following an empty file.
+// Before the fix, IndexFromLength(0) would return nil, and calling .IsBefore()
+// on nil would crash.
+func TestHandleMoreLinesAvailableWithEmptyFile(t *testing.T) {
+	// Create a pager with an empty reader
+	emptyReader := reader.NewFromTextForTesting("empty", "")
+	pager := NewPager(emptyReader)
+
+	// Simulate --follow mode by setting target to max
+	targetLine := linemetadata.IndexMax()
+	pager.TargetLine = &targetLine
+
+	// This should not crash when lineCount is 0
+	pager.handleMoreLinesAvailable()
+
+	// Verify target line is still set (we're still waiting for lines)
+	if pager.TargetLine == nil {
+		t.Error("Expected TargetLine to remain set when no lines available")
+	}
+}
