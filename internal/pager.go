@@ -37,6 +37,8 @@ type eventSpinnerUpdate struct {
 	spinner string
 }
 
+// Or we switched readers. Or something else happened that requires us to
+// recheck our reader.
 type eventMoreLinesAvailable struct{}
 
 // Either reading, highlighting or both are done. Check reader.Done() and
