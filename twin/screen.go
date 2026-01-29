@@ -102,7 +102,7 @@ type UnixScreen struct {
 	terminalBackgroundLock  sync.Mutex
 
 	cells        [][]StyledRune
-	lastRendered lastRendered
+	lastRendered lastRendered // Kept up to date by snapshotLastRendered()
 
 	// Note that the type here doesn't matter, we only want to know whether or
 	// not this channel has been signalled
@@ -961,17 +961,42 @@ func (screen *UnixScreen) ShowNLines(height int) {
 	screen.showNLines(width, height, false)
 }
 
-func createLastRenderedSnapshot(width int, height int, cells [][]StyledRune) lastRendered {
-	snapshotCells := make([][]StyledRune, height)
-	for row := 0; row < height; row++ {
-		snapshotCells[row] = make([]StyledRune, width)
-		copy(snapshotCells[row], cells[row][0:width])
+// Take a snapshot of the current screen. Will be used on the next render to
+// decide whether to do a full render or a delta render.
+func (screen *UnixScreen) snapshotLastRendered() {
+	height := len(screen.cells)
+	width := 0
+	if height > 0 {
+		width = len(screen.cells[0])
 	}
 
-	return lastRendered{
-		width:  width,
-		height: height,
-		cells:  snapshotCells,
+	if screen.lastRendered.width != width || screen.lastRendered.height != height {
+		// Create a new snapshot storage
+		screen.lastRendered = lastRendered{
+			width:  width,
+			height: height,
+		}
+
+		if width > 0 && height > 0 {
+			screen.lastRendered.cells = make([][]StyledRune, height)
+			for row := range height {
+				screen.lastRendered.cells[row] = make([]StyledRune, width)
+			}
+		}
+	}
+
+	if screen.lastRendered.width == 0 || screen.lastRendered.height == 0 {
+		screen.lastRendered.cells = nil
+	}
+
+	if screen.lastRendered.cells == nil {
+		// Nowhere to copy to
+		return
+	}
+
+	// Copy current cells into snapshot
+	for row := range height {
+		copy(screen.lastRendered.cells[row], screen.cells[row][0:width])
 	}
 }
 
@@ -1046,7 +1071,7 @@ func (screen *UnixScreen) showNLinesDelta(width int, height int) bool {
 
 	// Write out what we have
 	screen.write(builder.String())
-	screen.lastRendered = createLastRenderedSnapshot(width, height, screen.cells)
+	screen.snapshotLastRendered()
 
 	return true
 }
@@ -1070,5 +1095,5 @@ func (screen *UnixScreen) showNLines(width int, height int, clearFirst bool) {
 
 	// Write out what we have
 	screen.write(builder.String())
-	screen.lastRendered = createLastRenderedSnapshot(width, height, screen.cells)
+	screen.snapshotLastRendered()
 }
