@@ -223,6 +223,14 @@ func NewScreenWithMouseModeAndColorCount(mouseMode MouseMode, terminalColorCount
 // Close() restores terminal to normal state, must be called after you are done
 // with the screen returned by NewScreen()
 func (screen *UnixScreen) Close() {
+	// Wait for the terminal background color response to show up and consume
+	// it. Without this, if you Close() the screen too close to opening it, that
+	// escape sequence response will be printed as text in the user's terminal
+	// after exit.
+	//
+	// Ref: https://github.com/walles/moor/issues/380
+	screen.TerminalBackground()
+
 	// Tell the pager to exit unless it hasn't already
 	screen.events <- EventExit{}
 
