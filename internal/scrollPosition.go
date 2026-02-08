@@ -373,20 +373,14 @@ func (p *Pager) isScrolledToEnd() bool {
 }
 
 // Returns nil if there are no lines
-func (p *Pager) getLastVisiblePosition() *scrollPosition {
+func (p *Pager) getLastVisibleLineIndex() *linemetadata.Index {
 	rendered := p.renderLines()
 	if len(rendered.lines) == 0 {
 		return nil
 	}
 
 	lastRenderedLine := rendered.lines[len(rendered.lines)-1]
-	return &scrollPosition{
-		internalDontTouch: scrollPositionInternal{
-			name:             "Last Visible Position",
-			lineIndex:        &lastRenderedLine.inputLineIndex,
-			deltaScreenLines: lastRenderedLine.wrapIndex,
-		},
-	}
+	return &lastRenderedLine.inputLineIndex
 }
 
 func (si *scrollPositionInternal) getMaxNumberPrefixLength(pager *Pager) int {

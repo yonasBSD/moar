@@ -84,8 +84,7 @@ func (p *Pager) scrollToNextSearchHit() {
 	switch {
 	case p.isViewing():
 		// Start searching on the first line below the bottom of the screen
-		position := p.getLastVisiblePosition().NextLine(1)
-		firstSearchIndex = *position.lineIndex(p)
+		firstSearchIndex = *p.getLastVisibleLineIndex()
 
 	case p.isNotFound():
 		// Restart searching from the top
@@ -145,7 +144,7 @@ func (p *Pager) scrollToSearchHitsBackwards() {
 			return
 		}
 
-		lastVisibleLineIndex := p.getLastVisiblePosition().lineIndex(p)
+		lastVisibleLineIndex := p.getLastVisibleLineIndex()
 		canWrap := (*lineIndex != *lastVisibleLineIndex)
 		if !canWrap {
 			// No match, can't wrap, give up
