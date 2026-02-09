@@ -6,7 +6,17 @@ import (
 	"github.com/walles/moor/v2/internal/linemetadata"
 )
 
-// Please create using newScrollPosition(name)
+// Says which line should be at the top of the screen.
+//
+// Using two separate numbers:
+//   - A line index into the input stream
+//   - A delta of how many screen lines to scroll down before rendering. This is
+//     needed to support scrolling through wrapped lines.
+//
+// If you put the scroll position too far down, it will be adjusted so no empty
+// lines are shown at the bottom of the screen.
+//
+// Please create using newScrollPosition(name).
 type scrollPosition struct {
 	internalDontTouch scrollPositionInternal
 }
