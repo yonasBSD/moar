@@ -86,6 +86,15 @@ Then whenever you want to upgrade to the latest release:
 brew upgrade
 ```
 
+## Using Debian
+
+On [Debian Forky](https://www.debian.org/releases/forky/) and newer, as well as
+on [Ubuntu 26.04 Resolute](https://packages.ubuntu.com/resolute/moor) and newer:
+
+```sh
+sudo apt install moor
+```
+
 ## Using [MacPorts](https://www.macports.org/)
 
 ```sh
@@ -109,12 +118,6 @@ pacman -S moor
 ```
 
 More info [here](https://archlinux.org/packages/extra/x86_64/moor/).
-
-## Debian / Ubuntu
-
-In progress: https://ftp-master.debian.org/new.html
-
-In the mean time, use Homebrew (see above) or read on for manual install instructions.
 
 ## Manual Install
 
