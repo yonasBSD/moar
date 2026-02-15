@@ -176,6 +176,26 @@ you can send questions to <johan.walles@gmail.com>.
 
 If you package `moor`, do include [the man page](moor.1) in your package.
 
+# Comparison with `bat`
+
+`moor` and `bat` do different things. `moor` is a pager. `bat` is a file
+preprocessor that sometimes pipes to a pager (like `moor`). So comparing them
+directly is not possible.
+
+What `bat` does is:
+1. Looks at its input and preprocesses it or not
+1. Pipes to a pager or not. This pager can be `moor` or something else.
+
+Some of `bat`'s preprocessing overlaps with what `moor` provides internally
+(like syntax highlighting and JSON formatting).
+
+But some `moor` features like fast interactive search is `moor` specific and not
+something `bat` can simulate through preprocessing.
+
+To use `moor` as your `bat` pager, set `BAT_PAGER=moor` in your environment.
+
+Or, to use `moor` instead of `bat`, set `PAGER=moor`.
+
 # Embedding `moor` in your app
 
 API Reference: https://pkg.go.dev/github.com/walles/moor/v2/pkg/moor
