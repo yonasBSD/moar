@@ -1072,7 +1072,7 @@ func (screen *UnixScreen) showNLinesDelta(width int, height int) bool {
 	var builder strings.Builder
 	for row, line := range updatedLines {
 		// Move cursor to the start of the line
-		builder.WriteString(fmt.Sprintf("\x1b[%d;1H", row+1))
+		fmt.Fprintf(&builder, "\x1b[%d;1H", row+1)
 
 		renderWithNewline(&builder, line, width, screen.terminalColorCount, row == (height-1))
 	}
