@@ -311,6 +311,38 @@ func TestReadStreamDoneYesHighlighting(t *testing.T) {
 	assert.NilError(t, testMe.Wait())
 }
 
+func TestReadFromDevFd(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("/dev/fd is not available on Windows")
+
+		return
+	}
+
+	readPipe, writePipe, err := os.Pipe()
+	assert.NilError(t, err)
+	defer readPipe.Close() //nolint:errcheck
+
+	_, err = writePipe.WriteString("test\n")
+	assert.NilError(t, err)
+	assert.NilError(t, writePipe.Close())
+
+	fileName := "/dev/fd/" + strconv.Itoa(int(readPipe.Fd()))
+	testMe, err := NewFromFilename(fileName, formatters.TTY, ReaderOptions{Style: styles.Get("native")})
+	assert.NilError(t, err)
+	assert.NilError(t, testMe.Wait())
+
+	lines := testMe.GetLines(linemetadata.Index{}, 10)
+	assert.Equal(t, len(lines.Lines), 1)
+	assert.Equal(t, lines.Lines[0].Plain(), "test")
+}
+
+func TestTryOpenDirectory(t *testing.T) {
+	tempDir := t.TempDir()
+
+	err := TryOpen(tempDir)
+	assert.Assert(t, err != nil, "TryOpen should fail on directories")
+}
+
 func TestReadTextDone(t *testing.T) {
 	testMe := NewFromTextForTesting("", "Johan")
 
