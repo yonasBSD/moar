@@ -259,7 +259,7 @@ func (reader *ReaderImpl) consumeLinesFromStream(stream io.Reader) {
 	// Preallocating the line pool and the lines slice improves large file
 	// reading performance by 10%.
 	linePool := linePool{}
-	if reader.FileName != nil && reader.GetLineCount() == 0 {
+	if reader.FileName != nil && reader.GetLineCount() == 0 && isSeekableFile(reader.FileName) {
 		lineCount, err := countLines(*reader.FileName)
 		if err != nil {
 			log.Warn("Failed to count lines in file: ", err)
@@ -378,6 +378,11 @@ func (reader *ReaderImpl) tailFile() error {
 		return nil
 	}
 
+	if !isSeekableFile(fileName) {
+		log.Debugf("Giving up on tailing, %s is not seekable", *fileName)
+		return nil
+	}
+
 	log.Debugf("Tailing file %s", *fileName)
 
 	for {
@@ -444,6 +449,28 @@ func (reader *ReaderImpl) tailFile() error {
 			return fmt.Errorf("failed to close file %s after tailing: %w", *fileName, err)
 		}
 	}
+}
+
+func isSeekableFile(fileName *string) bool {
+	if fileName == nil {
+		return false
+	}
+
+	file, err := os.Open(*fileName)
+	if err != nil {
+		return false
+	}
+
+	defer func() {
+		err := file.Close()
+		if err != nil {
+			log.Debugf("Failed to close %s while checking seekability: %s", *fileName, err)
+		}
+	}()
+
+	_, err = file.Seek(0, io.SeekCurrent)
+
+	return err == nil
 }
 
 // NewFromStream creates a new stream reader
@@ -568,7 +595,6 @@ func NewFromTextForTesting(name string, text string) *ReaderImpl {
 	return returnMe
 }
 
-// Duplicate of moor/moor.go:TryOpen
 func TryOpen(filename string) error {
 	// Try opening the file
 	tryMe, err := os.Open(filename)
@@ -576,22 +602,32 @@ func TryOpen(filename string) error {
 		return err
 	}
 
-	// Try reading a byte
-	buffer := make([]byte, 1)
-	_, err = tryMe.Read(buffer)
+	fileInfo, err := tryMe.Stat()
+	if err != nil {
+		closeErr := tryMe.Close()
+		if closeErr != nil {
+			return fmt.Errorf("failed to close %s after stat error: %w", filename, closeErr)
+		}
 
-	if err != nil && err.Error() == "EOF" {
-		// Empty file, this is fine
-		err = nil
+		return err
+	}
+
+	if fileInfo.IsDir() {
+		closeErr := tryMe.Close()
+		if closeErr != nil {
+			return fmt.Errorf("failed to close directory %s: %w", filename, closeErr)
+		}
+
+		return fmt.Errorf("%s is a directory", filename)
 	}
 
 	closeErr := tryMe.Close()
-	if err == nil && closeErr != nil {
+	if closeErr != nil {
 		// Everything worked up until Close(), report the Close() error
 		return closeErr
 	}
 
-	return err
+	return nil
 }
 
 // From: https://stackoverflow.com/a/52153000/473672
