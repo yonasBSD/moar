@@ -16,10 +16,7 @@ func (screen *UnixScreen) Suspend() error {
 	signal.Notify(cont, syscall.SIGCONT)
 	defer signal.Stop(cont)
 
-	screen.write("\x1b[m") // Reset text attributes to default
-	screen.hideCursor(false)
-	screen.enableMouseTracking(false)
-	screen.setAlternateScreenMode(false)
+	screen.leaveAlternateScreenSession()
 
 	err := screen.restoreTtyInTtyOut()
 	if err != nil {
@@ -34,9 +31,7 @@ func (screen *UnixScreen) Suspend() error {
 			return fmt.Errorf("failed to suspend process group: %w; also failed to re-enter raw mode: %v", err, restoreRawErr)
 		}
 
-		screen.setAlternateScreenMode(true)
-		screen.enableMouseTracking(screen.shouldEnableMouseTracking())
-		screen.hideCursor(true)
+		screen.enterAlternateScreenSession()
 		screen.onWindowResized()
 
 		return fmt.Errorf("failed to suspend process group: %w", err)
@@ -50,9 +45,7 @@ func (screen *UnixScreen) Suspend() error {
 		return err
 	}
 
-	screen.setAlternateScreenMode(true)
-	screen.enableMouseTracking(screen.shouldEnableMouseTracking())
-	screen.hideCursor(true)
+	screen.enterAlternateScreenSession()
 	screen.onWindowResized()
 
 	return nil

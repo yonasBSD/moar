@@ -183,11 +183,7 @@ func NewScreenWithMouseModeAndColorCount(mouseMode MouseMode, terminalColorCount
 		return nil, fmt.Errorf("problem setting up TTY reader: %w", err)
 	}
 
-	screen.setAlternateScreenMode(true)
-
-	screen.enableMouseTracking(screen.shouldEnableMouseTracking())
-
-	screen.hideCursor(true)
+	screen.enterAlternateScreenSession()
 
 	go func() {
 		defer func() {
@@ -228,10 +224,7 @@ func (screen *UnixScreen) Close() {
 	// Tell our main loop to exit
 	screen.ttyInReader.Interrupt()
 
-	screen.write("\x1b[m")
-	screen.hideCursor(false)
-	screen.enableMouseTracking(false)
-	screen.setAlternateScreenMode(false)
+	screen.leaveAlternateScreenSession()
 
 	err := screen.restoreTtyInTtyOut()
 	if err != nil {
@@ -279,6 +272,19 @@ func (screen *UnixScreen) hideCursor(hide bool) {
 	} else {
 		screen.write("\x1b[?25h")
 	}
+}
+
+func (screen *UnixScreen) enterAlternateScreenSession() {
+	screen.setAlternateScreenMode(true)
+	screen.enableMouseTracking(screen.shouldEnableMouseTracking())
+	screen.hideCursor(true)
+}
+
+func (screen *UnixScreen) leaveAlternateScreenSession() {
+	screen.write("\x1b[m")
+	screen.hideCursor(false)
+	screen.enableMouseTracking(false)
+	screen.setAlternateScreenMode(false)
 }
 
 func (screen *UnixScreen) shouldEnableMouseTracking() bool {
