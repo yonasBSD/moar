@@ -59,6 +59,11 @@ func (f *FilteringReader) rebuildCache() {
 	resultIndex := 0
 
 	numLines := len(allBaseLines.Lines)
+	if numLines == 0 {
+		f.filteredLinesCache = &cache
+		log.Debugf("Filtered out 0/0 lines in %s", time.Since(t0))
+		return
+	}
 
 	// This completely avoids mutex locks and race conditions during the concurrent phase, while also preserving order.
 	matches := make([]bool, numLines)
