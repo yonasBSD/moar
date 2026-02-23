@@ -41,10 +41,14 @@ type FilteringReader struct {
 
 // Please hold the lock when calling this method.
 func (f *FilteringReader) rebuildCache() {
+	filter := *f.Filter
+	if !filter.Active() {
+		panic("Rebuilding cache requires an active filter")
+	}
+
 	t0 := time.Now()
 
 	cache := make([]reader.NumberedLine, 0)
-	filter := *f.Filter
 
 	// Mark cache base conditions
 	f.unfilteredLineCountWhenCaching = f.BackingReader.GetLineCount()
@@ -54,7 +58,6 @@ func (f *FilteringReader) rebuildCache() {
 	allBaseLines := f.BackingReader.GetLines(linemetadata.Index{}, math.MaxInt)
 	resultIndex := 0
 
-	isActive := filter.Active()
 	numLines := len(allBaseLines.Lines)
 
 	// This completely avoids mutex locks and race conditions during the concurrent phase, while also preserving order.
@@ -81,7 +84,7 @@ func (f *FilteringReader) rebuildCache() {
 
 			for j := start; j < end; j++ {
 				line := allBaseLines.Lines[j]
-				matches[j] = !isActive || filter.Matches(line.Line.Plain(line.Index))
+				matches[j] = filter.Matches(line.Line.Plain(line.Index))
 			}
 		}(i)
 	}
