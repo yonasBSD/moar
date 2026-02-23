@@ -69,11 +69,7 @@ func (f *FilteringReader) rebuildCache() {
 	matches := make([]bool, numLines)
 
 	var wg sync.WaitGroup
-	numWorkers := min(runtime.GOMAXPROCS(0)/2, numLines)
-	if numWorkers < 1 {
-		// Can happen when GOMAXPROCS is 1
-		numWorkers = 1
-	}
+	numWorkers := min(runtime.GOMAXPROCS(0), numLines)
 
 	// chunk size for each goroutine
 	chunkSize := (numLines + numWorkers - 1) / numWorkers
