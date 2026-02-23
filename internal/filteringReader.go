@@ -40,6 +40,8 @@ type FilteringReader struct {
 }
 
 // Please hold the lock when calling this method.
+//
+// This method requires f.Filter.Active() to be true on entry.
 func (f *FilteringReader) rebuildCache() {
 	filter := *f.Filter
 	if !filter.Active() {
