@@ -35,6 +35,10 @@ type Screen interface {
 	// done with your screen
 	Close()
 
+	// Temporarily suspend screen handling and this process group, then resume
+	// screen handling after receiving SIGCONT.
+	Suspend() error
+
 	Clear()
 
 	// Returns the width of the rune just added, in number of columns.
@@ -114,6 +118,7 @@ type UnixScreen struct {
 	oldTtyOutMode uint32 //nolint Windows only
 
 	terminalColorCount ColorCount
+	mouseMode          MouseMode
 }
 
 // Example event: "\x1b[<65;127;41M"
@@ -148,6 +153,7 @@ func NewScreenWithMouseModeAndColorCount(mouseMode MouseMode, terminalColorCount
 
 	screen := UnixScreen{
 		terminalColorCount: terminalColorCount,
+		mouseMode:          mouseMode,
 	}
 
 	// The number "80" here is from manual testing on my MacBook:
@@ -179,16 +185,7 @@ func NewScreenWithMouseModeAndColorCount(mouseMode MouseMode, terminalColorCount
 
 	screen.setAlternateScreenMode(true)
 
-	switch mouseMode {
-	case MouseModeAuto:
-		screen.enableMouseTracking(!terminalHasArrowKeysEmulation())
-	case MouseModeSelect:
-		screen.enableMouseTracking(false)
-	case MouseModeScroll:
-		screen.enableMouseTracking(true)
-	default:
-		panic(fmt.Errorf("unknown mouse mode: %d", mouseMode))
-	}
+	screen.enableMouseTracking(screen.shouldEnableMouseTracking())
 
 	screen.hideCursor(true)
 
@@ -281,6 +278,19 @@ func (screen *UnixScreen) hideCursor(hide bool) {
 		screen.write("\x1b[?25l")
 	} else {
 		screen.write("\x1b[?25h")
+	}
+}
+
+func (screen *UnixScreen) shouldEnableMouseTracking() bool {
+	switch screen.mouseMode {
+	case MouseModeAuto:
+		return !terminalHasArrowKeysEmulation()
+	case MouseModeSelect:
+		return false
+	case MouseModeScroll:
+		return true
+	default:
+		panic(fmt.Errorf("unknown mouse mode: %d", screen.mouseMode))
 	}
 }
 
