@@ -35,10 +35,6 @@ type Screen interface {
 	// done with your screen
 	Close()
 
-	// Temporarily suspend screen handling and this process group, then resume
-	// screen handling after receiving SIGCONT.
-	Suspend() error
-
 	Clear()
 
 	// Returns the width of the rune just added, in number of columns.
@@ -278,6 +274,11 @@ func (screen *UnixScreen) enterAlternateScreenSession() {
 	screen.setAlternateScreenMode(true)
 	screen.enableMouseTracking(screen.shouldEnableMouseTracking())
 	screen.hideCursor(true)
+
+	// Clear the render cache to force a full redraw. This is needed after
+	// suspend/resume because the terminal's alternate screen buffer is blank
+	// but our cache still has the old content.
+	screen.lastRendered = lastRendered{}
 }
 
 func (screen *UnixScreen) leaveAlternateScreenSession() {
@@ -522,6 +523,22 @@ func (screen *UnixScreen) mainLoop() {
 			if event == nil {
 				// No event, go wait for more
 				break
+			}
+
+			// Intercept Ctrl-Z and handle suspend/resume automatically
+			if runeEvent, ok := (*event).(EventRune); ok {
+				if runeEvent.rune == '\x1a' {
+					log.Info("Twin: Ctrl-Z detected, suspending")
+
+					err := screen.suspend()
+					if err != nil {
+						log.Info(fmt.Sprint("Twin: Suspend failed: ", err))
+					}
+
+					log.Info("Twin: Resumed from suspend")
+
+					continue
+				}
 			}
 
 			// Post the event

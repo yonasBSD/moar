@@ -11,7 +11,10 @@ import (
 	"golang.org/x/term"
 )
 
-func (screen *UnixScreen) Suspend() error {
+// Suspend and wait for SIGCONT, then resume. Basically ctrl-Z handling.
+//
+// So this method will not return until after the process is resumed again.
+func (screen *UnixScreen) suspend() error {
 	cont := make(chan os.Signal, 1)
 	signal.Notify(cont, syscall.SIGCONT)
 	defer signal.Stop(cont)

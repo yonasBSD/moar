@@ -26,7 +26,7 @@ func (screen *FakeScreen) Close() {
 	// This method intentionally left blank
 }
 
-func (screen *FakeScreen) Suspend() error {
+func (screen *FakeScreen) suspend() error {
 	return nil
 }
 
