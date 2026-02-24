@@ -26,10 +26,6 @@ func (screen *FakeScreen) Close() {
 	// This method intentionally left blank
 }
 
-func (screen *FakeScreen) suspend() error {
-	return nil
-}
-
 func (screen *FakeScreen) Clear() {
 	// This method's contents has been copied from UnixScreen.Clear()
 
