@@ -32,8 +32,8 @@ func (screen *FakeScreen) Clear() {
 	empty := NewStyledRune(' ', StyleDefault)
 
 	width, height := screen.Size()
-	for row := 0; row < height; row++ {
-		for column := 0; column < width; column++ {
+	for row := range height {
+		for column := range width {
 			screen.cells[row][column] = empty
 		}
 	}
