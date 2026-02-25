@@ -3,6 +3,7 @@ package internal
 import (
 	"fmt"
 	"math"
+	"runtime"
 	"sync"
 	"time"
 
@@ -39,11 +40,17 @@ type FilteringReader struct {
 }
 
 // Please hold the lock when calling this method.
+//
+// This method requires f.Filter.Active() to be true on entry.
 func (f *FilteringReader) rebuildCache() {
+	filter := *f.Filter
+	if !filter.Active() {
+		panic("Rebuilding cache requires an active filter")
+	}
+
 	t0 := time.Now()
 
 	cache := make([]reader.NumberedLine, 0)
-	filter := *f.Filter
 
 	// Mark cache base conditions
 	f.unfilteredLineCountWhenCaching = f.BackingReader.GetLineCount()
@@ -52,24 +59,58 @@ func (f *FilteringReader) rebuildCache() {
 	// Repopulate the cache
 	allBaseLines := f.BackingReader.GetLines(linemetadata.Index{}, math.MaxInt)
 	resultIndex := 0
-	for _, line := range allBaseLines.Lines {
-		if filter.Active() && !filter.Matches(line.Line.Plain(line.Index)) {
-			// We have a pattern but it doesn't match
-			continue
-		}
 
-		cache = append(cache, reader.NumberedLine{
-			Line:   line.Line,
-			Index:  linemetadata.IndexFromZeroBased(resultIndex),
-			Number: line.Number,
-		})
-		resultIndex++
+	numLines := len(allBaseLines.Lines)
+	if numLines == 0 {
+		f.filteredLinesCache = &cache
+		log.Debugf("Filtered out 0/0 lines in %s", time.Since(t0))
+		return
+	}
+
+	// This completely avoids mutex locks and race conditions during the concurrent phase, while also preserving order.
+	matches := make([]bool, numLines)
+
+	var wg sync.WaitGroup
+	numWorkers := min(runtime.GOMAXPROCS(0), numLines)
+
+	// chunk size for each goroutine
+	chunkSize := (numLines + numWorkers - 1) / numWorkers
+
+	// Concurrent Filtering Phase
+	for i := range numWorkers {
+		wg.Add(1)
+		go func(workerIndex int) {
+			defer wg.Done()
+
+			start := workerIndex * chunkSize
+			end := min(start+chunkSize, numLines)
+
+			for j := start; j < end; j++ {
+				line := allBaseLines.Lines[j]
+				matches[j] = filter.Matches(line.Line.Plain(line.Index))
+			}
+		}(i)
+	}
+
+	wg.Wait()
+	t1 := time.Now()
+
+	// Assemble sequentially to ensure resultIndex increments correctly
+	for i, line := range allBaseLines.Lines {
+		if matches[i] {
+			cache = append(cache, reader.NumberedLine{
+				Line:   line.Line,
+				Index:  linemetadata.IndexFromZeroBased(resultIndex),
+				Number: line.Number,
+			})
+			resultIndex++
+		}
 	}
 
 	f.filteredLinesCache = &cache
 
-	log.Debugf("Filtered out %d/%d lines in %s",
-		len(allBaseLines.Lines)-len(cache), len(allBaseLines.Lines), time.Since(t0))
+	log.Debugf("Filtered out %d/%d lines in %s (used %d workers in %s)",
+		numLines-len(cache), numLines, time.Since(t0), numWorkers, t1.Sub(t0))
 }
 
 func (f *FilteringReader) getAllLines() []reader.NumberedLine {
