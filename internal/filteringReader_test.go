@@ -1,0 +1,47 @@
+package internal
+
+import (
+	"testing"
+
+	"github.com/walles/moor/v2/internal/reader"
+	"github.com/walles/moor/v2/internal/search"
+	"github.com/walles/moor/v2/twin"
+	"gotest.tools/v3/assert"
+)
+
+func TestOneLine(t *testing.T) {
+	pager := Pager{
+		screen: twin.NewFakeScreen(20, 10),
+
+		readers:       []*reader.ReaderImpl{reader.NewFromTextForTesting("test", "hej")},
+		ShowStatusBar: true,
+	}
+	pager.filteringReader = FilteringReader{
+		BackingReader: pager.readers[pager.currentReader],
+		Filter:        &pager.filter,
+	}
+
+	rendered := pager.renderLines()
+	assert.Equal(t, len(rendered.lines), 1)
+
+	pager.filter = search.For("x")
+	rendered = pager.renderLines()
+	assert.Equal(t, len(rendered.lines), 0)
+}
+
+func TestZeroLines(t *testing.T) {
+	pager := Pager{
+		// Single line terminal window, this is what we're testing
+		screen: twin.NewFakeScreen(20, 10),
+
+		readers:       []*reader.ReaderImpl{reader.NewFromTextForTesting("test", "")},
+		ShowStatusBar: true,
+	}
+	pager.filteringReader = FilteringReader{
+		BackingReader: pager.readers[pager.currentReader],
+		Filter:        &pager.filter,
+	}
+
+	rendered := pager.renderLines()
+	assert.Equal(t, len(rendered.lines), 0)
+}
