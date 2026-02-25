@@ -91,6 +91,10 @@ type UnixScreen struct {
 	widthAccessFromSizeOnly  int // Access from Size() method only
 	heightAccessFromSizeOnly int // Access from Size() method only
 
+	// Protects both screen writes (through the ttyOut field) and lastRendered
+	// updates
+	renderLock sync.Mutex
+
 	terminalBackground      *Color
 	terminalBackgroundQuery *time.Time // When we asked for the terminal background color
 	terminalBackgroundLock  sync.Mutex
@@ -114,6 +118,7 @@ type UnixScreen struct {
 	oldTtyOutMode uint32 //nolint Windows only
 
 	terminalColorCount ColorCount
+	mouseMode          MouseMode
 }
 
 // Example event: "\x1b[<65;127;41M"
@@ -148,6 +153,7 @@ func NewScreenWithMouseModeAndColorCount(mouseMode MouseMode, terminalColorCount
 
 	screen := UnixScreen{
 		terminalColorCount: terminalColorCount,
+		mouseMode:          mouseMode,
 	}
 
 	// The number "80" here is from manual testing on my MacBook:
@@ -177,20 +183,7 @@ func NewScreenWithMouseModeAndColorCount(mouseMode MouseMode, terminalColorCount
 		return nil, fmt.Errorf("problem setting up TTY reader: %w", err)
 	}
 
-	screen.setAlternateScreenMode(true)
-
-	switch mouseMode {
-	case MouseModeAuto:
-		screen.enableMouseTracking(!terminalHasArrowKeysEmulation())
-	case MouseModeSelect:
-		screen.enableMouseTracking(false)
-	case MouseModeScroll:
-		screen.enableMouseTracking(true)
-	default:
-		panic(fmt.Errorf("unknown mouse mode: %d", mouseMode))
-	}
-
-	screen.hideCursor(true)
+	screen.enterAlternateScreenSession()
 
 	go func() {
 		defer func() {
@@ -231,10 +224,7 @@ func (screen *UnixScreen) Close() {
 	// Tell our main loop to exit
 	screen.ttyInReader.Interrupt()
 
-	screen.write("\x1b[m")
-	screen.hideCursor(false)
-	screen.enableMouseTracking(false)
-	screen.setAlternateScreenMode(false)
+	screen.leaveAlternateScreenSession()
 
 	err := screen.restoreTtyInTtyOut()
 	if err != nil {
@@ -251,7 +241,9 @@ func (screen *UnixScreen) Events() chan Event {
 }
 
 // Write string to ttyOut, panic on failure, return number of bytes written.
-func (screen *UnixScreen) write(s string) int {
+//
+// You must hold renderLock when calling this method.
+func (screen *UnixScreen) writeLocked(s string) int {
 	bytesWritten, err := screen.ttyOut.Write([]byte(s))
 	if err != nil {
 		panic(err)
@@ -259,28 +251,66 @@ func (screen *UnixScreen) write(s string) int {
 	return bytesWritten
 }
 
-func (screen *UnixScreen) setAlternateScreenMode(enable bool) {
+// You must hold renderLock when calling this method.
+func (screen *UnixScreen) setAlternateScreenModeLocked(enable bool) {
 	// Ref: https://stackoverflow.com/a/11024208/473672
 	if enable {
-		screen.write("\x1b[?1049h")
+		screen.writeLocked("\x1b[?1049h")
 
 		// Enable alternateScroll mode. This makes the mouse wheel work without
 		// blocking selection.
 		//
 		// Ref: https://github.com/walles/moor/issues/53#issuecomment-3392572761
-		screen.write("\x1b[?1007h")
+		screen.writeLocked("\x1b[?1007h")
 	} else {
-		screen.write("\x1b[?1007l")
-		screen.write("\x1b[?1049l")
+		screen.writeLocked("\x1b[?1007l")
+		screen.writeLocked("\x1b[?1049l")
 	}
 }
 
-func (screen *UnixScreen) hideCursor(hide bool) {
+func (screen *UnixScreen) hideCursorLocked(hide bool) {
 	// Ref: https://en.wikipedia.org/wiki/ANSI_escape_code#CSI_(Control_Sequence_Introducer)_sequences
 	if hide {
-		screen.write("\x1b[?25l")
+		screen.writeLocked("\x1b[?25l")
 	} else {
-		screen.write("\x1b[?25h")
+		screen.writeLocked("\x1b[?25h")
+	}
+}
+
+func (screen *UnixScreen) enterAlternateScreenSession() {
+	screen.renderLock.Lock()
+	defer screen.renderLock.Unlock()
+
+	screen.setAlternateScreenModeLocked(true)
+	screen.enableMouseTrackingLocked(screen.shouldEnableMouseTracking())
+	screen.hideCursorLocked(true)
+
+	// Clear the render cache to force a full redraw. This is needed after
+	// suspend/resume because the terminal's alternate screen buffer is blank
+	// but our cache still has the old content.
+	screen.lastRendered = lastRendered{}
+}
+
+func (screen *UnixScreen) leaveAlternateScreenSession() {
+	screen.renderLock.Lock()
+	defer screen.renderLock.Unlock()
+
+	screen.writeLocked("\x1b[m")
+	screen.hideCursorLocked(false)
+	screen.enableMouseTrackingLocked(false)
+	screen.setAlternateScreenModeLocked(false)
+}
+
+func (screen *UnixScreen) shouldEnableMouseTracking() bool {
+	switch screen.mouseMode {
+	case MouseModeAuto:
+		return !terminalHasArrowKeysEmulation()
+	case MouseModeSelect:
+		return false
+	case MouseModeScroll:
+		return true
+	default:
+		panic(fmt.Errorf("unknown mouse mode: %d", screen.mouseMode))
 	}
 }
 
@@ -432,11 +462,12 @@ func terminalHasArrowKeysEmulation() bool {
 	return false
 }
 
-func (screen *UnixScreen) enableMouseTracking(enable bool) {
+// You must hold renderLock when calling this method.
+func (screen *UnixScreen) enableMouseTrackingLocked(enable bool) {
 	if enable {
-		screen.write("\x1b[?1006;1000h")
+		screen.writeLocked("\x1b[?1006;1000h")
 	} else {
-		screen.write("\x1b[?1006;1000l")
+		screen.writeLocked("\x1b[?1006;1000l")
 	}
 }
 
@@ -506,6 +537,23 @@ func (screen *UnixScreen) mainLoop() {
 			if event == nil {
 				// No event, go wait for more
 				break
+			}
+
+			// Intercept Ctrl-Z and handle suspend/resume automatically
+			if runeEvent, ok := (*event).(EventRune); ok {
+				if runeEvent.rune == '\x1a' {
+					log.Info("Twin: Ctrl-Z detected, suspending...")
+
+					err := screen.suspend()
+					if err != nil {
+						log.Info(fmt.Sprint("Twin: Suspend failed: ", err))
+						continue
+					}
+
+					log.Info("Twin: Resumed from suspend")
+
+					continue
+				}
 			}
 
 			// Post the event
@@ -936,7 +984,9 @@ func (screen *UnixScreen) ShowNLines(height int) {
 
 // Take a snapshot of the current screen. Will be used on the next render to
 // decide whether to do a full render or a delta render.
-func (screen *UnixScreen) snapshotLastRendered() {
+//
+// You must hold renderLock when calling this method.
+func (screen *UnixScreen) snapshotLastRenderedLocked() {
 	height := len(screen.cells)
 	width := 0
 	if height > 0 {
@@ -974,7 +1024,9 @@ func (screen *UnixScreen) snapshotLastRendered() {
 }
 
 // Map updated lines
-func (screen *UnixScreen) findUpdatedLines() map[int][]StyledRune {
+//
+// You must hold renderLock when calling this method.
+func (screen *UnixScreen) findUpdatedLinesLocked() map[int][]StyledRune {
 	height := len(screen.cells)
 	updatedLines := make(map[int][]StyledRune, height)
 	for row := range height {
@@ -1018,14 +1070,16 @@ func renderWithNewline(builder *strings.Builder, line []StyledRune, width int, t
 
 // If only a few lines changed, update just those lines.
 //
+// You must hold renderLock when calling this method.
+//
 // Returns true if delta rendering was done, false if a full render is needed.
-func (screen *UnixScreen) showNLinesDelta(width int, height int) bool {
+func (screen *UnixScreen) showNLinesDeltaLocked(width int, height int) bool {
 	if screen.lastRendered.width != width || screen.lastRendered.height != height {
 		return false
 	}
 
 	// Map from line number to line contents
-	updatedLines := screen.findUpdatedLines()
+	updatedLines := screen.findUpdatedLinesLocked()
 
 	// We have two spinners, those two should be able to spin without updating
 	// the whole screen.
@@ -1043,14 +1097,17 @@ func (screen *UnixScreen) showNLinesDelta(width int, height int) bool {
 	}
 
 	// Write out what we have
-	screen.write(builder.String())
-	screen.snapshotLastRendered()
+	screen.writeLocked(builder.String())
+	screen.snapshotLastRenderedLocked()
 
 	return true
 }
 
 func (screen *UnixScreen) showNLines(width int, height int, clearFirst bool) {
-	if clearFirst && screen.showNLinesDelta(width, height) {
+	screen.renderLock.Lock()
+	defer screen.renderLock.Unlock()
+
+	if clearFirst && screen.showNLinesDeltaLocked(width, height) {
 		return
 	}
 
@@ -1067,6 +1124,6 @@ func (screen *UnixScreen) showNLines(width int, height int, clearFirst bool) {
 	}
 
 	// Write out what we have
-	screen.write(builder.String())
-	screen.snapshotLastRendered()
+	screen.writeLocked(builder.String())
+	screen.snapshotLastRenderedLocked()
 }
