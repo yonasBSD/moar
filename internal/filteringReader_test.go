@@ -33,7 +33,6 @@ func TestZeroLines(t *testing.T) {
 		screen: twin.NewFakeScreen(20, 10),
 
 		readers:       []*reader.ReaderImpl{reader.NewFromTextForTesting("test", "")},
-		ShowStatusBar: true,
 	}
 	pager.filteringReader = FilteringReader{
 		BackingReader: pager.readers[pager.currentReader],
