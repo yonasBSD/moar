@@ -42,6 +42,7 @@ func TestZeroLines(t *testing.T) {
 		Filter:        &pager.filter,
 	}
 
+	pager.filter = search.For("x")
 	rendered := pager.renderLines()
 	assert.Equal(t, len(rendered.lines), 0)
 }
