@@ -542,11 +542,12 @@ func (screen *UnixScreen) mainLoop() {
 			// Intercept Ctrl-Z and handle suspend/resume automatically
 			if runeEvent, ok := (*event).(EventRune); ok {
 				if runeEvent.rune == '\x1a' {
-					log.Info("Twin: Ctrl-Z detected, suspending")
+					log.Info("Twin: Ctrl-Z detected, suspending...")
 
 					err := screen.suspend()
 					if err != nil {
 						log.Info(fmt.Sprint("Twin: Suspend failed: ", err))
+						continue
 					}
 
 					log.Info("Twin: Resumed from suspend")
