@@ -31,7 +31,6 @@ func TestOneLine(t *testing.T) {
 
 func TestZeroLines(t *testing.T) {
 	pager := Pager{
-		// Single line terminal window, this is what we're testing
 		screen: twin.NewFakeScreen(20, 10),
 
 		readers:       []*reader.ReaderImpl{reader.NewFromTextForTesting("test", "")},
