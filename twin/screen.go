@@ -67,12 +67,6 @@ type Screen interface {
 	// returning the new size instead.
 	Size() (width int, height int)
 
-	// ShowCursorAt() moves the cursor to the given screen position and makes
-	// sure it is visible.
-	//
-	// If the position is outside of the screen, the cursor will be hidden.
-	ShowCursorAt(column int, row int)
-
 	// Can be nil if not (yet?) detected
 	TerminalBackground() *Color
 
@@ -444,35 +438,6 @@ func (screen *UnixScreen) enableMouseTracking(enable bool) {
 	} else {
 		screen.write("\x1b[?1006;1000l")
 	}
-}
-
-// ShowCursorAt() moves the cursor to the given screen position and makes sure
-// it is visible.
-//
-// If the position is outside of the screen, the cursor will be hidden.
-func (screen *UnixScreen) ShowCursorAt(column int, row int) {
-	if column < 0 {
-		screen.hideCursor(true)
-		return
-	}
-	if row < 0 {
-		screen.hideCursor(true)
-		return
-	}
-
-	width, height := screen.Size()
-	if column >= width {
-		screen.hideCursor(true)
-		return
-	}
-	if row >= height {
-		screen.hideCursor(true)
-		return
-	}
-
-	// https://en.wikipedia.org/wiki/ANSI_escape_code#CSI_(Control_Sequence_Introducer)_sequences
-	screen.write(fmt.Sprintf("\x1b[%d;%dH", row, column))
-	screen.hideCursor(false)
 }
 
 func (screen *UnixScreen) mainLoop() {

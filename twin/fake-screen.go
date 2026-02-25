@@ -109,10 +109,6 @@ func (screen *FakeScreen) TerminalBackground() *Color {
 	return nil
 }
 
-func (screen *FakeScreen) ShowCursorAt(_ int, _ int) {
-	// This method intentionally left blank
-}
-
 func (screen *FakeScreen) Events() chan Event {
 	// TODO: Do better here if or when this becomes a problem
 	return nil
