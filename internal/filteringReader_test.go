@@ -46,7 +46,6 @@ func TestZeroLines(t *testing.T) {
 	assert.Equal(t, len(rendered.lines), 0)
 }
 
-
 // Micro benchmark for rebuildCache (the main computation in filteringReader.go)
 func BenchmarkFilterHugeFile(b *testing.B) {
 	// The file packets_repeat.log is 18 kB and 90 lines long (with ANSI colors).
