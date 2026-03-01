@@ -66,6 +66,7 @@ func BenchmarkFilterHugeFile(b *testing.B) {
 	}
 	fr.rebuildCache() // warmup
 
+	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		fr.rebuildCache()
