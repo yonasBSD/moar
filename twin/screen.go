@@ -1088,6 +1088,11 @@ func (screen *UnixScreen) showNLinesDeltaLocked(width int, height int) bool {
 		return false
 	}
 
+	if len(updatedLines) == 0 {
+		// Nothing to update, already done!
+		return true
+	}
+
 	var builder strings.Builder
 	for row, line := range updatedLines {
 		// Move cursor to the start of the line
