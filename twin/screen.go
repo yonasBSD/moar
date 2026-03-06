@@ -1139,6 +1139,9 @@ func (screen *UnixScreen) showNLines(width int, height int, clearFirst bool) {
 
 // Pause the screen, run the given function, then resume the screen. Blocks
 // until the function has completed and the screen has been resumed again.
+//
+// Error returns mean that either pausing failed or the run function failed. If
+// resuming fails, this method will panic.
 func (screen *UnixScreen) PauseAndCall(run func() error) error {
 	screen.leaveAlternateScreenSession()
 
@@ -1151,11 +1154,7 @@ func (screen *UnixScreen) PauseAndCall(run func() error) error {
 
 	restoreRawErr := screen.restoreRawModeAfterResume()
 	if restoreRawErr != nil {
-		if runErr != nil {
-			return fmt.Errorf("operation failed while paused: %w; also failed to re-enter raw mode: %v", runErr, restoreRawErr)
-		}
-
-		return restoreRawErr
+		panic(fmt.Errorf("failed to resume screen after paused operation (%v): %w", runErr, restoreRawErr))
 	}
 
 	screen.enterAlternateScreenSession()
