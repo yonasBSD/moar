@@ -69,6 +69,9 @@ func errUnlessExecutable(file string) error {
 	return fmt.Errorf("Not executable: %s", file)
 }
 
+// pickAnEditor returns the editor command to execute, where it came from
+// ("VISUAL", "EDITOR" or "fallback list"), and an error if no editor could
+// be found.
 func pickAnEditor() (string, string, error) {
 	// Get an editor setting from either VISUAL or EDITOR
 	editorEnv := "VISUAL"
@@ -168,7 +171,7 @@ func handleEditingRequest(p *Pager) {
 		}
 	}
 
-	p.AfterExit = func() error {
+	err = p.screen.PauseAndCall(func() error {
 		// NOTE: If you do any changes here, make sure they work with both "nano"
 		// and "code -w" (VSCode).
 		commandWithArgs := strings.Fields(editor)
@@ -197,6 +200,14 @@ func handleEditingRequest(p *Pager) {
 			log.Info("Editor exited successfully: ", commandWithArgs)
 		}
 		return err
+	})
+	if err != nil {
+		log.Warn("Failed to launch editor in paused session: ", err)
+		p.mode = &PagerModeInfo{
+			Pager: p,
+			Text:  "Failed to launch editor \"" + editor + "\": " + err.Error(),
+		}
+
+		return
 	}
-	p.Quit()
 }

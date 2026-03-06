@@ -745,13 +745,6 @@ func startPaging(pager *internal.Pager, screen twin.Screen, chromaStyle *chroma.
 		if !pager.DeInit {
 			pager.ReprintAfterExit()
 		}
-
-		if pager.AfterExit != nil {
-			err := pager.AfterExit()
-			if err != nil {
-				log.Error("Failed running AfterExit hook: ", err)
-			}
-		}
 	}()
 
 	pager.StartPaging(screen, chromaStyle, chromaFormatter)
