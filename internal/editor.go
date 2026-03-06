@@ -69,6 +69,9 @@ func errUnlessExecutable(file string) error {
 	return fmt.Errorf("Not executable: %s", file)
 }
 
+// pickAnEditor returns the editor command to execute, where it came from
+// ("VISUAL", "EDITOR" or "fallback list"), and an error if no editor could
+// be found.
 func pickAnEditor() (string, string, error) {
 	// Get an editor setting from either VISUAL or EDITOR
 	editorEnv := "VISUAL"
@@ -202,7 +205,7 @@ func handleEditingRequest(p *Pager) {
 		log.Warn("Failed to launch editor in paused session: ", err)
 		p.mode = &PagerModeInfo{
 			Pager: p,
-			Text:  "Failed to launch editor: " + err.Error(),
+			Text:  "Failed to launch editor \"" + editor + "\": " + err.Error(),
 		}
 
 		return
