@@ -19,37 +19,45 @@ func (screen *UnixScreen) suspend() error {
 	signal.Notify(cont, syscall.SIGCONT)
 	defer signal.Stop(cont)
 
+	return screen.pauseAndRun(func() error {
+		// kill(0) = "Send signal to all processes in the current process group"
+		err := syscall.Kill(0, syscall.SIGTSTP)
+		if err != nil {
+			return fmt.Errorf("failed to suspend process group: %w", err)
+		}
+
+		// Wait for SIGCONT signal to arrive
+		<-cont
+
+		return nil
+	})
+}
+
+func (screen *UnixScreen) pauseAndRun(run func() error) error {
 	screen.leaveAlternateScreenSession()
 
 	err := screen.restoreTtyInTtyOut()
 	if err != nil {
-		return fmt.Errorf("failed to restore terminal state before suspend: %w", err)
+		return fmt.Errorf("failed to restore terminal state before pause: %w", err)
 	}
 
-	// kill(0) = "Send signal to all processes in the current process group"
-	err = syscall.Kill(0, syscall.SIGTSTP)
-	if err != nil {
-		restoreRawErr := screen.restoreRawModeAfterResume()
-		if restoreRawErr != nil {
-			return fmt.Errorf("failed to suspend process group: %w; also failed to re-enter raw mode: %v", err, restoreRawErr)
+	runErr := run()
+
+	restoreRawErr := screen.restoreRawModeAfterResume()
+	if restoreRawErr != nil {
+		if runErr != nil {
+			return fmt.Errorf("operation failed while paused: %w; also failed to re-enter raw mode: %v", runErr, restoreRawErr)
 		}
 
-		screen.enterAlternateScreenSession()
-		screen.onWindowResized()
-
-		return fmt.Errorf("failed to suspend process group: %w", err)
-	}
-
-	// Wait for SIGCONT signal to arrive
-	<-cont
-
-	err = screen.restoreRawModeAfterResume()
-	if err != nil {
-		return err
+		return restoreRawErr
 	}
 
 	screen.enterAlternateScreenSession()
 	screen.onWindowResized()
+
+	if runErr != nil {
+		return runErr
+	}
 
 	return nil
 }
