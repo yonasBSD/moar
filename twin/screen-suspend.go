@@ -7,8 +7,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-
-	"golang.org/x/term"
 )
 
 // Suspend and wait for SIGCONT, then resume. Basically ctrl-Z handling.
@@ -19,7 +17,7 @@ func (screen *UnixScreen) suspend() error {
 	signal.Notify(cont, syscall.SIGCONT)
 	defer signal.Stop(cont)
 
-	return screen.pauseAndRun(func() error {
+	return screen.PauseAndCall(func() error {
 		// kill(0) = "Send signal to all processes in the current process group"
 		err := syscall.Kill(0, syscall.SIGTSTP)
 		if err != nil {
@@ -31,43 +29,4 @@ func (screen *UnixScreen) suspend() error {
 
 		return nil
 	})
-}
-
-func (screen *UnixScreen) pauseAndRun(run func() error) error {
-	screen.leaveAlternateScreenSession()
-
-	err := screen.restoreTtyInTtyOut()
-	if err != nil {
-		return fmt.Errorf("failed to restore terminal state before pause: %w", err)
-	}
-
-	runErr := run()
-
-	restoreRawErr := screen.restoreRawModeAfterResume()
-	if restoreRawErr != nil {
-		if runErr != nil {
-			return fmt.Errorf("operation failed while paused: %w; also failed to re-enter raw mode: %v", runErr, restoreRawErr)
-		}
-
-		return restoreRawErr
-	}
-
-	screen.enterAlternateScreenSession()
-	screen.onWindowResized()
-
-	if runErr != nil {
-		return runErr
-	}
-
-	return nil
-}
-
-func (screen *UnixScreen) restoreRawModeAfterResume() error {
-	terminalState, err := term.MakeRaw(int(screen.ttyIn.Fd()))
-	if err != nil {
-		return fmt.Errorf("failed to re-enter raw mode after suspend: %w", err)
-	}
-
-	screen.oldTerminalState = terminalState
-	return nil
 }

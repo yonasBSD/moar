@@ -72,6 +72,10 @@ type Screen interface {
 
 	// This channel is what your main loop should be checking.
 	Events() chan Event
+
+	// Pause the screen, run the given function, then resume the screen. Blocks
+	// until the function has completed and the screen has been resumed again.
+	PauseAndCall(run func() error) error
 }
 
 type interruptableReader interface {
@@ -1131,4 +1135,45 @@ func (screen *UnixScreen) showNLines(width int, height int, clearFirst bool) {
 	// Write out what we have
 	screen.writeLocked(builder.String())
 	screen.snapshotLastRenderedLocked()
+}
+
+// Pause the screen, run the given function, then resume the screen. Blocks
+// until the function has completed and the screen has been resumed again.
+func (screen *UnixScreen) PauseAndCall(run func() error) error {
+	screen.leaveAlternateScreenSession()
+
+	err := screen.restoreTtyInTtyOut()
+	if err != nil {
+		return fmt.Errorf("failed to restore terminal state before pause: %w", err)
+	}
+
+	runErr := run()
+
+	restoreRawErr := screen.restoreRawModeAfterResume()
+	if restoreRawErr != nil {
+		if runErr != nil {
+			return fmt.Errorf("operation failed while paused: %w; also failed to re-enter raw mode: %v", runErr, restoreRawErr)
+		}
+
+		return restoreRawErr
+	}
+
+	screen.enterAlternateScreenSession()
+	screen.onWindowResized()
+
+	if runErr != nil {
+		return runErr
+	}
+
+	return nil
+}
+
+func (screen *UnixScreen) restoreRawModeAfterResume() error {
+	terminalState, err := term.MakeRaw(int(screen.ttyIn.Fd()))
+	if err != nil {
+		return fmt.Errorf("failed to re-enter raw mode after suspend: %w", err)
+	}
+
+	screen.oldTerminalState = terminalState
+	return nil
 }

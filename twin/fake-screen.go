@@ -117,3 +117,9 @@ func (screen *FakeScreen) Events() chan Event {
 func (screen *FakeScreen) GetRow(row int) []StyledRune {
 	return withoutHiddenRunes(screen.cells[row])
 }
+
+func (screen *FakeScreen) PauseAndCall(run func() error) error {
+	// The fake screen doesn't have any special state to save and restore, just
+	// run it.
+	return run()
+}
