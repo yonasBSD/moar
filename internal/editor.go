@@ -168,7 +168,7 @@ func handleEditingRequest(p *Pager) {
 		}
 	}
 
-	p.AfterExit = func() error {
+	err = p.screen.PauseAndCall(func() error {
 		// NOTE: If you do any changes here, make sure they work with both "nano"
 		// and "code -w" (VSCode).
 		commandWithArgs := strings.Fields(editor)
@@ -197,6 +197,14 @@ func handleEditingRequest(p *Pager) {
 			log.Info("Editor exited successfully: ", commandWithArgs)
 		}
 		return err
+	})
+	if err != nil {
+		log.Warn("Failed to launch editor in paused session: ", err)
+		p.mode = &PagerModeInfo{
+			Pager: p,
+			Text:  "Failed to launch editor: " + err.Error(),
+		}
+
+		return
 	}
-	p.Quit()
 }
