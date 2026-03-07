@@ -88,7 +88,9 @@ echo Testing not crashing with different argument orders...
 
 # We can only do this test if we have a terminal. This means it will be run
 # locally but not in CI. Not great, but better than nothing.
-if [[ -t 1 ]]; then
+#
+# Set MOOR_SKIP_INTERACTIVE_TESTS=1 to disable interactive TTY tests.
+if [[ "${MOOR_SKIP_INTERACTIVE_TESTS}" != "1" && -t 1 ]]; then
   echo Test auto quitting on single screen...
   echo "  (success)" | ./moor --quit-if-one-screen
 fi
