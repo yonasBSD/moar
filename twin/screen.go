@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 	"unicode/utf8"
 
@@ -123,6 +124,8 @@ type UnixScreen struct {
 
 	terminalColorCount ColorCount
 	mouseMode          MouseMode
+
+	paused atomic.Bool
 }
 
 // Example event: "\x1b[<65;127;41M"
@@ -521,6 +524,11 @@ func (screen *UnixScreen) mainLoop() {
 			// Not valid, give up
 			expectingTerminalBackgroundColor = false
 			incompleteResponse = nil
+		}
+
+		if screen.paused.Load() {
+			// Ignore all input while paused
+			continue
 		}
 
 		if count > maxBytesRead {
@@ -1143,6 +1151,9 @@ func (screen *UnixScreen) showNLines(width int, height int, clearFirst bool) {
 // Error returns mean that either pausing failed or the run function failed. If
 // resuming fails, this method will panic.
 func (screen *UnixScreen) PauseAndCall(run func() error) error {
+	screen.paused.Store(true)
+	defer screen.paused.Store(false)
+
 	screen.leaveAlternateScreenSession()
 
 	err := screen.restoreTtyInTtyOut()
