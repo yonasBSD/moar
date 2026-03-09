@@ -2,6 +2,7 @@ package twin
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"sync/atomic"
@@ -38,7 +39,10 @@ func (r *interruptableReader) Interrupt() {
 
 func (r *interruptableReader) SetPaused(paused bool) {
 	if paused {
-		r.pauseOrRead.Acquire(context.TODO(), 1)
+		err := r.pauseOrRead.Acquire(context.TODO(), 1)
+		if err != nil {
+			panic(fmt.Errorf("Failed to acquire interruptable reader pause semaphore for pausing: %w", err))
+		}
 	} else {
 		r.pauseOrRead.Release(1)
 	}
@@ -65,7 +69,10 @@ func (r *interruptableReader) Read(p []byte) (n int, err error) {
 			return 0, io.EOF
 		}
 
-		r.pauseOrRead.Acquire(context.TODO(), 1)
+		err = r.pauseOrRead.Acquire(context.TODO(), 1)
+		if err != nil {
+			panic(fmt.Errorf("Failed to acquire interruptable reader pause semaphore for reading: %w", err))
+		}
 		n, err = r.base.Read(p)
 		r.pauseOrRead.Release(1)
 
