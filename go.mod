@@ -1,8 +1,6 @@
 module github.com/walles/moor/v2
 
-go 1.23.12
-
-toolchain go1.24.4
+go 1.25.0
 
 require (
 	github.com/adrg/xdg v0.5.3
@@ -20,4 +18,7 @@ require (
 	gotest.tools/v3 v3.3.0
 )
 
-require github.com/dlclark/regexp2 v1.11.5 // indirect
+require (
+	github.com/dlclark/regexp2 v1.11.5 // indirect
+	golang.org/x/sync v0.20.0
+)
