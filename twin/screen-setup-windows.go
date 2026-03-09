@@ -8,12 +8,55 @@ import (
 	"runtime/debug"
 	"syscall"
 	"time"
+	"unsafe"
 
 	"golang.org/x/sys/windows"
 	"golang.org/x/term"
 )
 
+var peekNamedPipe = windows.NewLazySystemDLL("kernel32.dll").NewProc("PeekNamedPipe")
+
+func waitForPipeReadReady(handle windows.Handle) (ready bool, err error) {
+	var bytesAvailable uint32
+	result, _, callErr := peekNamedPipe.Call(
+		uintptr(handle),
+		0,
+		0,
+		0,
+		uintptr(unsafe.Pointer(&bytesAvailable)),
+		0,
+	)
+	if result != 0 {
+		return bytesAvailable > 0, nil
+	}
+
+	if callErr == windows.ERROR_BROKEN_PIPE {
+		// Writer closed: let a real Read() return EOF.
+		return true, nil
+	}
+
+	if callErr == windows.ERROR_NO_DATA {
+		// Pipe has no data right now.
+		return false, nil
+	}
+
+	if callErr == windows.ERROR_HANDLE_EOF {
+		return true, nil
+	}
+
+	return false, fmt.Errorf("PeekNamedPipe failed: %w", callErr)
+}
+
 func (r *interruptableReader) waitForReadReady() (ready bool, err error) {
+	fileType, err := windows.GetFileType(windows.Handle(r.base.Fd()))
+	if err != nil {
+		return false, err
+	}
+
+	if fileType == windows.FILE_TYPE_PIPE {
+		return waitForPipeReadReady(windows.Handle(r.base.Fd()))
+	}
+
 	timeoutMillis := uint32(interruptableReaderPollInterval.Milliseconds())
 	if timeoutMillis == 0 {
 		timeoutMillis = 1

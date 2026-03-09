@@ -378,3 +378,33 @@ func TestInterruptableReader_justRead(t *testing.T) {
 	assert.Equal(t, buffer[0], byte(42))
 	assert.Equal(t, len(buffer), 7)
 }
+
+func TestInterruptableReader_waitForReadReadyPipe(t *testing.T) {
+	// Make a pipe to read from and write to
+	pipeReader, pipeWriter, err := os.Pipe()
+	assert.NilError(t, err)
+
+	t.Cleanup(func() {
+		_ = pipeReader.Close()
+		_ = pipeWriter.Close()
+	})
+
+	// Make an interruptable reader
+	testMe := newInterruptableReader(pipeReader)
+
+	// With no data available we should report not ready.
+	ready, err := testMe.waitForReadReady()
+	assert.NilError(t, err)
+	assert.Equal(t, ready, false)
+
+	// After writing, the pipe should become ready.
+	n, err := pipeWriter.Write([]byte{42})
+	assert.NilError(t, err)
+	assert.Equal(t, n, 1)
+
+	// With data available we should report ready
+	ready, err = testMe.waitForReadReady()
+	assert.NilError(t, err)
+	assert.Equal(t, ready, true)
+
+}
