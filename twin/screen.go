@@ -9,7 +9,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 	"unicode/utf8"
 
@@ -79,13 +78,6 @@ type Screen interface {
 	PauseAndCall(run func() error) error
 }
 
-type interruptableReader interface {
-	Read(p []byte) (n int, err error)
-
-	// Interrupt unblocks the read call, either now or eventually.
-	Interrupt()
-}
-
 type lastRendered struct {
 	width  int
 	height int
@@ -124,8 +116,6 @@ type UnixScreen struct {
 
 	terminalColorCount ColorCount
 	mouseMode          MouseMode
-
-	paused atomic.Bool
 }
 
 // Example event: "\x1b[<65;127;41M"
@@ -181,14 +171,7 @@ func NewScreenWithMouseModeAndColorCount(mouseMode MouseMode, terminalColorCount
 	if err != nil {
 		return nil, fmt.Errorf("problem setting up TTY: %w", err)
 	}
-	screen.ttyInReader, err = newInterruptableReader(screen.ttyIn)
-	if err != nil {
-		restoreErr := screen.restoreTtyInTtyOut()
-		if restoreErr != nil {
-			log.Error(fmt.Sprint("Problem restoring TTY state after failed interruptable reader setup: ", restoreErr))
-		}
-		return nil, fmt.Errorf("problem setting up TTY reader: %w", err)
-	}
+	screen.ttyInReader = newInterruptableReader(screen.ttyIn)
 
 	screen.enterAlternateScreenSession()
 
@@ -524,11 +507,6 @@ func (screen *UnixScreen) mainLoop() {
 			// Not valid, give up
 			expectingTerminalBackgroundColor = false
 			incompleteResponse = nil
-		}
-
-		if screen.paused.Load() {
-			// Ignore all input while paused
-			continue
 		}
 
 		if count > maxBytesRead {
@@ -1151,8 +1129,8 @@ func (screen *UnixScreen) showNLines(width int, height int, clearFirst bool) {
 // Error returns mean that either pausing failed or the run function failed. If
 // resuming fails, this method will panic.
 func (screen *UnixScreen) PauseAndCall(run func() error) error {
-	screen.paused.Store(true)
-	defer screen.paused.Store(false)
+	screen.ttyInReader.SetPaused(true)
+	defer screen.ttyInReader.SetPaused(false)
 
 	screen.leaveAlternateScreenSession()
 

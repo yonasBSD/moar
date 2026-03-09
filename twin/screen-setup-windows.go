@@ -13,7 +13,7 @@ import (
 	"golang.org/x/term"
 )
 
-func (r *interruptableReaderImpl) waitForReadReady() (ready bool, err error) {
+func (r *interruptableReader) waitForReadReady() (ready bool, err error) {
 	timeoutMillis := uint32(interruptableReaderPollInterval.Milliseconds())
 	if timeoutMillis == 0 {
 		timeoutMillis = 1

@@ -284,9 +284,7 @@ func TestInterruptableReader_blockedOnRead(t *testing.T) {
 	assert.NilError(t, err)
 
 	// Make an interruptable reader
-	testMe, err := newInterruptableReader(pipeReader)
-	assert.NilError(t, err)
-	assert.Assert(t, testMe != nil)
+	testMe := newInterruptableReader(pipeReader)
 
 	// Start a thread that reads from the pipe
 	type readResult struct {
@@ -342,9 +340,7 @@ func TestInterruptableReader_interruptFirstReadLater(t *testing.T) {
 	assert.NilError(t, err)
 
 	// Make an interruptable reader
-	testMe, err := newInterruptableReader(pipeReader)
-	assert.NilError(t, err)
-	assert.Assert(t, testMe != nil)
+	testMe := newInterruptableReader(pipeReader)
 
 	// Interrupt the reader
 	testMe.Interrupt()
@@ -367,9 +363,7 @@ func TestInterruptableReader_justRead(t *testing.T) {
 	assert.NilError(t, err)
 
 	// Make an interruptable reader
-	testMe, err := newInterruptableReader(pipeReader)
-	assert.NilError(t, err)
-	assert.Assert(t, testMe != nil)
+	testMe := newInterruptableReader(pipeReader)
 
 	// Write something so that we have something to read
 	n, err := pipeWriter.Write([]byte{42})

@@ -13,7 +13,7 @@ import (
 	"golang.org/x/term"
 )
 
-func (r *interruptableReaderImpl) waitForReadReady() (ready bool, err error) {
+func (r *interruptableReader) waitForReadReady() (ready bool, err error) {
 	// "This argument should be set to the highest-numbered file descriptor in
 	// any of the three sets, plus 1. The indicated file descriptors in each set
 	// are checked, up to this limit"
