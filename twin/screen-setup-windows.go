@@ -54,7 +54,19 @@ func (r *interruptableReader) waitForReadReady(timeout time.Duration) (ready boo
 	}
 
 	if fileType == windows.FILE_TYPE_PIPE {
-		return waitForPipeReadReady(windows.Handle(r.base.Fd()))
+		ready, err = waitForPipeReadReady(windows.Handle(r.base.Fd()))
+		if ready || err != nil {
+			return
+		}
+
+		time.Sleep(timeout / 2)
+		ready, err = waitForPipeReadReady(windows.Handle(r.base.Fd()))
+		if ready || err != nil {
+			return
+		}
+
+		time.Sleep(timeout / 2)
+		return
 	}
 
 	timeoutMillis := uint32(timeout.Milliseconds())
