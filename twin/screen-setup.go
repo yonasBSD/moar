@@ -8,12 +8,13 @@ import (
 	"os/signal"
 	"runtime/debug"
 	"syscall"
+	"time"
 
 	"golang.org/x/sys/unix"
 	"golang.org/x/term"
 )
 
-func (r *interruptableReader) waitForReadReady() (ready bool, err error) {
+func (r *interruptableReader) waitForReadReady(timeout time.Duration) (ready bool, err error) {
 	// "This argument should be set to the highest-numbered file descriptor in
 	// any of the three sets, plus 1. The indicated file descriptors in each set
 	// are checked, up to this limit"
@@ -22,9 +23,9 @@ func (r *interruptableReader) waitForReadReady() (ready bool, err error) {
 	nfds := r.base.Fd()
 	readFds := unix.FdSet{}
 	readFds.Set(int(r.base.Fd()))
-	timeout := unix.NsecToTimeval(interruptableReaderPollInterval.Nanoseconds())
+	selectTimeout := unix.NsecToTimeval(timeout.Nanoseconds())
 
-	_, err = unix.Select(int(nfds)+1, &readFds, nil, nil, &timeout)
+	_, err = unix.Select(int(nfds)+1, &readFds, nil, nil, &selectTimeout)
 	if err == syscall.EINTR {
 		// Not really a problem, we can get this on window resizes for example
 		return false, nil
