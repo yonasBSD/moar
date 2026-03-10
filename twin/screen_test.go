@@ -406,5 +406,34 @@ func TestInterruptableReader_waitForReadReadyPipe(t *testing.T) {
 	ready, err = testMe.waitForReadReady()
 	assert.NilError(t, err)
 	assert.Equal(t, ready, true)
+}
 
+// Files are always ready. Either to return EOF, or to return some bytes.
+func TestInterruptableReader_waitForReadReadyFile(t *testing.T) {
+	tempFile, err := os.CreateTemp("", "moor-wait-for-read-ready-*.txt")
+	assert.NilError(t, err)
+
+	t.Cleanup(func() {
+		_ = tempFile.Close()
+		_ = os.Remove(tempFile.Name())
+	})
+
+	testMe := newInterruptableReader(tempFile)
+
+	// Regular files are expected to report read-ready immediately, even when
+	// empty (EOF is still a readable condition).
+	ready, err := testMe.waitForReadReady()
+	assert.NilError(t, err)
+	assert.Equal(t, ready, true)
+
+	n, err := tempFile.Write([]byte("x"))
+	assert.NilError(t, err)
+	assert.Equal(t, n, 1)
+
+	_, err = tempFile.Seek(0, 0)
+	assert.NilError(t, err)
+
+	ready, err = testMe.waitForReadReady()
+	assert.NilError(t, err)
+	assert.Equal(t, ready, true)
 }
