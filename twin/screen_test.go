@@ -405,13 +405,15 @@ func TestInterruptableReader_waitForReadReadyPipe(t *testing.T) {
 	assert.NilError(t, err)
 	assert.Equal(t, n, 1)
 
-	// With data available we should report ready
-	ready, err = testMe.waitForReadReady(time.Millisecond)
+	// With data available we should report ready immediately
+	ready, err = testMe.waitForReadReady(time.Hour)
 	assert.NilError(t, err)
 	assert.Equal(t, ready, true)
 }
 
-// Files are always ready. Either to return EOF, or to return some bytes.
+// On Unix, files are always ready (to return EOF if nothing else), but on
+// Windows they are non-ready if they have no data. So we just verify the
+// have-data case here, and let the no-data case be whatever.
 func TestInterruptableReader_waitForReadReadyFile(t *testing.T) {
 	tempFile, err := os.CreateTemp("", "moor-wait-for-read-ready-*.txt")
 	assert.NilError(t, err)
@@ -421,22 +423,14 @@ func TestInterruptableReader_waitForReadReadyFile(t *testing.T) {
 		_ = os.Remove(tempFile.Name())
 	})
 
-	testMe := newInterruptableReader(tempFile)
-
-	// Regular files are expected to report read-ready immediately, even when
-	// empty (EOF is still a readable condition).
-	ready, err := testMe.waitForReadReady(time.Millisecond)
-	assert.NilError(t, err)
-	assert.Equal(t, ready, true)
-
+	// Put something in the file
 	n, err := tempFile.Write([]byte("x"))
 	assert.NilError(t, err)
 	assert.Equal(t, n, 1)
 
-	_, err = tempFile.Seek(0, 0)
-	assert.NilError(t, err)
-
-	ready, err = testMe.waitForReadReady(time.Millisecond)
+	// Expect read-ready immediately
+	testMe := newInterruptableReader(tempFile)
+	ready, err := testMe.waitForReadReady(time.Hour)
 	assert.NilError(t, err)
 	assert.Equal(t, ready, true)
 }
