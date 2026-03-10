@@ -392,10 +392,13 @@ func TestInterruptableReader_waitForReadReadyPipe(t *testing.T) {
 	// Make an interruptable reader
 	testMe := newInterruptableReader(pipeReader)
 
-	// With no data available we should report not ready.
-	ready, err := testMe.waitForReadReady(time.Millisecond)
+	// With no data available we should wait a bit, then report not ready.
+	t0 := time.Now()
+	ready, err := testMe.waitForReadReady(time.Millisecond * 100)
+	duration := time.Since(t0)
 	assert.NilError(t, err)
 	assert.Equal(t, ready, false)
+	assert.Assert(t, duration > time.Millisecond*100)
 
 	// After writing, the pipe should become ready.
 	n, err := pipeWriter.Write([]byte{42})
