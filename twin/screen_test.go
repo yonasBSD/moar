@@ -428,6 +428,11 @@ func TestInterruptableReader_waitForReadReadyFile(t *testing.T) {
 	assert.NilError(t, err)
 	assert.Equal(t, n, 1)
 
+	// Rewind so we can see the "x"
+	seek, err := tempFile.Seek(0, 0)
+	assert.NilError(t, err)
+	assert.Equal(t, seek, int64(0))
+
 	// Expect read-ready immediately
 	testMe := newInterruptableReader(tempFile)
 	ready, err := testMe.waitForReadReady(time.Hour)
