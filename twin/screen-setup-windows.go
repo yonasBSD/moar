@@ -47,7 +47,7 @@ func waitForPipeReadReady(handle windows.Handle) (ready bool, err error) {
 	return false, fmt.Errorf("PeekNamedPipe failed: %w", callErr)
 }
 
-func (r *interruptableReader) waitForReadReady() (ready bool, err error) {
+func (r *interruptableReader) waitForReadReady(timeout time.Duration) (ready bool, err error) {
 	fileType, err := windows.GetFileType(windows.Handle(r.base.Fd()))
 	if err != nil {
 		return false, err
@@ -57,7 +57,7 @@ func (r *interruptableReader) waitForReadReady() (ready bool, err error) {
 		return waitForPipeReadReady(windows.Handle(r.base.Fd()))
 	}
 
-	timeoutMillis := uint32(interruptableReaderPollInterval.Milliseconds())
+	timeoutMillis := uint32(timeout.Milliseconds())
 	if timeoutMillis == 0 {
 		timeoutMillis = 1
 	}

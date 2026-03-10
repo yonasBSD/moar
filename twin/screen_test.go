@@ -393,7 +393,7 @@ func TestInterruptableReader_waitForReadReadyPipe(t *testing.T) {
 	testMe := newInterruptableReader(pipeReader)
 
 	// With no data available we should report not ready.
-	ready, err := testMe.waitForReadReady()
+	ready, err := testMe.waitForReadReady(time.Millisecond)
 	assert.NilError(t, err)
 	assert.Equal(t, ready, false)
 
@@ -403,7 +403,7 @@ func TestInterruptableReader_waitForReadReadyPipe(t *testing.T) {
 	assert.Equal(t, n, 1)
 
 	// With data available we should report ready
-	ready, err = testMe.waitForReadReady()
+	ready, err = testMe.waitForReadReady(time.Millisecond)
 	assert.NilError(t, err)
 	assert.Equal(t, ready, true)
 }
@@ -422,7 +422,7 @@ func TestInterruptableReader_waitForReadReadyFile(t *testing.T) {
 
 	// Regular files are expected to report read-ready immediately, even when
 	// empty (EOF is still a readable condition).
-	ready, err := testMe.waitForReadReady()
+	ready, err := testMe.waitForReadReady(time.Millisecond)
 	assert.NilError(t, err)
 	assert.Equal(t, ready, true)
 
@@ -433,7 +433,7 @@ func TestInterruptableReader_waitForReadReadyFile(t *testing.T) {
 	_, err = tempFile.Seek(0, 0)
 	assert.NilError(t, err)
 
-	ready, err = testMe.waitForReadReady()
+	ready, err = testMe.waitForReadReady(time.Millisecond)
 	assert.NilError(t, err)
 	assert.Equal(t, ready, true)
 }

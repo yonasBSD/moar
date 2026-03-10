@@ -19,7 +19,8 @@ type interruptableReader struct {
 	pauseOrRead semaphore.Weighted
 }
 
-const interruptableReaderPollInterval = 100 * time.Millisecond
+// Basically how long we wait between interrupt checks
+const interruptableReaderMaxWait = 100 * time.Millisecond
 
 func newInterruptableReader(base *os.File) interruptableReader {
 	return interruptableReader{
@@ -55,7 +56,7 @@ func (r *interruptableReader) Read(p []byte) (n int, err error) {
 			return 0, io.EOF
 		}
 
-		ready, waitErr := r.waitForReadReady()
+		ready, waitErr := r.waitForReadReady(interruptableReaderMaxWait)
 		if waitErr != nil {
 			return 0, waitErr
 		}
