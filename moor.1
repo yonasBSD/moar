@@ -147,6 +147,24 @@ Moor will store your search history in this file. If $XDG_DATA_HOME is not set, 
 stored in the default XDG location, usually \fB~/.local/share/moor/search_history\fR.
 .SH ENVIRONMENT
 .TP
+.B LESS_TERMCAP_*
+For backwards compatibility with less, moor reads all
+\fBLESS_TERMCAP_*\fR values.
+In these values, both actual escape characters and the word
+.B ESC
+in caps are interpreted as escape characters.
+In moor, styling should be done using the \fB\-\-style\fR option rather than using these environment variables.
+Example value: \fBESC[1m\fR.
+.TP
+.B LESS_TERMCAP_md
+Formatting used for man page bold text.
+.TP
+.B LESS_TERMCAP_us
+Formatting used for man page underlined text.
+.TP
+.B LESS_TERMCAP_so
+Formatting used for status bar and search hits.
+.TP
 .B LESSSECURE
 Setting this to "1" prevents moor from opening new files or launching external programs, as required by
 .B systemctl(1)\&.

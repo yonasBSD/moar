@@ -261,6 +261,11 @@ func configureHighlighting(terminalBackground *twin.Color, configureSearchHitLin
 }
 
 func TermcapToStyle(termcap string) (twin.Style, error) {
+	// This makes it easier for people to set the environment variable
+	//
+	// Ref:https://github.com/walles/moor/issues/393
+	termcap = strings.ReplaceAll(termcap, "ESC", "\x1b")
+
 	// Add a character to be sure we have one to take the format from
 	cells := textstyles.StyledRunesFromString(twin.StyleDefault, termcap+"x", nil, 0).StyledRunes
 	if len(cells) != 1 {
