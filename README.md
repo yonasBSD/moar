@@ -69,8 +69,11 @@ For configurability reasons, `moor` reads extra command line options from the
 
 Moor is used as the default pager by:
 
-- [`px` / `ptop`](https://github.com/walles/px), `ps` and `top` for human beings
 - [`riff`](https://github.com/walles/riff), a diff filter highlighting which line parts have changed
+- [`px` / `ptop`](https://github.com/walles/px), `ps` and `top` for human beings
+- [`ftop`](https://github.com/walles/ftop), a `top` implementation which actually [embeds
+  `moor`](https://github.com/walles/ftop/blob/3786217a5923d8248f54bb747ff6bea55bd1354f/internal/ftop/pageprocessinfo.go#L93)
+  using [the embedding API](#embedding-moor-in-your-app)
 
 # Installing
 
