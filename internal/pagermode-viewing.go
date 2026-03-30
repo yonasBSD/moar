@@ -141,11 +141,15 @@ func (m PagerModeViewing) onRune(char rune) {
 	case '>', 'G':
 		p.scrollToEnd()
 
-	case 'f', ' ':
+	// '\x06' = CTRL-f, should work like just 'f'.
+	// Ref: https://github.com/walles/moor/issues/107
+	case 'f', ' ', '\x06':
 		p.scrollPosition = p.scrollPosition.NextLine(p.visibleHeight())
 		p.handleScrolledDown()
 
-	case 'b':
+	// '\x02' = CTRL-b, should work like just 'b'.
+	// Ref: https://github.com/walles/moor/issues/107
+	case 'b', '\x02':
 		p.scrollPosition = p.scrollPosition.PreviousLine(p.visibleHeight())
 		p.handleScrolledUp()
 
