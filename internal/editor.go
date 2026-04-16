@@ -169,6 +169,16 @@ func handleEditingRequest(p *Pager) {
 			log.Warn("Failed to create temp file to edit: ", err)
 			return
 		}
+
+		// Clean up the temp file
+		defer func() {
+			err = os.Remove(fileToEdit)
+			if err != nil {
+				log.Warn("Failed to remove temp file ", fileToEdit, ": ", err)
+			} else {
+				log.Debug("Removed temp file: ", fileToEdit)
+			}
+		}()
 	}
 
 	err = p.screen.PauseAndCall(func() error {
