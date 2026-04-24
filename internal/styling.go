@@ -102,6 +102,11 @@ func consumeLessTermcapEnvs(terminalBackground *twin.Color, chromaStyle *chroma.
 		"LESS_TERMCAP_md",
 		twinStyleFromChroma(terminalBackground, chromaStyle, chromaFormatter, chroma.GenericStrong, false),
 	)
+	setStyle(
+		&textstyles.ManPageHeading,
+		"LESS_TERMCAP_md",
+		twinStyleFromChroma(terminalBackground, chromaStyle, chromaFormatter, chroma.GenericHeading, false),
+	)
 	setStyle(&textstyles.ManPageUnderline,
 		"LESS_TERMCAP_us",
 		twinStyleFromChroma(terminalBackground, chromaStyle, chromaFormatter, chroma.GenericUnderline, false),
@@ -143,17 +148,10 @@ func getOppositeColor(base twin.Color) twin.Color {
 func styleUI(terminalBackground *twin.Color, chromaStyle *chroma.Style, chromaFormatter *chroma.Formatter, statusbarOption StatusBarOption, withTerminalFg bool, configureSearchHitLineBackground bool) {
 	// Set defaults
 	plainTextStyle = twin.StyleDefault
-	textstyles.ManPageHeading = twin.StyleDefault.WithAttr(twin.AttrBold)
 	lineNumbersStyle = twin.StyleDefault.WithAttr(twin.AttrDim)
 
 	if chromaStyle == nil || chromaFormatter == nil {
 		return
-	}
-
-	headingStyle := twinStyleFromChroma(terminalBackground, chromaStyle, chromaFormatter, chroma.GenericHeading, true)
-	if headingStyle != nil && !withTerminalFg {
-		log.Trace("Heading style set from Chroma: ", *headingStyle)
-		textstyles.ManPageHeading = *headingStyle
 	}
 
 	chromaLineNumbers := twinStyleFromChroma(terminalBackground, chromaStyle, chromaFormatter, chroma.LineNumbers, true)
