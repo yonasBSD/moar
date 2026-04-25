@@ -568,8 +568,17 @@ func rawUpdateStyle(style twin.Style, escapeSequenceWithoutHeader string, number
 		case 4:
 			style = style.WithAttr(twin.AttrUnderline)
 
+		case 5:
+			style = style.WithAttr(twin.AttrBlink)
+
 		case 7:
 			style = style.WithAttr(twin.AttrReverse)
+
+		case 8:
+			style = style.WithAttr(twin.AttrHidden)
+
+		case 9:
+			style = style.WithAttr(twin.AttrStrikeThrough)
 
 		case 22:
 			style = style.WithoutAttr(twin.AttrBold).WithoutAttr(twin.AttrDim)
@@ -580,8 +589,17 @@ func rawUpdateStyle(style twin.Style, escapeSequenceWithoutHeader string, number
 		case 24:
 			style = style.WithoutAttr(twin.AttrUnderline)
 
+		case 25:
+			style = style.WithoutAttr(twin.AttrBlink)
+
 		case 27:
 			style = style.WithoutAttr(twin.AttrReverse)
+
+		case 28:
+			style = style.WithoutAttr(twin.AttrHidden)
+
+		case 29:
+			style = style.WithoutAttr(twin.AttrStrikeThrough)
 
 		// Foreground colors, https://pkg.go.dev/github.com/gdamore/tcell#Color
 		case 30:
