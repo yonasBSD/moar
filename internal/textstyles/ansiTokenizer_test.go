@@ -133,12 +133,35 @@ func TestTokenize(t *testing.T) {
 	}
 }
 
-func TestUnderline(t *testing.T) {
-	tokens := StyledRunesFromString(twin.StyleDefault, "a\x1b[4mb\x1b[24mc", nil, 0).StyledRunes
-	assert.Equal(t, len(tokens), 3)
-	assert.Equal(t, tokens[0], CellWithMetadata{Rune: 'a', Style: twin.StyleDefault})
-	assert.Equal(t, tokens[1], CellWithMetadata{Rune: 'b', Style: twin.StyleDefault.WithAttr(twin.AttrUnderline)})
-	assert.Equal(t, tokens[2], CellWithMetadata{Rune: 'c', Style: twin.StyleDefault})
+func TestAllSupportedTextAttributes(t *testing.T) {
+	testCases := []struct {
+		name    string
+		onCode  string
+		offCode string
+		attr    twin.AttrMask
+	}{
+		{name: "bold", onCode: "1", offCode: "22", attr: twin.AttrBold},
+		{name: "dim", onCode: "2", offCode: "22", attr: twin.AttrDim},
+		{name: "italic", onCode: "3", offCode: "23", attr: twin.AttrItalic},
+		{name: "underline", onCode: "4", offCode: "24", attr: twin.AttrUnderline},
+		{name: "blink", onCode: "5", offCode: "25", attr: twin.AttrBlink},
+		{name: "reverse", onCode: "7", offCode: "27", attr: twin.AttrReverse},
+		{name: "hidden", onCode: "8", offCode: "28", attr: twin.AttrHidden},
+		{name: "strikethrough", onCode: "9", offCode: "29", attr: twin.AttrStrikeThrough},
+	}
+
+	for _, testCase := range testCases {
+		tc := testCase
+		t.Run(tc.name, func(t *testing.T) {
+			input := "a\x1b[" + tc.onCode + "mb\x1b[" + tc.offCode + "mc"
+			tokens := StyledRunesFromString(twin.StyleDefault, input, nil, 0).StyledRunes
+
+			assert.Equal(t, len(tokens), 3)
+			assert.Equal(t, tokens[0], CellWithMetadata{Rune: 'a', Style: twin.StyleDefault})
+			assert.Equal(t, tokens[1], CellWithMetadata{Rune: 'b', Style: twin.StyleDefault.WithAttr(tc.attr)})
+			assert.Equal(t, tokens[2], CellWithMetadata{Rune: 'c', Style: twin.StyleDefault})
+		})
+	}
 }
 
 func TestManPages(t *testing.T) {
