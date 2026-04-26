@@ -141,6 +141,14 @@ func (s *styledStringSplitter) handleEscape() error {
 		return s.consumeG0Charset()
 	}
 
+	if char == '=' || char == '>' {
+		// Set keypad mode: ESC= switches to application mode (keypad sends
+		// escape sequences), ESC> switches to numeric mode (keypad sends ASCII
+		// characters). These are terminal control commands that don't affect
+		// text rendering, ignore them silently.
+		return nil
+	}
+
 	return fmt.Errorf("Unhandled Fe sequence ESC%c", char)
 }
 
@@ -207,6 +215,19 @@ func (s *styledStringSplitter) handleCompleteControlSequence(sequence string) er
 		// Device status report, expects us to respond, just ignore them.
 		//
 		// Ref: https://vt100.net/docs/vt510-rm/DSR.html
+		return nil
+	}
+
+	if lastChar == 'h' || lastChar == 'l' {
+		// Mode setting (set or reset), e.g. ESC[?1049h (alt screen buffer)
+		// or ESC[4l (reset line wrapping). These are terminal control commands
+		// that don't affect text rendering, so we silently ignore them.
+		return nil
+	}
+
+	if lastChar == 'r' {
+		// Set scroll region, e.g. ESC[1;24r. This is a terminal control command
+		// that doesn't affect text rendering.
 		return nil
 	}
 

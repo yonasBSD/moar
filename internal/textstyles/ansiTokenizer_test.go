@@ -44,6 +44,8 @@ func getTestFiles(t *testing.T) []string {
 // Verify that we can tokenize all lines in ../sample-files/*
 // without logging any errors
 func TestTokenize(t *testing.T) {
+	log.SetLevel(log.DebugLevel)
+
 	for _, fileName := range getTestFiles(t) {
 		t.Run(fileName, func(t *testing.T) {
 			file, err := os.Open(fileName)
