@@ -266,10 +266,46 @@ func (s *styledStringSplitter) consumeOsc() error {
 			return fmt.Errorf("Expected OSC sequence to end with BEL or ESC \\ but got ESC %q", afterEsc)
 		}
 
-		if s.input[startIndex:s.nextByteIndex] == "8;;" {
-			// Special case, here comes an URL
+		if s.input[startIndex:s.nextByteIndex] == "8;" {
+			return s.handleOSC8()
+		}
+	}
+}
+
+// We just got ESC]8; and should now read the OSC 8 parameter field up to the
+// next semicolon. We currently ignore all parameters and then read the URL.
+func (s *styledStringSplitter) handleOSC8() error {
+	for {
+		char := s.nextChar()
+		if char == -1 {
+			return fmt.Errorf("Line ended in the middle of an OSC 8 parameter sequence")
+		}
+
+		if char == ';' {
+			// Found end of parameters, now read the URL
 			return s.handleURL()
 		}
+
+		if char == '\a' {
+			return fmt.Errorf("OSC 8 sequence ended before URL")
+		}
+
+		if char != esc {
+			continue
+		}
+
+		// Found ESC, check if it's followed by '\' to end the sequence, or something else which is an error
+
+		afterEsc := s.nextChar()
+		if afterEsc == -1 {
+			return fmt.Errorf("Line ended while ending an OSC 8 parameter sequence")
+		}
+
+		if afterEsc == '\\' {
+			return fmt.Errorf("OSC 8 sequence ended before URL")
+		}
+
+		return fmt.Errorf("Expected OSC 8 parameters to end with ';' but got ESC %q", afterEsc)
 	}
 }
 
