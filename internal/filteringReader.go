@@ -57,10 +57,9 @@ func (f *FilteringReader) rebuildCache() {
 	f.filterWhenCaching = filter
 
 	// Repopulate the cache
-	allBaseLines := f.BackingReader.GetLines(linemetadata.Index{}, math.MaxInt)
 	resultIndex := 0
 
-	numLines := len(allBaseLines.Lines)
+	numLines := f.BackingReader.GetLineCount()
 	if numLines == 0 {
 		f.filteredLinesCache = &cache
 		log.Debugf("Filtered out 0/0 lines in %s", time.Since(t0))
@@ -82,11 +81,13 @@ func (f *FilteringReader) rebuildCache() {
 		go func(workerIndex int) {
 			defer wg.Done()
 
+			lineCache := searchLineCache{}
+
 			start := workerIndex * chunkSize
 			end := min(start+chunkSize, numLines)
 
 			for j := start; j < end; j++ {
-				line := allBaseLines.Lines[j]
+				line := lineCache.GetLine(f.BackingReader, linemetadata.IndexFromZeroBased(j), SearchDirectionForward)
 				matches[j] = filter.Matches(line.Line.Plain(line.Index))
 			}
 		}(i)
@@ -96,8 +97,10 @@ func (f *FilteringReader) rebuildCache() {
 	t1 := time.Now()
 
 	// Assemble sequentially to ensure resultIndex increments correctly
-	for i, line := range allBaseLines.Lines {
+	lineCache := searchLineCache{}
+	for i := range numLines {
 		if matches[i] {
+			line := lineCache.GetLine(f.BackingReader, linemetadata.IndexFromZeroBased(i), SearchDirectionForward)
 			cache = append(cache, reader.NumberedLine{
 				Line:   line.Line,
 				Index:  linemetadata.IndexFromZeroBased(resultIndex),
