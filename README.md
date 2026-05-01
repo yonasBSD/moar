@@ -238,6 +238,9 @@ You can also `PageFromStream()` or `PageFromFile()`.
 
 # Developing
 
+The `twin` directory contains the library used by `moor` for drawing to the
+terminal screen. See [its README](twin/README.md) for details.
+
 You need the [go tools](https://golang.org/doc/install).
 
 Run tests:

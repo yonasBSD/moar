@@ -1,4 +1,4 @@
-Twin is a text windowing library.
+Twin is a library for drawing to the terminal screen.
 
 # Usage
 * Open a screen using `twin.NewScreen()` or one of its friends
