@@ -161,7 +161,7 @@ func TestIssue399(t *testing.T) {
 
 	lineCount := 2000
 	var lines []string
-	for i := 0; i < lineCount; i++ {
+	for i := range lineCount {
 		if i == 900 {
 			lines = append(lines, strings.Repeat("A", magicBug399LineLength))
 		} else {
