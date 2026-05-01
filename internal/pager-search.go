@@ -258,17 +258,17 @@ func (p *Pager) centerSearchHitsVertically() {
 
 	for {
 		rendered := p.renderLines()
-		firstHitRow := -1
-		lastHitRow := -1
+		firstHitRow := linemetadata.ScreenLines(-1)
+		lastHitRow := linemetadata.ScreenLines(-1)
 		for rowIndex, row := range rendered.inputLines {
 			if !p.search.Matches(row.Plain()) {
 				continue
 			}
 
 			if firstHitRow == -1 {
-				firstHitRow = rowIndex
+				firstHitRow = linemetadata.ScreenLines(rowIndex)
 			}
-			lastHitRow = rowIndex
+			lastHitRow = linemetadata.ScreenLines(rowIndex)
 		}
 
 		if firstHitRow == -1 || lastHitRow == -1 {
@@ -279,7 +279,7 @@ func (p *Pager) centerSearchHitsVertically() {
 		// If the visible height is 1, the center screen row is 0.
 		centerScreenRowDoubled := p.visibleHeight() - 1
 
-		centerHitRowDoubled := linemetadata.ScreenLines(firstHitRow + lastHitRow)
+		centerHitRowDoubled := firstHitRow + lastHitRow
 
 		// Divide by 2 here to get the amount of rows we need to scroll. We
 		// postponed the division by 2 until now to avoid rounding errors.

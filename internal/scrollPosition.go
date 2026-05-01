@@ -148,16 +148,16 @@ func (si *scrollPositionInternal) handleNegativeDeltaScreenLines(pager *Pager) {
 		// Render the previous line
 		previousLineIndex := si.lineIndex.NonWrappingAdd(-1)
 		previousLine := pager.Reader().GetLine(previousLineIndex)
-		previousSubLinesCount := 0
+		previousSubLinesCount := linemetadata.ScreenLines(0)
 		if previousLine != nil {
 			previousSubLines := pager.renderLine(*previousLine, si.getMaxNumberPrefixLength(pager), true)
-			previousSubLinesCount = len(previousSubLines)
+			previousSubLinesCount = linemetadata.ScreenLines(len(previousSubLines))
 		}
 
 		// Adjust lineNumber and deltaScreenLines to move up into the previous
 		// screen line
 		si.lineIndex = &previousLineIndex
-		si.deltaScreenLines += linemetadata.ScreenLines(previousSubLinesCount)
+		si.deltaScreenLines += previousSubLinesCount
 	}
 
 	if si.lineIndex.IsZero() && si.deltaScreenLines <= 0 {
