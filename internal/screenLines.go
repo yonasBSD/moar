@@ -18,7 +18,7 @@ type renderedLine struct {
 
 	// If an input line has been wrapped into two, the part on the second line
 	// will have a wrapIndex of 1.
-	wrapIndex int
+	wrapIndex linemetadata.ScreenLines
 
 	containsSearchHit bool
 
@@ -153,7 +153,7 @@ func (p *Pager) internalRenderLines(highlightSearchHitLines bool) renderedScreen
 			firstVisibleIndex = index
 			break
 		}
-		if line.inputLineIndex == *p.lineIndex() && linemetadata.ScreenLines(line.wrapIndex) == p.deltaScreenLines() {
+		if line.inputLineIndex == *p.lineIndex() && line.wrapIndex == p.deltaScreenLines() {
 			firstVisibleIndex = index
 			break
 		}
@@ -260,7 +260,7 @@ func (p *Pager) renderLine(line reader.NumberedLine, numberPrefixLength int, hig
 
 		rendered = append(rendered, renderedLine{
 			inputLineIndex:    line.Index,
-			wrapIndex:         wrapIndex,
+			wrapIndex:         linemetadata.ScreenLines(wrapIndex),
 			cells:             decorated,
 			containsSearchHit: subLine.ContainsSearchHit,
 			trailer:           subLine.Trailer,
