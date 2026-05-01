@@ -21,6 +21,14 @@ type scrollPosition struct {
 	internalDontTouch scrollPositionInternal
 }
 
+// getMaxNumberPrefixLength returns the maximum line number prefix length
+// required for the lines currently visible on screen. It does not return the
+// prefix length for the whole input stream, but rather an approximation based
+// on the highest input line index currently displayed.
+func (sp scrollPosition) getMaxNumberPrefixLength(pager *Pager) int {
+	return sp.internalDontTouch.getMaxNumberPrefixLength(pager)
+}
+
 func newScrollPosition(name string) scrollPosition {
 	if len(name) == 0 {
 		panic("Non-empty name required")
@@ -393,6 +401,10 @@ func (p *Pager) getLastVisibleLineIndex() *linemetadata.Index {
 	return &lastRenderedLine.inputLineIndex
 }
 
+// getMaxNumberPrefixLength returns the maximum line number prefix length
+// required for the lines currently visible on screen. It does not return the
+// prefix length for the whole input stream, but rather an approximation based
+// on the highest input line index currently displayed.
 func (si *scrollPositionInternal) getMaxNumberPrefixLength(pager *Pager) int {
 	maxPossibleIndex := *linemetadata.IndexFromLength(pager.Reader().GetLineCount())
 
