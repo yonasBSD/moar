@@ -261,6 +261,13 @@ func (si *scrollPositionInternal) isCanonical(pager *Pager) bool {
 // Canonicalize the scroll position vs the given pager. A canonical position can
 // just be displayed on screen, it has been clipped both towards the top and
 // bottom of the screen, taking into account the screen height.
+//
+// It guarantees the following invariants:
+//  1. If the pager is empty, lineIndex is nil and deltaScreenLines is 0.
+//  2. deltaScreenLines is always >= 0 and strictly less than the number of
+//     visual wrapped lines produced by rendering lineIndex.
+//  3. The screen will not have an empty gap at the bottom if there is
+//     enough text in the input stream to fill it.
 func (si *scrollPositionInternal) canonicalize(pager *Pager) {
 	if si.isCanonical(pager) {
 		return
