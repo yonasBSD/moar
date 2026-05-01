@@ -46,7 +46,7 @@ type scrollPositionInternal struct {
 	lineIndex *linemetadata.Index
 
 	// Scroll this many screen lines before rendering. Can be negative.
-	deltaScreenLines linemetadata.ScreenLines
+	delta linemetadata.ScreenLines
 
 	name           string
 	canonicalizing bool
@@ -80,7 +80,7 @@ func canonicalFromPager(pager *Pager) scrollPositionCanonical {
 		pagerLineCount: pager.Reader().GetLineCount(),
 
 		lineIndex:        pager.scrollPosition.internalDontTouch.lineIndex,
-		deltaScreenLines: pager.scrollPosition.internalDontTouch.deltaScreenLines,
+		deltaScreenLines: pager.scrollPosition.internalDontTouch.delta,
 	}
 }
 
@@ -88,9 +88,9 @@ func canonicalFromPager(pager *Pager) scrollPositionCanonical {
 func (sp scrollPosition) PreviousLine(scrollDistance linemetadata.ScreenLines) scrollPosition {
 	return scrollPosition{
 		internalDontTouch: scrollPositionInternal{
-			name:             sp.internalDontTouch.name,
-			lineIndex:        sp.internalDontTouch.lineIndex,
-			deltaScreenLines: sp.internalDontTouch.deltaScreenLines - scrollDistance,
+			name:      sp.internalDontTouch.name,
+			lineIndex: sp.internalDontTouch.lineIndex,
+			delta:     sp.internalDontTouch.delta - scrollDistance,
 		},
 	}
 }
@@ -99,9 +99,9 @@ func (sp scrollPosition) PreviousLine(scrollDistance linemetadata.ScreenLines) s
 func (sp scrollPosition) NextLine(scrollDistance linemetadata.ScreenLines) scrollPosition {
 	return scrollPosition{
 		internalDontTouch: scrollPositionInternal{
-			name:             sp.internalDontTouch.name,
-			lineIndex:        sp.internalDontTouch.lineIndex,
-			deltaScreenLines: sp.internalDontTouch.deltaScreenLines + scrollDistance,
+			name:      sp.internalDontTouch.name,
+			lineIndex: sp.internalDontTouch.lineIndex,
+			delta:     sp.internalDontTouch.delta + scrollDistance,
 		},
 	}
 }
@@ -109,7 +109,7 @@ func (sp scrollPosition) NextLine(scrollDistance linemetadata.ScreenLines) scrol
 func (p *Pager) ScrollPositionsEqual(a, b scrollPosition) bool {
 	a.internalDontTouch.canonicalize(p)
 	b.internalDontTouch.canonicalize(p)
-	if a.internalDontTouch.deltaScreenLines != b.internalDontTouch.deltaScreenLines {
+	if a.internalDontTouch.delta != b.internalDontTouch.delta {
 		return false
 	}
 
@@ -135,16 +135,16 @@ func (p *Pager) ScrollPositionsEqual(a, b scrollPosition) bool {
 func NewScrollPositionFromIndex(index linemetadata.Index, name string) scrollPosition {
 	return scrollPosition{
 		internalDontTouch: scrollPositionInternal{
-			name:             name,
-			lineIndex:        &index,
-			deltaScreenLines: 0,
+			name:      name,
+			lineIndex: &index,
+			delta:     0,
 		},
 	}
 }
 
 // Move towards the top until deltaScreenLines is not negative any more
-func (si *scrollPositionInternal) handleNegativeDeltaScreenLines(pager *Pager) {
-	for !si.lineIndex.IsZero() && si.deltaScreenLines < 0 {
+func (si *scrollPositionInternal) handleNegativeDelta(pager *Pager) {
+	for !si.lineIndex.IsZero() && si.delta < 0 {
 		// Render the previous line
 		previousLineIndex := si.lineIndex.NonWrappingAdd(-1)
 		previousLine := pager.Reader().GetLine(previousLineIndex)
@@ -157,12 +157,12 @@ func (si *scrollPositionInternal) handleNegativeDeltaScreenLines(pager *Pager) {
 		// Adjust lineNumber and deltaScreenLines to move up into the previous
 		// screen line
 		si.lineIndex = &previousLineIndex
-		si.deltaScreenLines += previousSubLinesCount
+		si.delta += previousSubLinesCount
 	}
 
-	if si.lineIndex.IsZero() && si.deltaScreenLines <= 0 {
+	if si.lineIndex.IsZero() && si.delta <= 0 {
 		// Can't go any higher
-		si.deltaScreenLines = 0
+		si.delta = 0
 		return
 	}
 }
@@ -172,7 +172,7 @@ func (si *scrollPositionInternal) handleNegativeDeltaScreenLines(pager *Pager) {
 //
 // This method will not do any screen-height based clipping, so it could be that
 // the position is too far down to display after this returns.
-func (si *scrollPositionInternal) handlePositiveDeltaScreenLines(pager *Pager) {
+func (si *scrollPositionInternal) handlePositiveDelta(pager *Pager) {
 	maxPrefixLength := si.getMaxNumberPrefixLength(pager)
 
 	for {
@@ -187,19 +187,19 @@ func (si *scrollPositionInternal) handlePositiveDeltaScreenLines(pager *Pager) {
 			subLines := pager.renderLine(*line, maxPrefixLength, true)
 
 			// ... and go to the bottom of that.
-			si.deltaScreenLines = linemetadata.ScreenLines(len(subLines) - 1)
+			si.delta = linemetadata.ScreenLines(len(subLines) - 1)
 			return
 		}
 
 		subLines := pager.renderLine(*line, maxPrefixLength, true)
-		if si.deltaScreenLines < linemetadata.ScreenLines(len(subLines)) {
+		if si.delta < linemetadata.ScreenLines(len(subLines)) {
 			// Sublines are within bounds!
 			return
 		}
 
 		nextLineIndex := si.lineIndex.NonWrappingAdd(1)
 		si.lineIndex = &nextLineIndex
-		si.deltaScreenLines -= linemetadata.ScreenLines(len(subLines))
+		si.delta -= linemetadata.ScreenLines(len(subLines))
 	}
 }
 
@@ -217,7 +217,7 @@ func (si *scrollPositionInternal) emptyBottomLinesCount(pager *Pager) linemetada
 	}
 
 	// Start counting where the current input line begins
-	unclaimedViewportLines += si.deltaScreenLines
+	unclaimedViewportLines += si.delta
 
 	lineIndex := *si.lineIndex
 
@@ -285,7 +285,7 @@ func (si *scrollPositionInternal) canonicalize(pager *Pager) {
 
 	if pager.Reader().GetLineCount() == 0 {
 		si.lineIndex = nil
-		si.deltaScreenLines = 0
+		si.delta = 0
 		return
 	}
 
@@ -294,15 +294,15 @@ func (si *scrollPositionInternal) canonicalize(pager *Pager) {
 		si.lineIndex = &linemetadata.Index{}
 	}
 
-	si.handleNegativeDeltaScreenLines(pager)
-	si.handlePositiveDeltaScreenLines(pager)
+	si.handleNegativeDelta(pager)
+	si.handlePositiveDelta(pager)
 	emptyBottomLinesCount := si.emptyBottomLinesCount(pager)
 	if emptyBottomLinesCount > 0 {
 		// First, adjust deltaScreenLines to get us to the top
-		si.deltaScreenLines -= emptyBottomLinesCount
+		si.delta -= emptyBottomLinesCount
 
 		// Then, actually go up that many lines
-		si.handleNegativeDeltaScreenLines(pager)
+		si.handleNegativeDelta(pager)
 	}
 }
 
@@ -332,7 +332,7 @@ func (sp *scrollPosition) lineIndex(pager *Pager) *linemetadata.Index {
 // Always >= 0.
 func (p *Pager) deltaScreenLines() linemetadata.ScreenLines {
 	p.scrollPosition.internalDontTouch.canonicalize(p)
-	return p.scrollPosition.internalDontTouch.deltaScreenLines
+	return p.scrollPosition.internalDontTouch.delta
 }
 
 func (p *Pager) scrollToEnd() {
@@ -348,7 +348,7 @@ func (p *Pager) scrollToEnd() {
 
 	// Scroll down enough. We know for sure the last line won't wrap into more
 	// lines than the number of characters it contains.
-	p.scrollPosition.internalDontTouch.deltaScreenLines = linemetadata.ScreenLines(len(lastInputLine.Line.Plain(lastInputIndex)))
+	p.scrollPosition.internalDontTouch.delta = linemetadata.ScreenLines(len(lastInputLine.Line.Plain(lastInputIndex)))
 
 	if p.TargetLine == nil {
 		// Start following the end of the file
@@ -431,13 +431,13 @@ func (si *scrollPositionInternal) getMaxNumberPrefixLength(pager *Pager) int {
 	// https://github.com/walles/moor/issues/338.
 	//
 	// FIXME: Is there something better we should be doing instead?
-	positiveDeltaScreenLines := si.deltaScreenLines
-	if positiveDeltaScreenLines < 0 {
-		positiveDeltaScreenLines = 0
+	positiveDelta := si.delta
+	if positiveDelta < 0 {
+		positiveDelta = 0
 	}
 
 	maxVisibleIndex := index.NonWrappingAdd(
-		int(positiveDeltaScreenLines + pager.visibleHeight() - 1))
+		int(positiveDelta + pager.visibleHeight() - 1))
 	if maxVisibleIndex.IsAfter(maxPossibleIndex) {
 		maxVisibleIndex = maxPossibleIndex
 	}

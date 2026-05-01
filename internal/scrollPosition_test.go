@@ -27,18 +27,18 @@ func testCanonicalize1000(t *testing.T, withStatusBar bool, currentStartLine lin
 	pager.ShowStatusBar = withStatusBar
 	pager.scrollPosition = scrollPosition{
 		internalDontTouch: scrollPositionInternal{
-			lineIndex:        &currentStartLine,
-			deltaScreenLines: 0,
-			name:             "findFirstHit",
-			canonicalizing:   false,
+			lineIndex:      &currentStartLine,
+			delta:          0,
+			name:           "findFirstHit",
+			canonicalizing: false,
 		},
 	}
 
 	lastVisiblePosition := scrollPosition{
 		internalDontTouch: scrollPositionInternal{
-			lineIndex:        &lastVisibleLine,
-			deltaScreenLines: 0,
-			name:             "Last Visible Position",
+			lineIndex: &lastVisibleLine,
+			delta:     0,
+			name:      "Last Visible Position",
 		},
 	}
 
@@ -83,9 +83,9 @@ func tryScrollAmount(t *testing.T, scrollFrom linemetadata.Index, scrollDistance
 
 	pager.scrollPosition = scrollPosition{
 		internalDontTouch: scrollPositionInternal{
-			name:             "tryScrollAmount",
-			lineIndex:        &scrollFrom,
-			deltaScreenLines: scrollDistance,
+			name:      "tryScrollAmount",
+			lineIndex: &scrollFrom,
+			delta:     scrollDistance,
 		},
 	}
 
@@ -178,8 +178,8 @@ func TestIssue399(t *testing.T) {
 			idx := linemetadata.IndexFromZeroBased(i)
 			return &idx
 		}(900),
-		deltaScreenLines: 569,
-		name:             "scrollToSearchHits",
+		delta: 569,
+		name:  "scrollToSearchHits",
 	}
 
 	pager.scrollPosition = scrollPosition{
