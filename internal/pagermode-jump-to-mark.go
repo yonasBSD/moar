@@ -14,7 +14,8 @@ type PagerModeJumpToMark struct {
 func (m PagerModeJumpToMark) drawFooter(_ string, _ string, _ string) {
 	p := m.pager
 
-	_, height := p.screen.Size()
+	_, headerHeight := p.Size()
+	height := int(headerHeight)
 
 	pos := 0
 	for _, token := range m.getMarkPrompt() {
