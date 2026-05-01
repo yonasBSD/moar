@@ -258,17 +258,17 @@ func (p *Pager) centerSearchHitsVertically() {
 
 	for {
 		rendered := p.renderLines()
-		firstHitRow := -1
-		lastHitRow := -1
+		firstHitRow := linemetadata.ScreenLines(-1)
+		lastHitRow := linemetadata.ScreenLines(-1)
 		for rowIndex, row := range rendered.inputLines {
 			if !p.search.Matches(row.Plain()) {
 				continue
 			}
 
 			if firstHitRow == -1 {
-				firstHitRow = rowIndex
+				firstHitRow = linemetadata.ScreenLines(rowIndex)
 			}
-			lastHitRow = rowIndex
+			lastHitRow = linemetadata.ScreenLines(rowIndex)
 		}
 
 		if firstHitRow == -1 || lastHitRow == -1 {

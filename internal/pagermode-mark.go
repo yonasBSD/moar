@@ -9,7 +9,8 @@ type PagerModeMark struct {
 func (m PagerModeMark) drawFooter(_ string, _ string, _ string) {
 	p := m.pager
 
-	_, height := p.screen.Size()
+	_, screenHeight := p.ScreenSize()
+	height := int(screenHeight)
 
 	pos := 0
 	for _, token := range "Press any key to label your mark: " {

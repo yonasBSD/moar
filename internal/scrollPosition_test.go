@@ -27,18 +27,18 @@ func testCanonicalize1000(t *testing.T, withStatusBar bool, currentStartLine lin
 	pager.ShowStatusBar = withStatusBar
 	pager.scrollPosition = scrollPosition{
 		internalDontTouch: scrollPositionInternal{
-			lineIndex:        &currentStartLine,
-			deltaScreenLines: 0,
-			name:             "findFirstHit",
-			canonicalizing:   false,
+			lineIndex:      &currentStartLine,
+			delta:          0,
+			name:           "findFirstHit",
+			canonicalizing: false,
 		},
 	}
 
 	lastVisiblePosition := scrollPosition{
 		internalDontTouch: scrollPositionInternal{
-			lineIndex:        &lastVisibleLine,
-			deltaScreenLines: 0,
-			name:             "Last Visible Position",
+			lineIndex: &lastVisibleLine,
+			delta:     0,
+			name:      "Last Visible Position",
 		},
 	}
 
@@ -69,7 +69,7 @@ func TestCanonicalize1000WithoutStatusBar(t *testing.T) {
 
 // Try scrolling between two points, on a 80 x screenHeight screen with 1492
 // lines of input.
-func tryScrollAmount(t *testing.T, scrollFrom linemetadata.Index, scrollDistance int) {
+func tryScrollAmount(t *testing.T, scrollFrom linemetadata.Index, scrollDistance linemetadata.ScreenLines) {
 	// Create 1492 lines of single-char content
 	pager := Pager{}
 	pager.screen = twin.NewFakeScreen(80, screenHeight)
@@ -83,9 +83,9 @@ func tryScrollAmount(t *testing.T, scrollFrom linemetadata.Index, scrollDistance
 
 	pager.scrollPosition = scrollPosition{
 		internalDontTouch: scrollPositionInternal{
-			name:             "tryScrollAmount",
-			lineIndex:        &scrollFrom,
-			deltaScreenLines: scrollDistance,
+			name:      "tryScrollAmount",
+			lineIndex: &scrollFrom,
+			delta:     scrollDistance,
 		},
 	}
 
@@ -95,8 +95,8 @@ func tryScrollAmount(t *testing.T, scrollFrom linemetadata.Index, scrollDistance
 
 	// Sanity check the result
 	assert.Assert(t, rendered.lines != nil)
-	assert.Equal(t, len(rendered.lines), pager.visibleHeight())
-	assert.Equal(t, rendered.lines[0].inputLineIndex, scrollFrom.NonWrappingAdd(scrollDistance))
+	assert.Equal(t, len(rendered.lines), int(pager.visibleHeight()))
+	assert.Equal(t, rendered.lines[0].inputLineIndex, scrollFrom.NonWrappingAdd(int(scrollDistance)))
 }
 
 // Repro for https://github.com/walles/moor/issues/313: Rapid scroll
@@ -113,27 +113,27 @@ func TestIssue338(t *testing.T) {
 
 func TestMultipleScrollStartsAcross1000DoNotPanic(t *testing.T) {
 	for scrollFrom := 1000 - screenHeight - 10; scrollFrom <= 1000; scrollFrom++ {
-		tryScrollAmount(t, linemetadata.IndexFromZeroBased(scrollFrom), screenHeight)
+		tryScrollAmount(t, linemetadata.IndexFromZeroBased(scrollFrom), linemetadata.ScreenLines(screenHeight))
 	}
 }
 
 func TestMultipleScrollDistancesAcross1000DoNotPanic(t *testing.T) {
 	scrollFrom := 1000 - screenHeight - 10
 	for scrollDistance := 0; scrollDistance <= 3*screenHeight; scrollDistance++ {
-		tryScrollAmount(t, linemetadata.IndexFromZeroBased(scrollFrom), scrollDistance)
+		tryScrollAmount(t, linemetadata.IndexFromZeroBased(scrollFrom), linemetadata.ScreenLines(scrollDistance))
 	}
 }
 
 func TestMultipleBackwardsScrollStartsAcross1000DoNotPanic(t *testing.T) {
 	for scrollFrom := 1000 + screenHeight + 10; scrollFrom >= 1000; scrollFrom-- {
-		tryScrollAmount(t, linemetadata.IndexFromZeroBased(scrollFrom), -screenHeight)
+		tryScrollAmount(t, linemetadata.IndexFromZeroBased(scrollFrom), linemetadata.ScreenLines(-screenHeight))
 	}
 }
 
 func TestMultipleBackwardsScrollDistancesAcross1000DoNotPanic(t *testing.T) {
 	scrollFrom := 1000 + screenHeight + 10
 	for scrollDistance := 0; scrollDistance <= 3*screenHeight; scrollDistance++ {
-		tryScrollAmount(t, linemetadata.IndexFromZeroBased(scrollFrom), -scrollDistance)
+		tryScrollAmount(t, linemetadata.IndexFromZeroBased(scrollFrom), linemetadata.ScreenLines(-scrollDistance))
 	}
 }
 
@@ -178,8 +178,8 @@ func TestIssue399(t *testing.T) {
 			idx := linemetadata.IndexFromZeroBased(i)
 			return &idx
 		}(900),
-		deltaScreenLines: 569,
-		name:             "scrollToSearchHits",
+		delta: 569,
+		name:  "scrollToSearchHits",
 	}
 
 	pager.scrollPosition = scrollPosition{

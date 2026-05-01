@@ -250,10 +250,16 @@ func NewPager(readers ...*reader.ReaderImpl) *Pager {
 	return &pager
 }
 
+// ScreenSize returns the terminal width in columns and height in screen lines.
+func (p *Pager) ScreenSize() (int, linemetadata.ScreenLines) {
+	width, height := p.screen.Size()
+	return width, linemetadata.ScreenLines(height)
+}
+
 // How many lines are visible on screen? Depends on screen height and whether or
 // not the status bar is visible.
-func (p *Pager) visibleHeight() int {
-	_, height := p.screen.Size()
+func (p *Pager) visibleHeight() linemetadata.ScreenLines {
+	_, height := p.ScreenSize()
 
 	// Only the viewing mode can be without status bar
 	hasStatusBar := p.ShowStatusBar || !p.isViewing()
