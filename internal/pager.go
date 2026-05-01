@@ -252,17 +252,17 @@ func NewPager(readers ...*reader.ReaderImpl) *Pager {
 
 // How many lines are visible on screen? Depends on screen height and whether or
 // not the status bar is visible.
-func (p *Pager) visibleHeight() int {
+func (p *Pager) visibleHeight() linemetadata.ScreenLines {
 	_, height := p.screen.Size()
 
 	// Only the viewing mode can be without status bar
 	hasStatusBar := p.ShowStatusBar || !p.isViewing()
 
 	if hasStatusBar {
-		return height - 1
+		return linemetadata.ScreenLines(height - 1)
 	}
 
-	return height
+	return linemetadata.ScreenLines(height)
 }
 
 // How many cells are needed for this line number? Includes padding.

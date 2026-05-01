@@ -164,10 +164,10 @@ func TestOverflowDown(t *testing.T) {
 	rendered := pager.renderLines()
 	assert.Equal(t, len(rendered.lines), 1)
 	assert.Equal(t, "hej", renderedToString(rendered.lines[0].cells))
-	assert.Equal(t, "test", rendered.filenameText)
-	assert.Equal(t, ": 1 line  100%", rendered.statusText)
+	assert.Equal(t, rendered.filenameText, "test")
+	assert.Equal(t, rendered.statusText, ": 1 line  100%")
 	assert.Assert(t, pager.lineIndex().IsZero())
-	assert.Equal(t, pager.deltaScreenLines(), 0)
+	assert.Equal(t, pager.deltaScreenLines(), linemetadata.ScreenLines(0))
 }
 
 func TestOverflowUp(t *testing.T) {
@@ -190,10 +190,10 @@ func TestOverflowUp(t *testing.T) {
 	rendered := pager.renderLines()
 	assert.Equal(t, len(rendered.lines), 1)
 	assert.Equal(t, "hej", renderedToString(rendered.lines[0].cells))
-	assert.Equal(t, "test", rendered.filenameText)
-	assert.Equal(t, ": 1 line  100%", rendered.statusText)
+	assert.Equal(t, rendered.filenameText, "test")
+	assert.Equal(t, rendered.statusText, ": 1 line  100%")
 	assert.Assert(t, pager.lineIndex().IsZero())
-	assert.Equal(t, pager.deltaScreenLines(), 0)
+	assert.Equal(t, pager.deltaScreenLines(), linemetadata.ScreenLines(0))
 }
 
 func TestWrapping(t *testing.T) {

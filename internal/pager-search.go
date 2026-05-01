@@ -279,7 +279,7 @@ func (p *Pager) centerSearchHitsVertically() {
 		// If the visible height is 1, the center screen row is 0.
 		centerScreenRowDoubled := p.visibleHeight() - 1
 
-		centerHitRowDoubled := firstHitRow + lastHitRow
+		centerHitRowDoubled := linemetadata.ScreenLines(firstHitRow + lastHitRow)
 
 		// Divide by 2 here to get the amount of rows we need to scroll. We
 		// postponed the division by 2 until now to avoid rounding errors.

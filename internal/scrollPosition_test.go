@@ -85,7 +85,7 @@ func tryScrollAmount(t *testing.T, scrollFrom linemetadata.Index, scrollDistance
 		internalDontTouch: scrollPositionInternal{
 			name:             "tryScrollAmount",
 			lineIndex:        &scrollFrom,
-			deltaScreenLines: scrollDistance,
+			deltaScreenLines: linemetadata.ScreenLines(scrollDistance),
 		},
 	}
 
@@ -95,7 +95,7 @@ func tryScrollAmount(t *testing.T, scrollFrom linemetadata.Index, scrollDistance
 
 	// Sanity check the result
 	assert.Assert(t, rendered.lines != nil)
-	assert.Equal(t, len(rendered.lines), pager.visibleHeight())
+	assert.Equal(t, len(rendered.lines), int(pager.visibleHeight()))
 	assert.Equal(t, rendered.lines[0].inputLineIndex, scrollFrom.NonWrappingAdd(scrollDistance))
 }
 

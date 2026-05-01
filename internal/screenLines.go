@@ -110,7 +110,7 @@ func (p *Pager) internalRenderLines(highlightSearchHitLines bool) renderedScreen
 	if p.lineIndex() != nil {
 		lineIndexToShow = *p.lineIndex()
 	}
-	inputLines := p.Reader().GetLines(lineIndexToShow, p.visibleHeight())
+	inputLines := p.Reader().GetLines(lineIndexToShow, int(p.visibleHeight()))
 	if len(inputLines.Lines) == 0 {
 		// Empty input, empty output
 		return renderedScreen{filenameText: inputLines.FilenameText, statusText: inputLines.StatusText}
@@ -153,7 +153,7 @@ func (p *Pager) internalRenderLines(highlightSearchHitLines bool) renderedScreen
 			firstVisibleIndex = index
 			break
 		}
-		if line.inputLineIndex == *p.lineIndex() && line.wrapIndex == p.deltaScreenLines() {
+		if line.inputLineIndex == *p.lineIndex() && linemetadata.ScreenLines(line.wrapIndex) == p.deltaScreenLines() {
 			firstVisibleIndex = index
 			break
 		}
@@ -175,7 +175,7 @@ func (p *Pager) internalRenderLines(highlightSearchHitLines bool) renderedScreen
 	allLines = allLines[firstVisibleIndex:]
 
 	// Drop the lines that would have gone below the screen
-	wantedLineCount := p.visibleHeight()
+	wantedLineCount := int(p.visibleHeight())
 	if len(allLines) > wantedLineCount {
 		allLines = allLines[0:wantedLineCount]
 	}
