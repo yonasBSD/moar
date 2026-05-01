@@ -116,6 +116,10 @@ func (p *Pager) internalRenderLines(highlightSearchHitLines bool) renderedScreen
 		return renderedScreen{filenameText: inputLines.FilenameText, statusText: inputLines.StatusText}
 	}
 
+	// We must use the exact same max number prefix length as the scroll engine
+	// used to calculate its viewport. If the engine used an approximation, we
+	// must use the exact same approximation, otherwise the number of line wraps
+	// might disagree, causing panics (Issue #399).
 	numberPrefixLength := p.scrollPosition.getMaxNumberPrefixLength(p)
 
 	allLines := make([]renderedLine, 0)

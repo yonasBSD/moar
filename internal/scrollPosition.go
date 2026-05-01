@@ -9,7 +9,7 @@ import (
 // Says which line should be at the top of the screen.
 //
 // Using two separate numbers:
-//   - A line index into the input stream
+//   - A line index into the input stream (lineIndex)
 //   - A delta of how many screen lines to scroll down before rendering. This is
 //     needed to support scrolling through wrapped lines.
 //
@@ -42,10 +42,16 @@ func newScrollPosition(name string) scrollPosition {
 
 type scrollPositionInternal struct {
 	// Index into the array of visible input lines, or nil if nothing has been
-	// read yet or there are no lines.
+	// read yet or there are no lines. This is the logical line at the top of
+	// the screen.
 	lineIndex *linemetadata.Index
 
-	// Scroll this many screen lines before rendering. Can be negative.
+	// Scroll this many screen lines before rendering. Can be negative during
+	// math.
+	//
+	// A single logical lineIndex can wrap into multiple ScreenLines. delta
+	// tracks how many ScreenLines of the top lineIndex are hidden above the top
+	// edge of the terminal.
 	delta linemetadata.ScreenLines
 
 	name           string
@@ -412,6 +418,16 @@ func (p *Pager) getLastVisibleLineIndex() *linemetadata.Index {
 // required for the lines currently visible on screen. It does not return the
 // prefix length for the whole input stream, but rather an approximation based
 // on the highest input line index currently displayed.
+//
+// There is a circular dependency when calculating gutter widths:
+//  1. To know how many screen lines a logical line wraps into, you must know
+//     available horizontal space.
+//  2. To know horizontal space, you must know the width of the line number gutter.
+//  3. To know gutter width, you must know the highest line number visible on screen.
+//  4. To know which lines are visible, you must know how many wraps are occurring!
+//
+// This function breaks the cycle by providing a fast, worst-case bounded
+// approximation, assuming 1 logical line = 1 screen line.
 func (si *scrollPositionInternal) getMaxNumberPrefixLength(pager *Pager) int {
 	maxPossibleIndex := *linemetadata.IndexFromLength(pager.Reader().GetLineCount())
 

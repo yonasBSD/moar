@@ -8,8 +8,9 @@ package linemetadata
 // multiple ScreenLines if it contains more characters than the terminal is
 // wide.
 //
-// Because a ScreenLines value represents a geometry constraint or visual
-// offset, it should never be added directly to an Index or Number calculation.
+// CRITICAL RULE: Never cast ScreenLines to an int just to add or subtract it
+// from a logical Index or Number. Because of line wrapping, one ScreenLine may
+// not equal one Index. Mixing unit types can lead to panics!
 //
 // It can represent an absolute measure (like terminal height) or a relative
 // offset (which can be negative, such as a scroll delta).
