@@ -116,8 +116,7 @@ func (p *Pager) internalRenderLines(highlightSearchHitLines bool) renderedScreen
 		return renderedScreen{filenameText: inputLines.FilenameText, statusText: inputLines.StatusText}
 	}
 
-	lastVisibleLineNumber := inputLines.Lines[len(inputLines.Lines)-1].Number
-	numberPrefixLength := p.getLineNumberPrefixLength(lastVisibleLineNumber)
+	numberPrefixLength := p.scrollPosition.getMaxNumberPrefixLength(p)
 
 	allLines := make([]renderedLine, 0)
 	for _, line := range inputLines.Lines {
