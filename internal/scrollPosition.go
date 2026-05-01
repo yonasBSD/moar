@@ -46,7 +46,7 @@ type scrollPositionInternal struct {
 	lineIndex *linemetadata.Index
 
 	// Scroll this many screen lines before rendering. Can be negative.
-	deltaScreenLines int
+	deltaScreenLines linemetadata.ScreenLines
 
 	name           string
 	canonicalizing bool
@@ -63,8 +63,8 @@ type scrollPositionCanonical struct {
 
 	pagerLineCount int // From pager.Reader().GetLineCount()
 
-	lineIndex        *linemetadata.Index // From scrollPositionInternal
-	deltaScreenLines int                 // From scrollPositionInternal
+	lineIndex        *linemetadata.Index      // From scrollPositionInternal
+	deltaScreenLines linemetadata.ScreenLines // From scrollPositionInternal
 }
 
 func canonicalFromPager(pager *Pager) scrollPositionCanonical {
@@ -85,7 +85,7 @@ func canonicalFromPager(pager *Pager) scrollPositionCanonical {
 }
 
 // Create a new position, scrolled towards the beginning of the file
-func (sp scrollPosition) PreviousLine(scrollDistance int) scrollPosition {
+func (sp scrollPosition) PreviousLine(scrollDistance linemetadata.ScreenLines) scrollPosition {
 	return scrollPosition{
 		internalDontTouch: scrollPositionInternal{
 			name:             sp.internalDontTouch.name,
@@ -96,7 +96,7 @@ func (sp scrollPosition) PreviousLine(scrollDistance int) scrollPosition {
 }
 
 // Create a new position, scrolled towards the end of the file
-func (sp scrollPosition) NextLine(scrollDistance int) scrollPosition {
+func (sp scrollPosition) NextLine(scrollDistance linemetadata.ScreenLines) scrollPosition {
 	return scrollPosition{
 		internalDontTouch: scrollPositionInternal{
 			name:             sp.internalDontTouch.name,
