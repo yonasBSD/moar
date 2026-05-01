@@ -11,8 +11,8 @@ type PagerModeColonCommand struct {
 
 func (m *PagerModeColonCommand) drawFooter(_ string, _ string, _ string) {
 	p := m.pager
-	_, headerHeight := p.Size()
-	height := int(headerHeight)
+	_, screenHeight := p.ScreenSize()
+	height := int(screenHeight)
 
 	pos := 0
 	for _, token := range "Go to [n]ext, [p]revious or first [x] file: " {
