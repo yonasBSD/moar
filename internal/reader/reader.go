@@ -108,6 +108,9 @@ type ReaderImpl struct {
 	// is not set, we are not reading from a file.
 	FileName *string
 
+	// True if the file we read from was compressed.
+	IsCompressed bool
+
 	// How many bytes have we read so far?
 	bytesCount int64
 
@@ -483,8 +486,16 @@ func (reader *ReaderImpl) readNewBytes(fileName string, bytesCount int64) (bool,
 func (reader *ReaderImpl) tailOnce() (bool, error) {
 	reader.RLock()
 	fileName := reader.FileName
+	isCompressed := reader.IsCompressed
 	reader.RUnlock()
 	if fileName == nil {
+		return false, nil
+	}
+
+	if isCompressed {
+		// Comparing physical compressed size vs decompressed bytesCount doesn't work,
+		// and we can't easily seek into compressed streams to tail them anyway.
+		log.Debugf("File %s is compressed, stop tailing", *fileName)
 		return false, nil
 	}
 
@@ -522,8 +533,14 @@ func (reader *ReaderImpl) tailOnce() (bool, error) {
 func (reader *ReaderImpl) tailFile() error {
 	reader.RLock()
 	fileName := reader.FileName
+	isCompressed := reader.IsCompressed
 	reader.RUnlock()
 	if fileName == nil {
+		return nil
+	}
+
+	if isCompressed {
+		log.Debugf("Giving up on tailing, %s is compressed", *fileName)
 		return nil
 	}
 
@@ -807,7 +824,13 @@ func NewFromFilename(filename string, formatter chroma.Formatter, options Reader
 		options.Lexer = lexers.Match(highlightingFilename)
 	}
 
-	returnMe := newReaderFromStream(stream, &highlightingFilename, formatter, options)
+	returnMe := newReaderFromStream(stream, &filename, formatter, options)
+
+	// Ensure the display name matches the highlighting name (e.g. without .gz)
+	basename := filepath.Base(highlightingFilename)
+	returnMe.DisplayName = &basename
+
+	returnMe.IsCompressed = (filename != highlightingFilename)
 
 	if options.Lexer == nil {
 		returnMe.HighlightingDone.Store(true)
