@@ -522,11 +522,6 @@ func TestPageSamples(t *testing.T) {
 				t.Errorf("Error opening file <%s>: %s", fileName, err.Error())
 				return
 			}
-			defer func() {
-				if err := file.Close(); err != nil {
-					panic(err)
-				}
-			}()
 
 			myReader, err := reader.NewFromStream(fileName, file, nil, reader.ReaderOptions{Style: &chroma.Style{}})
 			assert.NilError(t, err)

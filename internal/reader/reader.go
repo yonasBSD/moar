@@ -167,6 +167,14 @@ type InputLines struct {
 func (reader *ReaderImpl) readStream(stream io.Reader, formatter chroma.Formatter, options ReaderOptions) {
 	reader.consumeLinesFromStream(stream)
 
+	if closer, ok := stream.(io.Closer); ok {
+		// Close the initial stream as soon as we're done reading it,
+		// well before we start tailing or doing expensive highlighting.
+		if err := closer.Close(); err != nil {
+			log.Debug("Failed to close stream after reading initial contents: ", err)
+		}
+	}
+
 	reader.ReadingDone.Store(true)
 	select {
 	case reader.MaybeDone <- true:
@@ -596,6 +604,10 @@ func isSeekableFile(fileName *string) bool {
 
 // NewFromStream creates a new stream reader
 //
+// Note that if the provided io.Reader also implements io.Closer, it will be
+// automatically closed once the reader has finished consuming its initial
+// content.
+//
 // The display name can be an empty string ("").
 //
 // If non-empty, the name will be displayed by the pager in the bottom left
@@ -624,6 +636,9 @@ func NewFromStream(displayName string, reader io.Reader, formatter chroma.Format
 }
 
 // newReaderFromStream creates a new stream reader
+//
+// If the provided io.Reader also implements io.Closer, it will be automatically
+// closed once the reader has finished consuming its initial content.
 //
 // originalFileName is used for counting the lines in the file. nil for
 // don't-know (streams) or not countable (compressed files). The line count is
