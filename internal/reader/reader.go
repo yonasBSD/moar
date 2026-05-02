@@ -148,6 +148,9 @@ type ReaderImpl struct {
 	// Stored for use when reloading the file after it has been rewritten.
 	formatter     chroma.Formatter
 	readerOptions ReaderOptions
+
+	// Set to true when this reader is discarded.
+	closed atomic.Bool
 }
 
 // InputLines contains a number of lines from the reader, plus metadata
@@ -293,7 +296,7 @@ func (reader *ReaderImpl) consumeLinesFromStream(stream io.Reader) {
 	inspectionReader := inspectionReader{base: stream}
 
 	awaitingFirstByte := true
-	for {
+	for !reader.closed.Load() {
 		byteBuffer := make([]byte, byteBufferSize)
 		readBytes, err := inspectionReader.Read(byteBuffer)
 
@@ -551,7 +554,7 @@ func (reader *ReaderImpl) tailFile() error {
 
 	log.Debugf("Tailing file %s", *fileName)
 
-	for {
+	for !reader.closed.Load() {
 		// NOTE: We could use something like
 		// https://github.com/fsnotify/fsnotify instead of sleeping and polling
 		// here.
@@ -565,6 +568,8 @@ func (reader *ReaderImpl) tailFile() error {
 			return nil
 		}
 	}
+
+	return nil
 }
 
 func isSeekableFile(fileName *string) bool {
@@ -1313,4 +1318,26 @@ func (reader *ReaderImpl) SetPauseAfterLines(lines int) {
 
 func (reader *ReaderImpl) SetStyleForHighlighting(style chroma.Style) {
 	reader.highlightingStyle <- style
+}
+
+// Close stops background routines and prevents further reading.
+func (reader *ReaderImpl) Close() {
+	reader.closed.Store(true)
+
+	// Unblock any active pause
+	reader.SetPauseAfterLines(math.MaxInt)
+}
+
+// Clone creates a new ReaderImpl using the same source file and options.
+func (reader *ReaderImpl) Clone() (*ReaderImpl, error) {
+	if reader.FileName == nil {
+		return nil, nil // Ignore streams
+	}
+
+	reader.RLock()
+	formatter := reader.formatter
+	options := reader.readerOptions
+	reader.RUnlock()
+
+	return NewFromFilename(*reader.FileName, formatter, options)
 }

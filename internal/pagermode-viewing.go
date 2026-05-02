@@ -99,6 +99,9 @@ func (m PagerModeViewing) onRune(char rune) {
 	case 'q':
 		p.Quit()
 
+	case 'r':
+		p.ReloadCurrentReader()
+
 	case 'v':
 		handleEditingRequest(p)
 
