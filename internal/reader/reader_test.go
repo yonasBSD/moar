@@ -471,6 +471,50 @@ func TestReadUpdatingFile(t *testing.T) {
 	assert.Equal(t, int(testMe.bytesCount), len([]byte(firstLineString+secondLineString+thirdLineString)))
 }
 
+// If a file is rewritten (shrunk and replaced with new content), tailing should
+// detect the shrink and reload the file rather than giving up.
+func TestReadShrunkFile(t *testing.T) {
+	// Make a temp file with an initial line
+	file, err := os.CreateTemp("", "moor-TestReadShrunkFile-*.txt")
+	assert.NilError(t, err)
+	defer os.Remove(file.Name()) //nolint:errcheck
+
+	const firstLineString = "First line\n"
+	_, err = file.WriteString(firstLineString)
+	assert.NilError(t, err)
+
+	// Start a reader on that file
+	testMe, err := NewFromFilename(file.Name(), formatters.TTY16m, ReaderOptions{Style: styles.Get("native")})
+	assert.NilError(t, err)
+
+	// Wait for the reader to finish reading
+	assert.NilError(t, testMe.Wait())
+
+	allLines := testMe.GetLines(linemetadata.Index{}, 10)
+	assert.Equal(t, len(allLines.Lines), 1)
+	assert.Equal(t, allLines.Lines[0].Plain(), "First line")
+
+	// Rewrite the file with shorter content, so the file shrinks
+	err = os.WriteFile(file.Name(), []byte("New\n"), 0600)
+	assert.NilError(t, err)
+
+	// Give the background tailing goroutine up to 2s to detect the shrink and reload
+	for range 20 {
+		allLines = testMe.GetLines(linemetadata.Index{}, 10)
+		if len(allLines.Lines) == 1 && allLines.Lines[0].Plain() == "New" {
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	// Wait for the reload to fully complete before asserting
+	assert.NilError(t, testMe.Wait())
+
+	allLines = testMe.GetLines(linemetadata.Index{}, 10)
+	assert.Equal(t, len(allLines.Lines), 1, "Expected one line after rewrite, got %d", len(allLines.Lines))
+	assert.Equal(t, allLines.Lines[0].Plain(), "New")
+}
+
 // If people keep appending to the currently opened file we should display those
 // changes.
 //
