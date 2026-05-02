@@ -818,6 +818,7 @@ func TestTailCompressedFileNoReloadLoop(t *testing.T) {
 	options := ReaderOptions{}
 	reader, err := NewFromFilename(tempFile, nil, options)
 	assert.NilError(t, err)
+	defer reader.Close()
 
 	// Wait for it to read the file
 	err = reader.Wait()
