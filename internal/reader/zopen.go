@@ -65,7 +65,10 @@ func ZOpen(filename string) (io.ReadCloser, string, error) {
 			newName = before + ".tar"
 		}
 
-		return reader, newName, err
+		return struct {
+			io.Reader
+			io.Closer
+		}{reader, file}, newName, err
 
 	case bytes.HasPrefix(firstBytes, bzip2Magic):
 		log.Debugf("File is bzip2 compressed: %v", filename)
