@@ -103,6 +103,11 @@ echo Test --version...
 ./moor --version >/dev/null # Should exit with code 0
 diff -u <(./moor --version) <(git describe --tags --dirty --always)
 
+echo "Linting man page..."
+# -T lint enables the linter
+# -W warning ignores "STYLE" hints (like line length) but catches structural issues
+mandoc -T lint -W warning moor.1
+
 echo Test that the man page and --help document the same set of options...
 MAN_OPTIONS="$(grep -A1 '^\.TP$' moor.1 | grep -E '^\\fB\\-' | cut -d\\ -f4- | sed 's/fR.*//' | sed 's/\\//g')"
 MOOR_OPTIONS="$(./moor --help | grep -E '^  -' | cut -d' ' -f3 | grep -v -- -version)"
