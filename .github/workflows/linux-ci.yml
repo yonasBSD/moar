@@ -24,6 +24,10 @@ jobs:
       - name: Install golangci-lint
         run: curl -sSfL https://golangci-lint.run/install.sh | sh -s -- -b $(go env GOPATH)/bin v2.11.3
 
+        # Required by test.sh
+      - name: Install mandoc
+        run: sudo apt-get update && sudo apt-get install -y mandoc
+
       - run: go build ./...
       - run: ./test.sh
       - run: GOARCH=386 ./test.sh
