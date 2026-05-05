@@ -11,6 +11,15 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+type tailAction int
+
+const (
+	tailActionStop tailAction = iota
+	tailActionContinue
+	tailActionReload
+	tailActionAppend
+)
+
 // reloadFromFile clears the current content and re-reads the file from scratch.
 //
 // FIXME: This must only be called from the tailing goroutine. If called
@@ -109,6 +118,22 @@ func (reader *ReaderImpl) readNewBytes(fileName string, bytesCount int64) (bool,
 	return true, nil
 }
 
+func determineTailAction(isCompressed bool, bytesCount int64, fileSize int64, statErr error) tailAction {
+	if isCompressed || statErr != nil || bytesCount == -1 {
+		return tailActionStop
+	}
+
+	if fileSize == bytesCount {
+		return tailActionContinue
+	}
+
+	if fileSize < bytesCount {
+		return tailActionReload
+	}
+
+	return tailActionAppend
+}
+
 // tailOnce performs one iteration of the file tailing check.
 //
 // Returns (shouldContinue, error): shouldContinue=false means tailing should stop.
@@ -116,47 +141,47 @@ func (reader *ReaderImpl) tailOnce() (bool, error) {
 	reader.RLock()
 	fileName := reader.FileName
 	isCompressed := reader.IsCompressed
+	bytesCount := reader.bytesCount
 	reader.RUnlock()
+
 	if fileName == nil {
 		return false, nil
 	}
 
-	if isCompressed {
-		// Comparing physical compressed size vs decompressed bytesCount doesn't work,
-		// and we can't easily seek into compressed streams to tail them anyway.
-		log.Debugf("File %s is compressed, stop tailing", *fileName)
-		return false, nil
+	fileStats, statErr := os.Stat(*fileName)
+	var fileSize int64
+	if statErr == nil {
+		fileSize = fileStats.Size()
+	} else {
+		log.Debugf("Failed to stat file %s while tailing, giving up: %s", *fileName, statErr.Error())
 	}
 
-	fileStats, err := os.Stat(*fileName)
-	if err != nil {
-		log.Debugf("Failed to stat file %s while tailing, giving up: %s", *fileName, err.Error())
+	action := determineTailAction(isCompressed, bytesCount, fileSize, statErr)
+
+	switch action {
+	case tailActionStop:
+		if isCompressed {
+			// Comparing physical compressed size vs decompressed bytesCount doesn't work,
+			// and we can't easily seek into compressed streams to tail them anyway.
+			log.Debugf("File %s is compressed, stop tailing", *fileName)
+		} else if bytesCount == -1 {
+			log.Debugf("Bytes count unknown for %s, stop tailing", *fileName)
+		}
 		return false, nil
-	}
-
-	reader.RLock()
-	bytesCount := reader.bytesCount
-	reader.RUnlock()
-
-	if bytesCount == -1 {
-		log.Debugf("Bytes count unknown for %s, stop tailing", *fileName)
-		return false, nil
-	}
-
-	if fileStats.Size() == bytesCount {
-		log.Tracef("File %s unchanged at %d bytes, continue tailing", *fileName, fileStats.Size())
+	case tailActionContinue:
+		log.Tracef("File %s unchanged at %d bytes, continue tailing", *fileName, fileSize)
 		return true, nil
-	}
-
-	if fileStats.Size() < bytesCount {
+	case tailActionReload:
 		err := reader.reloadFromFile(*fileName)
 		if err != nil {
 			return false, err
 		}
 		return true, nil
+	case tailActionAppend:
+		return reader.readNewBytes(*fileName, bytesCount)
+	default:
+		return false, nil
 	}
-
-	return reader.readNewBytes(*fileName, bytesCount)
 }
 
 func (reader *ReaderImpl) tailFile() error {

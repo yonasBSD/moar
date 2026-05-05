@@ -1,11 +1,7 @@
 package reader
 
 import (
-	"bytes"
-	"compress/gzip"
 	"os"
-	"path/filepath"
-	"strings"
 	"testing"
 	"time"
 
@@ -262,66 +258,27 @@ func TestReadUpdatingFile_HalfUtf8(t *testing.T) {
 	assert.Equal(t, int(testMe.bytesCount), len([]byte("här")))
 }
 
-func TestTailCompressedFileNoReloadLoop(t *testing.T) {
-	// Create some highly compressible text
-	var strBuilder strings.Builder
-	for i := 0; i < 100; i++ {
-		strBuilder.WriteString("this is a repetitive string that compresses very well\n")
-	}
-	uncompressedText := []byte(strBuilder.String())
-
-	// Compress it
-	var buf bytes.Buffer
-	gz := gzip.NewWriter(&buf)
-	_, err := gz.Write(uncompressedText)
-	assert.NilError(t, err)
-	err = gz.Close()
-	assert.NilError(t, err)
-
-	compressedData := buf.Bytes()
-
-	// Create a temporary directory and file
-	tempDir := t.TempDir()
-	tempFile := filepath.Join(tempDir, "testlog.gz")
-	err = os.WriteFile(tempFile, compressedData, 0644)
-	assert.NilError(t, err)
-
-	// Make sure decompressed bytes are greater than physical file size,
-	// otherwise the bug won't trigger.
-	if len(compressedData) >= len(uncompressedText) {
-		t.Fatalf("Test setup failure: compressed size (%d) >= uncompressed bytes (%d)", len(compressedData), len(uncompressedText))
+func TestDetermineTailAction(t *testing.T) {
+	tests := []struct {
+		name         string
+		isCompressed bool
+		bytesCount   int64
+		fileSize     int64
+		statErr      error
+		expected     tailAction
+	}{
+		{"compressed file stops tailing", true, 1000, 100, nil, tailActionStop},
+		{"stat error stops tailing", false, 1000, 1000, os.ErrNotExist, tailActionStop},
+		{"unknown bytesCount stops tailing", false, -1, 1000, nil, tailActionStop},
+		{"unchanged file continues tailing", false, 1000, 1000, nil, tailActionContinue},
+		{"shrunk file reloads", false, 2000, 1000, nil, tailActionReload},
+		{"grown file appends", false, 1000, 2000, nil, tailActionAppend},
 	}
 
-	// Initialize the Reader
-	options := ReaderOptions{}
-	reader, err := NewFromFilename(tempFile, nil, options)
-	assert.NilError(t, err)
-	defer reader.Close()
-
-	// Wait for it to read the file
-	err = reader.Wait()
-	assert.NilError(t, err)
-
-	// Capture the first line to see if it changes
-	firstLineIndex := linemetadata.IndexFromZeroBased(0)
-	lineBefore := reader.GetLine(firstLineIndex)
-
-	// Simulate an iteration of the tail polling loop (which triggers the bug)
-	shouldContinue, err := reader.tailOnce()
-	assert.NilError(t, err)
-	if shouldContinue {
-		t.Fatalf("tailOnce was expected to stop tailing compressed files, but it continued")
-	}
-
-	// Sleep slightly on the offchance it's reading async
-	time.Sleep(100 * time.Millisecond)
-	err = reader.Wait()
-	assert.NilError(t, err)
-
-	lineAfter := reader.GetLine(firstLineIndex)
-
-	// We compare the literal Line struct pointers
-	if lineBefore.Line != lineAfter.Line {
-		t.Errorf("FAIL: Reader reloaded the file! Expected pointers to match.")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			actual := determineTailAction(tt.isCompressed, tt.bytesCount, tt.fileSize, tt.statErr)
+			assert.Equal(t, actual, tt.expected)
+		})
 	}
 }
