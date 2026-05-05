@@ -118,8 +118,20 @@ func (reader *ReaderImpl) readNewBytes(fileName string, bytesCount int64) (bool,
 	return true, nil
 }
 
-func determineTailAction(isCompressed bool, bytesCount int64, fileSize int64, statErr error) tailAction {
-	if isCompressed || statErr != nil || bytesCount == -1 {
+func determineTailAction(fileName string, isCompressed bool, bytesCount int64, fileSize int64, statErr error) tailAction {
+	if statErr != nil {
+		return tailActionStop
+	}
+
+	if isCompressed {
+		// Comparing physical compressed size vs decompressed bytesCount doesn't work,
+		// and we can't easily seek into compressed streams to tail them anyway.
+		log.Debugf("File %s is compressed, stop tailing", fileName)
+		return tailActionStop
+	}
+
+	if bytesCount == -1 {
+		log.Debugf("Bytes count unknown for %s, stop tailing", fileName)
 		return tailActionStop
 	}
 
@@ -156,17 +168,10 @@ func (reader *ReaderImpl) tailOnce() (bool, error) {
 		log.Debugf("Failed to stat file %s while tailing, giving up: %s", *fileName, statErr.Error())
 	}
 
-	action := determineTailAction(isCompressed, bytesCount, fileSize, statErr)
+	action := determineTailAction(*fileName, isCompressed, bytesCount, fileSize, statErr)
 
 	switch action {
 	case tailActionStop:
-		if isCompressed {
-			// Comparing physical compressed size vs decompressed bytesCount doesn't work,
-			// and we can't easily seek into compressed streams to tail them anyway.
-			log.Debugf("File %s is compressed, stop tailing", *fileName)
-		} else if bytesCount == -1 {
-			log.Debugf("Bytes count unknown for %s, stop tailing", *fileName)
-		}
 		return false, nil
 	case tailActionContinue:
 		log.Tracef("File %s unchanged at %d bytes, continue tailing", *fileName, fileSize)

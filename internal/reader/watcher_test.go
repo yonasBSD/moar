@@ -277,7 +277,7 @@ func TestDetermineTailAction(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			actual := determineTailAction(tt.isCompressed, tt.bytesCount, tt.fileSize, tt.statErr)
+			actual := determineTailAction("test.txt", tt.isCompressed, tt.bytesCount, tt.fileSize, tt.statErr)
 			assert.Equal(t, actual, tt.expected)
 		})
 	}
