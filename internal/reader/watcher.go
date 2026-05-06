@@ -118,8 +118,9 @@ func (reader *ReaderImpl) readNewBytes(fileName string, bytesCount int64) (bool,
 	return true, nil
 }
 
-func determineTailAction(fileName string, isCompressed bool, bytesCount int64, fileSize int64, statErr error) tailAction {
+func determineTailAction(fileName string, isCompressed bool, bytesCount int64, fileInfo os.FileInfo, statErr error) tailAction {
 	if statErr != nil {
+		log.Debugf("Failed to stat file %s while tailing, giving up: %s", fileName, statErr.Error())
 		return tailActionStop
 	}
 
@@ -134,6 +135,8 @@ func determineTailAction(fileName string, isCompressed bool, bytesCount int64, f
 		log.Debugf("Bytes count unknown for %s, stop tailing", fileName)
 		return tailActionStop
 	}
+
+	fileSize := fileInfo.Size()
 
 	if fileSize == bytesCount {
 		return tailActionContinue
@@ -161,20 +164,13 @@ func (reader *ReaderImpl) tailOnce() (bool, error) {
 	}
 
 	fileStats, statErr := os.Stat(*fileName)
-	var fileSize int64
-	if statErr == nil {
-		fileSize = fileStats.Size()
-	} else {
-		log.Debugf("Failed to stat file %s while tailing, giving up: %s", *fileName, statErr.Error())
-	}
-
-	action := determineTailAction(*fileName, isCompressed, bytesCount, fileSize, statErr)
+	action := determineTailAction(*fileName, isCompressed, bytesCount, fileStats, statErr)
 
 	switch action {
 	case tailActionStop:
 		return false, nil
 	case tailActionContinue:
-		log.Tracef("File %s unchanged at %d bytes, continue tailing", *fileName, fileSize)
+		log.Tracef("File %s unchanged at %d bytes, continue tailing", *fileName, fileStats.Size())
 		return true, nil
 	case tailActionReload:
 		err := reader.reloadFromFile(*fileName)
