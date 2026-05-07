@@ -258,6 +258,18 @@ func TestReadUpdatingFile_HalfUtf8(t *testing.T) {
 	assert.Equal(t, int(testMe.bytesCount), len([]byte("här")))
 }
 
+type fakeFileInfo struct {
+	size    int64
+	modTime time.Time
+}
+
+func (f fakeFileInfo) Name() string       { return "test.txt" }
+func (f fakeFileInfo) Size() int64        { return f.size }
+func (f fakeFileInfo) Mode() os.FileMode  { return 0644 }
+func (f fakeFileInfo) ModTime() time.Time { return f.modTime }
+func (f fakeFileInfo) IsDir() bool        { return false }
+func (f fakeFileInfo) Sys() any           { return nil }
+
 func TestDetermineTailAction(t *testing.T) {
 	tests := []struct {
 		name         string
@@ -277,7 +289,14 @@ func TestDetermineTailAction(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			actual := determineTailAction("test.txt", tt.isCompressed, tt.bytesCount, tt.fileSize, tt.statErr)
+			actual := determineTailAction(
+				"test.txt",
+				tt.isCompressed,
+				tt.bytesCount,
+				time.Now(),
+				fakeFileInfo{size: tt.fileSize, modTime: time.Now()},
+				tt.statErr,
+			)
 			assert.Equal(t, actual, tt.expected)
 		})
 	}
