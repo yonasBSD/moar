@@ -258,26 +258,64 @@ func TestReadUpdatingFile_HalfUtf8(t *testing.T) {
 	assert.Equal(t, int(testMe.bytesCount), len([]byte("här")))
 }
 
+type fakeFileInfo struct {
+	size    int64
+	modTime time.Time
+}
+
+func (f fakeFileInfo) Name() string       { return "test.txt" }
+func (f fakeFileInfo) Size() int64        { return f.size }
+func (f fakeFileInfo) Mode() os.FileMode  { return 0644 }
+func (f fakeFileInfo) ModTime() time.Time { return f.modTime }
+func (f fakeFileInfo) IsDir() bool        { return false }
+func (f fakeFileInfo) Sys() any           { return nil }
+
 func TestDetermineTailAction(t *testing.T) {
+	t0 := time.Now()
+	t1 := t0.Add(1 * time.Second)
+
+	const (
+		smaller int64 = 100
+		larger  int64 = 2000
+	)
+
 	tests := []struct {
 		name         string
 		isCompressed bool
-		bytesCount   int64
-		fileSize     int64
+		oldSize      int64
+		oldModTime   time.Time
+		newSize      int64
+		newModTime   time.Time
 		statErr      error
 		expected     tailAction
 	}{
-		{"compressed file stops tailing", true, 1000, 100, nil, tailActionStop},
-		{"stat error stops tailing", false, 1000, 1000, os.ErrNotExist, tailActionStop},
-		{"unknown bytesCount stops tailing", false, -1, 1000, nil, tailActionStop},
-		{"unchanged file continues tailing", false, 1000, 1000, nil, tailActionContinue},
-		{"shrunk file reloads", false, 2000, 1000, nil, tailActionReload},
-		{"grown file appends", false, 1000, 2000, nil, tailActionAppend},
+		{"compressed file grown reloads", true, smaller, t0, larger, t0, nil, tailActionReload},
+		{"compressed file shrunk reloads", true, larger, t0, smaller, t0, nil, tailActionReload},
+		{"compressed file same size updated timestamp reloads", true, smaller, t0, smaller, t1, nil, tailActionReload},
+		{"compressed file unchanged continues", true, smaller, t0, smaller, t0, nil, tailActionContinue},
+		{"stat error stops tailing", false, smaller, t0, smaller, t0, os.ErrNotExist, tailActionStop},
+		{"unknown previous stat stops tailing", false, -1, t0, smaller, t0, nil, tailActionStop},
+		{"unchanged file continues tailing", false, smaller, t0, smaller, t0, nil, tailActionContinue},
+		{"same size updated timestamp reloads", false, smaller, t0, smaller, t1, nil, tailActionReload},
+		{"shrunk file reloads", false, larger, t0, smaller, t0, nil, tailActionReload},
+		{"grown file appends", false, smaller, t0, larger, t0, nil, tailActionAppend},
+		{"grown file updated timestamp appends", false, smaller, t0, larger, t1, nil, tailActionAppend},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			actual := determineTailAction("test.txt", tt.isCompressed, tt.bytesCount, tt.fileSize, tt.statErr)
+			var oldStat os.FileInfo
+			if tt.oldSize != -1 {
+				oldStat = fakeFileInfo{size: tt.oldSize, modTime: tt.oldModTime}
+			}
+
+			actual := determineTailAction(
+				"test.txt",
+				tt.isCompressed,
+				oldStat,
+				fakeFileInfo{size: tt.newSize, modTime: tt.newModTime},
+				tt.statErr,
+			)
 			assert.Equal(t, actual, tt.expected)
 		})
 	}
