@@ -9,7 +9,6 @@ import (
 	"runtime/debug"
 	"strings"
 	"sync/atomic"
-	"time"
 
 	"github.com/alecthomas/chroma/v2"
 	"github.com/alecthomas/chroma/v2/lexers"
@@ -36,9 +35,9 @@ func NewFromFilename(filename string, formatter chroma.Formatter, options Reader
 		return nil, err
 	}
 
-	var initialMtime time.Time
+	var initialStat os.FileInfo
 	if fileStats, statErr := os.Stat(filename); statErr == nil {
-		initialMtime = fileStats.ModTime()
+		initialStat = fileStats
 	}
 
 	if options.Lexer == nil {
@@ -46,7 +45,7 @@ func NewFromFilename(filename string, formatter chroma.Formatter, options Reader
 	}
 
 	returnMe := newReaderFromStream(stream, &filename, formatter, options)
-	returnMe.lastModTime = initialMtime
+	returnMe.lastStat = initialStat
 
 	// Ensure the display name matches the highlighting name (e.g. without .gz)
 	basename := filepath.Base(highlightingFilename)

@@ -280,21 +280,21 @@ func TestDetermineTailAction(t *testing.T) {
 	)
 
 	tests := []struct {
-		name           string
-		isCompressed   bool
-		bytesCount     int64
-		lastModTime    time.Time
-		fileSize       int64
-		currentModTime time.Time
-		statErr        error
-		expected       tailAction
+		name         string
+		isCompressed bool
+		oldSize      int64
+		oldModTime   time.Time
+		newSize      int64
+		newModTime   time.Time
+		statErr      error
+		expected     tailAction
 	}{
 		{"compressed file grown reloads", true, smaller, t0, larger, t0, nil, tailActionReload},
 		{"compressed file shrunk reloads", true, larger, t0, smaller, t0, nil, tailActionReload},
 		{"compressed file same size updated timestamp reloads", true, smaller, t0, smaller, t1, nil, tailActionReload},
 		{"compressed file unchanged continues", true, smaller, t0, smaller, t0, nil, tailActionContinue},
 		{"stat error stops tailing", false, smaller, t0, smaller, t0, os.ErrNotExist, tailActionStop},
-		{"unknown bytesCount stops tailing", false, -1, t0, smaller, t0, nil, tailActionStop},
+		{"unknown previous stat stops tailing", false, -1, t0, smaller, t0, nil, tailActionStop},
 		{"unchanged file continues tailing", false, smaller, t0, smaller, t0, nil, tailActionContinue},
 		{"same size updated timestamp reloads", false, smaller, t0, smaller, t1, nil, tailActionReload},
 		{"shrunk file reloads", false, larger, t0, smaller, t0, nil, tailActionReload},
@@ -304,12 +304,16 @@ func TestDetermineTailAction(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			var oldStat os.FileInfo
+			if tt.oldSize != -1 {
+				oldStat = fakeFileInfo{size: tt.oldSize, modTime: tt.oldModTime}
+			}
+
 			actual := determineTailAction(
 				"test.txt",
 				tt.isCompressed,
-				tt.bytesCount,
-				tt.lastModTime,
-				fakeFileInfo{size: tt.fileSize, modTime: tt.currentModTime},
+				oldStat,
+				fakeFileInfo{size: tt.newSize, modTime: tt.newModTime},
 				tt.statErr,
 			)
 			assert.Equal(t, actual, tt.expected)
