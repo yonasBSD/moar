@@ -149,29 +149,40 @@ func determineTailAction(
 		return tailActionStop
 	}
 
-	if isCompressed {
-		// Comparing physical compressed size vs decompressed bytesCount doesn't work,
-		// and we can't easily seek into compressed streams to tail them anyway.
-		log.Debugf("File %s is compressed, stop tailing", fileName)
-		return tailActionStop
-	}
+	fileSize := fileInfo.Size()
+
+	// Invariant: stat went well
 
 	if bytesCount == -1 {
 		log.Debugf("Bytes count unknown for %s, stop tailing", fileName)
 		return tailActionStop
 	}
 
-	fileSize := fileInfo.Size()
-
-	if fileSize == bytesCount {
-		return tailActionContinue
-	}
-
 	if fileSize < bytesCount {
+		log.Debugf("File %s shrunk, reloading", fileName)
 		return tailActionReload
 	}
 
-	return tailActionAppend
+	if fileSize > bytesCount {
+		if isCompressed {
+			log.Debugf("Compressed file %s grew, reloading", fileName)
+			return tailActionReload
+		}
+		log.Debugf("File %s grew from %d to %d bytes, appending", fileName, bytesCount, fileSize)
+		return tailActionAppend
+	}
+
+	// Invariant: File size unchanged
+
+	if fileInfo.ModTime().After(lastModTime) {
+		log.Debugf("File %s was updated/rotated but size is unchanged, reloading", fileName)
+		return tailActionReload
+	}
+
+	// File size unchanged and mod time unchanged
+
+	log.Tracef("File %s unchanged at %d bytes, continue tailing", fileName, fileSize)
+	return tailActionContinue
 }
 
 // tailOnce performs one iteration of the file tailing check.
