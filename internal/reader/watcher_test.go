@@ -258,6 +258,50 @@ func TestReadUpdatingFile_HalfUtf8(t *testing.T) {
 	assert.Equal(t, int(testMe.bytesCount), len([]byte("här")))
 }
 
+// If a file is completely rewritten and ends up larger than before, but clearly
+// has different boundary bytes (not an append), tailing should detect the
+// replacement and reload instead of attempting to append.
+func TestReadRewrittenFile_Grows(t *testing.T) {
+	file, err := os.CreateTemp("", "moor-TestReadRewrittenFile_-*.txt")
+	assert.NilError(t, err)
+	defer os.Remove(file.Name()) //nolint:errcheck
+
+	const initialRows = "First\nSecond\n"
+	const replacementRow = "Totally different data replaces the whole file"
+
+	// Start reading from the file
+	_, err = file.WriteString(initialRows)
+	assert.NilError(t, err)
+	testMe, err := NewFromFilename(file.Name(), formatters.TTY16m, ReaderOptions{Style: styles.Get("native")})
+	assert.NilError(t, err)
+	assert.NilError(t, testMe.Wait())
+
+	// Validate setup
+	allLines := testMe.GetLines(linemetadata.Index{}, 10)
+	assert.Equal(t, len(allLines.Lines), 2)
+	assert.Equal(t, allLines.Lines[0].Plain(), "First")
+	assert.Equal(t, allLines.Lines[1].Plain(), "Second")
+
+	// Replace file contents with something unrelated
+	err = os.WriteFile(file.Name(), []byte(replacementRow), 0600)
+	assert.NilError(t, err)
+
+	// Wait for the reader to react
+	for range 20 {
+		allLines := testMe.GetLines(linemetadata.Index{}, 10)
+		if len(allLines.Lines) == 1 {
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	assert.NilError(t, testMe.Wait())
+
+	allLines = testMe.GetLines(linemetadata.Index{}, 10)
+	assert.Equal(t, len(allLines.Lines), 1)
+	assert.Equal(t, allLines.Lines[0].Plain(), replacementRow)
+}
+
 type fakeFileInfo struct {
 	size    int64
 	modTime time.Time
