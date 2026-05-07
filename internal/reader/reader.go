@@ -119,6 +119,9 @@ type ReaderImpl struct {
 	// undefined behavior.
 	doneWaitingForFirstByte chan bool
 
+	// Used for detecting file modifications
+	lastModTime time.Time
+
 	// For telling the UI it should recheck the --quit-if-one-screen conditions.
 	// Signalled when either highlighting is done or reading is done.
 	MaybeDone chan bool

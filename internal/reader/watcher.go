@@ -34,11 +34,21 @@ func (reader *ReaderImpl) reloadFromFile(fileName string) error {
 		return fmt.Errorf("failed to open file %s for reloading: %w", fileName, err)
 	}
 
+	var newModTime time.Time
+	if fileStats, statErr := os.Stat(fileName); statErr == nil {
+		newModTime = fileStats.ModTime()
+	} else {
+		log.Debugf("Failed to stat file %s immediately after opening for reload: %s", fileName, statErr.Error())
+	}
+
 	reader.Lock()
 	reader.lines = reader.lines[:0]
 	reader.bytesCount = 0
 	reader.endsWithNewline = false
 	reader.Err = nil
+	if !newModTime.IsZero() {
+		reader.lastModTime = newModTime
+	}
 	reader.ReadingDone.Store(false)
 	reader.HighlightingDone.Store(false)
 	reader.Unlock()
@@ -89,6 +99,14 @@ func (reader *ReaderImpl) readNewBytes(fileName string, bytesCount int64) (bool,
 		return false, nil
 	}
 
+	reader.Lock()
+	if fileStats, statErr := os.Stat(fileName); statErr == nil {
+		reader.lastModTime = fileStats.ModTime()
+	} else {
+		log.Debugf("Failed to stat file %s immediately after opening for reading new bytes: %s", fileName, statErr.Error())
+	}
+	reader.Unlock()
+
 	seekable, ok := stream.(io.ReadSeekCloser)
 	if !ok {
 		err = stream.Close()
@@ -118,7 +136,14 @@ func (reader *ReaderImpl) readNewBytes(fileName string, bytesCount int64) (bool,
 	return true, nil
 }
 
-func determineTailAction(fileName string, isCompressed bool, bytesCount int64, fileInfo os.FileInfo, statErr error) tailAction {
+func determineTailAction(
+	fileName string,
+	isCompressed bool,
+	bytesCount int64,
+	lastModTime time.Time,
+	fileInfo os.FileInfo,
+	statErr error,
+) tailAction {
 	if statErr != nil {
 		log.Debugf("Failed to stat file %s while tailing, giving up: %s", fileName, statErr.Error())
 		return tailActionStop
@@ -157,6 +182,7 @@ func (reader *ReaderImpl) tailOnce() (bool, error) {
 	fileName := reader.FileName
 	isCompressed := reader.IsCompressed
 	bytesCount := reader.bytesCount
+	lastModTime := reader.lastModTime
 	reader.RUnlock()
 
 	if fileName == nil {
@@ -164,7 +190,7 @@ func (reader *ReaderImpl) tailOnce() (bool, error) {
 	}
 
 	fileStats, statErr := os.Stat(*fileName)
-	action := determineTailAction(*fileName, isCompressed, bytesCount, fileStats, statErr)
+	action := determineTailAction(*fileName, isCompressed, bytesCount, lastModTime, fileStats, statErr)
 
 	switch action {
 	case tailActionStop:
