@@ -100,7 +100,11 @@ type ReaderImpl struct {
 	// True if the file we read from was compressed.
 	IsCompressed bool
 
-	// How many bytes have we read so far?
+	// How many bytes have we successfully decoded and read into memory so far?
+	//
+	// Note: For compressed files, this is the DECOMPRESSED byte count. Do NOT
+	// compare this directly to os.FileInfo.Size() (which is the compressed size
+	// on disk), as they represent different metrics.
 	bytesCount int64
 
 	endsWithNewline bool

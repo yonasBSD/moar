@@ -220,6 +220,12 @@ func (reader *ReaderImpl) tailOnce() (bool, error) {
 	}
 }
 
+// tailFile polls the file for changes in a loop and updates the reader.
+//
+// Note: This starts executing ONLY after the initial parsing is completely
+// finished (see `readStream`). Because initial parsing and tailing polling run
+// sequentially on the same background goroutine, there is no concurrency (and
+// thus no data races) between checking for appends and parsing original lines.
 func (reader *ReaderImpl) tailFile() error {
 	reader.RLock()
 	fileName := reader.FileName
