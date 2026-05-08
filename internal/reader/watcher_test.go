@@ -236,6 +236,7 @@ func TestDetermineTailAction(t *testing.T) {
 				oldStat,
 				fakeFileInfo{size: tt.newSize, modTime: tt.newModTime},
 				tt.statErr,
+				nil, // headerBytes
 			)
 			assert.Equal(t, actual, tt.expected)
 		})
