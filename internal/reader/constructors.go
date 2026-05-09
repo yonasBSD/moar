@@ -4,6 +4,7 @@ package reader
 
 import (
 	"io"
+	"os"
 	"path/filepath"
 	"runtime/debug"
 	"strings"
@@ -34,11 +35,17 @@ func NewFromFilename(filename string, formatter chroma.Formatter, options Reader
 		return nil, err
 	}
 
+	var initialStat os.FileInfo
+	if fileStats, statErr := os.Stat(filename); statErr == nil {
+		initialStat = fileStats
+	}
+
 	if options.Lexer == nil {
 		options.Lexer = lexers.Match(highlightingFilename)
 	}
 
 	returnMe := newReaderFromStream(stream, &filename, formatter, options)
+	returnMe.lastStat = initialStat
 
 	// Ensure the display name matches the highlighting name (e.g. without .gz)
 	basename := filepath.Base(highlightingFilename)

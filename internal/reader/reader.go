@@ -100,8 +100,16 @@ type ReaderImpl struct {
 	// True if the file we read from was compressed.
 	IsCompressed bool
 
-	// How many bytes have we read so far?
+	// How many bytes have we successfully decoded and read into memory so far?
+	//
+	// Note: For compressed files, this is the DECOMPRESSED byte count. Do NOT
+	// compare this directly to os.FileInfo.Size() (which is the compressed size
+	// on disk), as they represent different metrics.
 	bytesCount int64
+
+	// The first bytes read from the file. Used to determine if the file was replaced
+	// or appended to when it grows.
+	headerBytes []byte
 
 	endsWithNewline bool
 
@@ -118,6 +126,9 @@ type ReaderImpl struct {
 	// This channel expects to be read exactly once. All other uses will lead to
 	// undefined behavior.
 	doneWaitingForFirstByte chan bool
+
+	// Used for detecting file modifications
+	lastStat os.FileInfo
 
 	// For telling the UI it should recheck the --quit-if-one-screen conditions.
 	// Signalled when either highlighting is done or reading is done.

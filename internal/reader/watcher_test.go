@@ -11,121 +11,94 @@ import (
 	"gotest.tools/v3/assert"
 )
 
-func TestReadUpdatingFile(t *testing.T) {
-	// Make a temp file containing one line of text, ending with a newline
-	file, err := os.CreateTemp("", "moor-TestReadUpdatingFile-*.txt")
+func setupWatcherTest(t *testing.T, initialContents string) (*ReaderImpl, *os.File) {
+	t.Helper()
+	file, err := os.CreateTemp("", "moor-watcher-test-*.txt")
 	assert.NilError(t, err)
-	defer os.Remove(file.Name()) //nolint:errcheck
+	t.Cleanup(func() { _ = os.Remove(file.Name()) })
 
-	const firstLineString = "First line\n"
-	_, err = file.WriteString(firstLineString)
-	assert.NilError(t, err)
+	if initialContents != "" {
+		_, err = file.WriteString(initialContents)
+		assert.NilError(t, err)
+	}
 
-	// Start a reader on that file
 	testMe, err := NewFromFilename(file.Name(), formatters.TTY16m, ReaderOptions{Style: styles.Get("native")})
 	assert.NilError(t, err)
-
-	// Wait for the reader to finish reading
 	assert.NilError(t, testMe.Wait())
-	assert.Equal(t, len([]byte(firstLineString)), int(testMe.bytesCount))
 
-	// Verify we got the single line
-	allLines := testMe.GetLines(linemetadata.Index{}, 10)
-	assert.Equal(t, len(allLines.Lines), 1)
-	assert.Equal(t, testMe.GetLineCount(), 1)
-	assert.Equal(t, allLines.Lines[0].Plain(), "First line")
+	return testMe, file
+}
 
-	// Append a line to the file
-	const secondLineString = "Second line\n"
-	_, err = file.WriteString(secondLineString)
-	assert.NilError(t, err)
+func waitForLineCount(t *testing.T, testMe *ReaderImpl, expectedCount int) {
+	t.Helper()
+	waitForCondition(t, func() bool {
+		allLines := testMe.GetLines(linemetadata.Index{}, expectedCount+10)
+		return len(allLines.Lines) == expectedCount
+	}, "waiting for line count")
+}
 
-	// Give the reader some time to react
+func waitForCondition(t *testing.T, condition func() bool, errMsg string) {
+	t.Helper()
 	for range 20 {
-		allLines := testMe.GetLines(linemetadata.Index{}, 10)
-		if len(allLines.Lines) == 2 {
-			break
+		if condition() {
+			return
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
+	t.Fatalf("timed out: %s", errMsg)
+}
 
-	// Verify we got the two lines
-	allLines = testMe.GetLines(linemetadata.Index{}, 10)
-	assert.Equal(t, len(allLines.Lines), 2, "Expected two lines after adding a second one, got %d", len(allLines.Lines))
-	assert.Equal(t, testMe.GetLineCount(), 2)
-	assert.Equal(t, allLines.Lines[0].Plain(), "First line")
-	assert.Equal(t, allLines.Lines[1].Plain(), "Second line")
+func assertLines(t *testing.T, testMe *ReaderImpl, expectedLines ...string) {
+	t.Helper()
+	allLines := testMe.GetLines(linemetadata.Index{}, len(expectedLines)+10)
+	assert.Equal(t, len(allLines.Lines), len(expectedLines), "Expected %d lines, got %d", len(expectedLines), len(allLines.Lines))
 
+	for i, expected := range expectedLines {
+		assert.Equal(t, allLines.Lines[i].Plain(), expected)
+	}
+}
+
+func TestReadUpdatingFile(t *testing.T) {
+	const firstLineString = "First line\n"
+	testMe, file := setupWatcherTest(t, firstLineString)
+
+	assert.Equal(t, int(testMe.bytesCount), len([]byte(firstLineString)))
+	assertLines(t, testMe, "First line")
+
+	const secondLineString = "Second line\n"
+	_, err := file.WriteString(secondLineString)
+	assert.NilError(t, err)
+
+	waitForLineCount(t, testMe, 2)
+	assertLines(t, testMe, "First line", "Second line")
 	assert.Equal(t, int(testMe.bytesCount), len([]byte(firstLineString+secondLineString)))
 
-	// Append a third line to the file. We want to verify line 2 didn't just
-	// succeed due to special handling.
 	const thirdLineString = "Third line\n"
 	_, err = file.WriteString(thirdLineString)
 	assert.NilError(t, err)
 
-	// Give the reader some time to react
-	for i := 0; i < 20; i++ {
-		allLines = testMe.GetLines(linemetadata.Index{}, 10)
-		if len(allLines.Lines) == 3 {
-			break
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-
-	// Verify we got all three lines
-	allLines = testMe.GetLines(linemetadata.Index{}, 10)
-	assert.Equal(t, len(allLines.Lines), 3, "Expected three lines after adding a third one, got %d", len(allLines.Lines))
-	assert.Equal(t, testMe.GetLineCount(), 3)
-	assert.Equal(t, allLines.Lines[0].Plain(), "First line")
-	assert.Equal(t, allLines.Lines[1].Plain(), "Second line")
-	assert.Equal(t, allLines.Lines[2].Plain(), "Third line")
-
+	waitForLineCount(t, testMe, 3)
+	assertLines(t, testMe, "First line", "Second line", "Third line")
 	assert.Equal(t, int(testMe.bytesCount), len([]byte(firstLineString+secondLineString+thirdLineString)))
 }
 
 // If a file is rewritten (shrunk and replaced with new content), tailing should
 // detect the shrink and reload the file rather than giving up.
 func TestReadShrunkFile(t *testing.T) {
-	// Make a temp file with an initial line
-	file, err := os.CreateTemp("", "moor-TestReadShrunkFile-*.txt")
-	assert.NilError(t, err)
-	defer os.Remove(file.Name()) //nolint:errcheck
-
-	const firstLineString = "First line\n"
-	_, err = file.WriteString(firstLineString)
-	assert.NilError(t, err)
-
-	// Start a reader on that file
-	testMe, err := NewFromFilename(file.Name(), formatters.TTY16m, ReaderOptions{Style: styles.Get("native")})
-	assert.NilError(t, err)
-
-	// Wait for the reader to finish reading
-	assert.NilError(t, testMe.Wait())
-
-	allLines := testMe.GetLines(linemetadata.Index{}, 10)
-	assert.Equal(t, len(allLines.Lines), 1)
-	assert.Equal(t, allLines.Lines[0].Plain(), "First line")
+	testMe, file := setupWatcherTest(t, "First line\n")
+	assertLines(t, testMe, "First line")
 
 	// Rewrite the file with shorter content, so the file shrinks
-	err = os.WriteFile(file.Name(), []byte("New\n"), 0600)
+	err := os.WriteFile(file.Name(), []byte("New\n"), 0600)
 	assert.NilError(t, err)
 
-	// Give the background tailing goroutine up to 2s to detect the shrink and reload
-	for range 20 {
-		allLines = testMe.GetLines(linemetadata.Index{}, 10)
-		if len(allLines.Lines) == 1 && allLines.Lines[0].Plain() == "New" {
-			break
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
+	waitForCondition(t, func() bool {
+		allLines := testMe.GetLines(linemetadata.Index{}, 10)
+		return len(allLines.Lines) == 1 && allLines.Lines[0].Plain() == "New"
+	}, "waiting for shrunk file to reload with 'New'")
 
-	// Wait for the reload to fully complete before asserting
 	assert.NilError(t, testMe.Wait())
-
-	allLines = testMe.GetLines(linemetadata.Index{}, 10)
-	assert.Equal(t, len(allLines.Lines), 1, "Expected one line after rewrite, got %d", len(allLines.Lines))
-	assert.Equal(t, allLines.Lines[0].Plain(), "New")
+	assertLines(t, testMe, "New")
 }
 
 // If people keep appending to the currently opened file we should display those
@@ -133,41 +106,14 @@ func TestReadShrunkFile(t *testing.T) {
 //
 // This test verifies it with an initially empty file.
 func TestReadUpdatingFile_InitiallyEmpty(t *testing.T) {
-	// Make a temp file containing one line of text, ending with a newline
-	file, err := os.CreateTemp("", "moor-TestReadUpdatingFile_NoNewlineAtEOF-*.txt")
-	assert.NilError(t, err)
-	defer os.Remove(file.Name()) //nolint:errcheck
+	testMe, file := setupWatcherTest(t, "")
+	assertLines(t, testMe)
 
-	// Start a reader on that file
-	testMe, err := NewFromFilename(file.Name(), formatters.TTY16m, ReaderOptions{Style: styles.Get("native")})
+	_, err := file.WriteString("Text\n")
 	assert.NilError(t, err)
 
-	// Wait for the reader to finish reading
-	assert.NilError(t, testMe.Wait())
-
-	// Verify no lines
-	allLines := testMe.GetLines(linemetadata.Index{}, 10)
-	assert.Equal(t, len(allLines.Lines), 0)
-	assert.Equal(t, testMe.GetLineCount(), 0)
-
-	// Append a line to the file
-	_, err = file.WriteString("Text\n")
-	assert.NilError(t, err)
-
-	// Give the reader some time to react
-	for i := 0; i < 20; i++ {
-		allLines := testMe.GetLines(linemetadata.Index{}, 10)
-		if len(allLines.Lines) == 1 {
-			break
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-
-	// Verify we got the two lines
-	allLines = testMe.GetLines(linemetadata.Index{}, 10)
-	assert.Equal(t, len(allLines.Lines), 1, "Expected one line after adding one, got %d", len(allLines.Lines))
-	assert.Equal(t, testMe.GetLineCount(), 1)
-	assert.Equal(t, allLines.Lines[0].Plain(), "Text")
+	waitForLineCount(t, testMe, 1)
+	assertLines(t, testMe, "Text")
 }
 
 // If people keep appending to the currently opened file we should display those
@@ -175,42 +121,19 @@ func TestReadUpdatingFile_InitiallyEmpty(t *testing.T) {
 //
 // This test verifies it with the initial contents not ending with a linefeed.
 func TestReadUpdatingFile_HalfLine(t *testing.T) {
-	// Make a temp file containing one line of text, ending with a newline
-	file, err := os.CreateTemp("", "moor-TestReadUpdatingFile-*.txt")
-	assert.NilError(t, err)
-	defer os.Remove(file.Name()) //nolint:errcheck
-
-	_, err = file.WriteString("Start")
-	assert.NilError(t, err)
-
-	// Start a reader on that file
-	testMe, err := NewFromFilename(file.Name(), formatters.TTY16m, ReaderOptions{Style: styles.Get("native")})
-	assert.NilError(t, err)
-
-	// Wait for the reader to finish reading
-	assert.NilError(t, testMe.Wait())
+	testMe, file := setupWatcherTest(t, "Start")
 	assert.Equal(t, int(testMe.bytesCount), len([]byte("Start")))
 
-	// Append the rest of the line
 	const secondLineString = ", end\n"
-	_, err = file.WriteString(secondLineString)
+	_, err := file.WriteString(secondLineString)
 	assert.NilError(t, err)
 
-	// Give the reader some time to react
-	for i := 0; i < 20; i++ {
+	waitForCondition(t, func() bool {
 		allLines := testMe.GetLines(linemetadata.Index{}, 10)
-		if len(allLines.Lines) == 2 {
-			break
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
+		return len(allLines.Lines) == 1 && allLines.Lines[0].Plain() == "Start, end"
+	}, "waiting for line to update")
 
-	// Verify we got the two lines
-	allLines := testMe.GetLines(linemetadata.Index{}, 10)
-	assert.Equal(t, len(allLines.Lines), 1, "Still expecting one line, got %d", len(allLines.Lines))
-	assert.Equal(t, testMe.GetLineCount(), 1)
-	assert.Equal(t, allLines.Lines[0].Plain(), "Start, end")
-
+	assertLines(t, testMe, "Start, end")
 	assert.Equal(t, int(testMe.bytesCount), len([]byte("Start, end\n")))
 }
 
@@ -219,65 +142,102 @@ func TestReadUpdatingFile_HalfLine(t *testing.T) {
 //
 // This test verifies it with the initial contents ending in the middle of an UTF-8 character.
 func TestReadUpdatingFile_HalfUtf8(t *testing.T) {
-	// Make a temp file containing one line of text, ending with a newline
-	file, err := os.CreateTemp("", "moor-TestReadUpdatingFile-*.txt")
-	assert.NilError(t, err)
-	defer os.Remove(file.Name()) //nolint:errcheck
-
 	// Write "h" and half an "ä" to the file
-	_, err = file.Write([]byte("här"[0:2]))
-	assert.NilError(t, err)
-
-	// Start a reader on that file
-	testMe, err := NewFromFilename(file.Name(), formatters.TTY16m, ReaderOptions{Style: styles.Get("native")})
-	assert.NilError(t, err)
-
-	// Wait for the reader to finish reading
-	assert.NilError(t, testMe.Wait())
+	testMe, file := setupWatcherTest(t, string([]byte("här")[0:2]))
 	assert.Equal(t, testMe.GetLineCount(), 1)
 
 	// Append the rest of the UTF-8 character
-	_, err = file.WriteString("här"[2:])
+	_, err := file.WriteString("här"[2:])
 	assert.NilError(t, err)
 
-	// Give the reader some time to react
-	for range 20 {
+	waitForCondition(t, func() bool {
 		allLines := testMe.GetLines(linemetadata.Index{}, 10)
-		if len(allLines.Lines) == 2 {
-			break
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
+		return len(allLines.Lines) == 1 && allLines.Lines[0].Plain() == "här"
+	}, "waiting for utf-8 char to complete")
 
-	// Verify we got the two lines
-	allLines := testMe.GetLines(linemetadata.Index{}, 10)
-	assert.Equal(t, len(allLines.Lines), 1, "Still expecting one line, got %d", len(allLines.Lines))
-	assert.Equal(t, testMe.GetLineCount(), 1)
-	assert.Equal(t, allLines.Lines[0].Plain(), "här")
-
+	assertLines(t, testMe, "här")
 	assert.Equal(t, int(testMe.bytesCount), len([]byte("här")))
 }
 
+// If a file is completely rewritten and ends up not smaller than before, but clearly
+// has different boundary bytes (not an append), tailing should detect the
+// replacement and reload instead of attempting to append.
+func TestReadRewrittenFile_Replaced(t *testing.T) {
+	testMe, file := setupWatcherTest(t, "First\nSecond\n")
+	assertLines(t, testMe, "First", "Second")
+
+	const replacementRow = "Totally different data replaces the whole file\n"
+	err := os.WriteFile(file.Name(), []byte(replacementRow), 0600)
+	assert.NilError(t, err)
+
+	waitForCondition(t, func() bool {
+		allLines := testMe.GetLines(linemetadata.Index{}, 10)
+		return len(allLines.Lines) == 1 && allLines.Lines[0].Plain() == "Totally different data replaces the whole file"
+	}, "waiting for rewrite to reload")
+
+	assert.NilError(t, testMe.Wait())
+	assertLines(t, testMe, "Totally different data replaces the whole file")
+}
+
+type fakeFileInfo struct {
+	size    int64
+	modTime time.Time
+}
+
+func (f fakeFileInfo) Name() string       { return "test.txt" }
+func (f fakeFileInfo) Size() int64        { return f.size }
+func (f fakeFileInfo) Mode() os.FileMode  { return 0644 }
+func (f fakeFileInfo) ModTime() time.Time { return f.modTime }
+func (f fakeFileInfo) IsDir() bool        { return false }
+func (f fakeFileInfo) Sys() any           { return nil }
+
 func TestDetermineTailAction(t *testing.T) {
+	t0 := time.Now()
+	t1 := t0.Add(1 * time.Second)
+
+	const (
+		smaller int64 = 100
+		larger  int64 = 2000
+	)
+
 	tests := []struct {
 		name         string
 		isCompressed bool
-		bytesCount   int64
-		fileSize     int64
+		oldSize      int64
+		oldModTime   time.Time
+		newSize      int64
+		newModTime   time.Time
 		statErr      error
 		expected     tailAction
 	}{
-		{"compressed file stops tailing", true, 1000, 100, nil, tailActionStop},
-		{"stat error stops tailing", false, 1000, 1000, os.ErrNotExist, tailActionStop},
-		{"unknown bytesCount stops tailing", false, -1, 1000, nil, tailActionStop},
-		{"unchanged file continues tailing", false, 1000, 1000, nil, tailActionContinue},
-		{"shrunk file reloads", false, 2000, 1000, nil, tailActionReload},
-		{"grown file appends", false, 1000, 2000, nil, tailActionAppend},
+		{"compressed file grown reloads", true, smaller, t0, larger, t0, nil, tailActionReload},
+		{"compressed file shrunk reloads", true, larger, t0, smaller, t0, nil, tailActionReload},
+		{"compressed file same size updated timestamp reloads", true, smaller, t0, smaller, t1, nil, tailActionReload},
+		{"compressed file unchanged continues", true, smaller, t0, smaller, t0, nil, tailActionContinue},
+		{"stat error stops tailing", false, smaller, t0, smaller, t0, os.ErrNotExist, tailActionStop},
+		{"unknown previous stat stops tailing", false, -1, t0, smaller, t0, nil, tailActionStop},
+		{"unchanged file continues tailing", false, smaller, t0, smaller, t0, nil, tailActionContinue},
+		{"same size updated timestamp reloads", false, smaller, t0, smaller, t1, nil, tailActionReload},
+		{"shrunk file reloads", false, larger, t0, smaller, t0, nil, tailActionReload},
+		{"grown file appends", false, smaller, t0, larger, t0, nil, tailActionAppend},
+		{"grown file updated timestamp appends", false, smaller, t0, larger, t1, nil, tailActionAppend},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			actual := determineTailAction("test.txt", tt.isCompressed, tt.bytesCount, tt.fileSize, tt.statErr)
+			var oldStat os.FileInfo
+			if tt.oldSize != -1 {
+				oldStat = fakeFileInfo{size: tt.oldSize, modTime: tt.oldModTime}
+			}
+
+			actual := determineTailAction(
+				"test.txt",
+				tt.isCompressed,
+				oldStat,
+				fakeFileInfo{size: tt.newSize, modTime: tt.newModTime},
+				tt.statErr,
+				nil, // headerBytes
+			)
 			assert.Equal(t, actual, tt.expected)
 		})
 	}

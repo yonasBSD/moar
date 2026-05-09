@@ -86,7 +86,9 @@ func FindFirstHit(reader reader.Reader, search search.Search, startPosition line
 
 	// Search all chunks in parallel
 	for i, searchStart := range searchStarts {
-		findings[i] = make(chan *linemetadata.Index)
+		// Provide a buffer of 1 so go-routines don't block
+		// if FindFirstHit returns early.
+		findings[i] = make(chan *linemetadata.Index, 1)
 
 		searchEndIndex := i + 1
 		var chunkBefore *linemetadata.Index
