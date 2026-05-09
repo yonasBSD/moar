@@ -58,14 +58,14 @@ func TestFormatJsonArray(t *testing.T) {
 	assert.Equal(t, len(lines.Lines), 5)
 }
 
-func TestIsJson(t *testing.T) {
+func TestIsJsonOrJsonl(t *testing.T) {
 	// Standard JSON
-	assert.Assert(t, isJson(`{"hello": "world"}`))
+	assert.Assert(t, isJsonOrJsonl(`{"hello": "world"}`))
 
 	// JSONL sample file
 	jsonlPath := filepath.Join("..", "..", "sample-files", "jsonl.jsonl")
 	jsonlBytes, err := os.ReadFile(jsonlPath)
 	assert.NilError(t, err)
 
-	assert.Assert(t, isJson(string(jsonlBytes)))
+	assert.Assert(t, isJsonOrJsonl(string(jsonlBytes)))
 }

@@ -86,8 +86,10 @@ func highlightFromMemory(reader *ReaderImpl, formatter chroma.Formatter, options
 		return
 	}
 
-	if options.Lexer == nil && isJson(text) {
-		log.Info("Buffer is valid JSON, highlighting as JSON")
+	if options.Lexer == nil && isJsonOrJsonl(text) {
+		log.Info("Buffer is valid JSON or JSONL, highlighting as JSON")
+		// The Chroma JSON lexer natively supports JSONL as well:
+		// https://github.com/alecthomas/chroma/pull/1262
 		options.Lexer = lexers.Get("json")
 	} else if options.Lexer == nil && isXml(text) {
 		log.Info("Buffer is valid XML, highlighting as XML")
@@ -161,8 +163,7 @@ func isXml(text string) bool {
 	return err == nil
 }
 
-// Determine if the text is json or jsonl
-func isJson(text string) bool {
+func isJsonOrJsonl(text string) bool {
 	if json.Valid([]byte(text)) {
 		return true
 	}
