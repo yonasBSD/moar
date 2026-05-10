@@ -143,6 +143,39 @@ func TestSearchHighlight(t *testing.T) {
 	)
 }
 
+// Make sure that a search hit spanning the screen edge gets highlighted
+func TestSearchHighlightTruncated(t *testing.T) {
+	// Row contents longer than the screen width
+	numberedLine := reader.NewFromTextForTesting("TestSearchHighlightTruncated", "1234abcdef").GetLine(linemetadata.Index{})
+	pager := Pager{
+		screen: twin.NewFakeScreen(6, 10),
+		search: search.For("abcde"),
+	}
+
+	rendered := pager.renderLine(*numberedLine, pager.getLineNumberPrefixLength(numberedLine.Number), true)
+
+	assert.Equal(t, len(rendered), 1) // No wrapping
+	row := rendered[0]
+
+	assert.Equal(t, len(row.cells), 6) // 1234a> (last being the scroll-right marker)
+
+	expected := []textstyles.CellWithMetadata{
+		{Rune: '1'},
+		{Rune: '2'},
+		{Rune: '3'},
+		{Rune: '4'},
+		{Rune: 'a', IsSearchHit: true, StartsSearchHit: true},
+		{Rune: pager.ScrollRightHint.Rune},
+	}
+
+	for i, actualCell := range row.cells {
+		expectedCell := expected[i]
+		if actualCell.Rune != expectedCell.Rune || actualCell.IsSearchHit != expectedCell.IsSearchHit || actualCell.StartsSearchHit != expectedCell.StartsSearchHit {
+			t.Fatalf("Cell %d mismatch, got\n%#v, want\n%#v", i, actualCell, expectedCell)
+		}
+	}
+}
+
 func TestOverflowDown(t *testing.T) {
 	pager := Pager{
 		screen: twin.NewFakeScreen(
