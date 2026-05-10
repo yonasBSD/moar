@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/walles/moor/v2/internal/reader"
 	"github.com/walles/moor/v2/twin"
 	"gotest.tools/v3/assert"
@@ -339,4 +340,84 @@ func TestScrollRightToSearchHits_OnlyStartOfHitTriggers(t *testing.T) {
 	pager.showLineNumbers = false
 
 	assert.Assert(t, !pager.scrollRightToSearchHits(), "No more search hit starts to the right, should not scroll")
+}
+
+// Ref: https://github.com/walles/moor/pull/414
+func BenchmarkScrollRightToSearchHits(b *testing.B) {
+	log.SetLevel(log.WarnLevel) // Stop info logs from polluting benchmark output
+
+	// Create a ~100kb line with the search hit near the end
+	text := strings.Repeat("a", 10_000) + "gunzip" + strings.Repeat("b", 100)
+	testReader := reader.NewFromTextForTesting("BenchmarkScrollRightToSearchHits", text)
+
+	// Create a screen of 180 chars wide as mentioned in the PR comment
+	screen := twin.NewFakeScreen(180, 50)
+
+	for b.Loop() {
+		// Pause the timer while we reset the pager state for the next iteration
+		b.StopTimer()
+		pager := NewPager(testReader)
+		pager.screen = screen
+		pager.ShowLineNumbers = false
+		pager.showLineNumbers = false
+		pager.leftColumnZeroBased = 0
+
+		// Initiate the search
+		pager.search.For("gunzip")
+		b.StartTimer()
+
+		// This loop evaluates the performance bottleneck described in PR #414
+		pager.scrollRightToSearchHits()
+	}
+}
+
+// Ref: https://github.com/walles/moor/pull/414
+func BenchmarkScrollLeftToSearchHits(b *testing.B) {
+	log.SetLevel(log.WarnLevel) // Stop info logs from polluting benchmark output
+
+	// Create a ~100kb line with the search hit near the beginning
+	text := strings.Repeat("b", 100) + "gunzip" + strings.Repeat("a", 10_000)
+	testReader := reader.NewFromTextForTesting("BenchmarkScrollLeftToSearchHits", text)
+
+	// Create a screen of 180 chars wide as mentioned in the PR comment
+	screen := twin.NewFakeScreen(180, 50)
+
+	for b.Loop() {
+		// Pause the timer while we reset the pager state for the next iteration
+		b.StopTimer()
+		pager := NewPager(testReader)
+		pager.screen = screen
+		pager.ShowLineNumbers = false
+		pager.showLineNumbers = false
+		pager.leftColumnZeroBased = 10_000 // Start way to the right so we can scroll left
+
+		// Initiate the search
+		pager.search.For("gunzip")
+		b.StartTimer()
+
+		pager.scrollLeftToSearchHits()
+	}
+}
+
+func TestScrollRightToSearchHits_WideRunes(t *testing.T) {
+	// Chinese characters are typically printed 2 visual columns wide, but take 1 rune.
+	// 10 runes = 20 visual columns.
+	// The "HIT" is at rune index 10, but visual column 20.
+	line := strings.Repeat("世", 10) + "HIT"
+	readerImpl := reader.NewFromTextForTesting("test", line)
+
+	// Since the screen is 5 wide, the pager must correctly account for the
+	// visual width of the characters (not just rune index) to ensure it scrolls
+	// far enough for "HIT" (at column 20) to become visible.
+	screen := twin.NewFakeScreen(5, 5)
+	pager := NewPager(readerImpl)
+	pager.search.For("HIT")
+	pager.screen = screen
+	pager.WrapLongLines = false
+	pager.ShowLineNumbers = false
+	pager.showLineNumbers = false
+
+	scrolled := pager.scrollRightToSearchHits()
+	assert.Assert(t, scrolled, "Should have scrolled right")
+	assert.Equal(t, true, pager.searchHitIsVisible(), "The hit should be visible")
 }
