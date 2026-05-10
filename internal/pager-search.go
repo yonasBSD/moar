@@ -3,6 +3,7 @@ package internal
 import (
 	"fmt"
 
+	"github.com/rivo/uniseg"
 	log "github.com/sirupsen/logrus"
 	"github.com/walles/moor/v2/internal/linemetadata"
 )
@@ -357,8 +358,14 @@ func (p *Pager) scrollRightToSearchHits() bool {
 	// - Length of longest visible line
 	screenWidth, _ := p.screen.Size()
 
-	widestLineWidth := 0 // In screen cells, some runes are double-width
 	rendered := p.renderLines()
+
+	if screenWidth-2-rendered.numberPrefixWidth < 0 {
+		log.Infof("Screen too narrow (%d) to scroll right for search hits, skipping", screenWidth)
+		return false
+	}
+
+	widestLineWidth := 0 // In screen cells, some runes are double-width
 	for _, inputLine := range rendered.inputLines {
 		lineLength := inputLine.DisplayWidth()
 		if lineLength > widestLineWidth {
@@ -372,72 +379,59 @@ func (p *Pager) scrollRightToSearchHits() bool {
 	// Screen column: 0123456789
 	// Line column:   5678901234
 	maxLeftmostColumn := widestLineWidth - screenWidth
+	if maxLeftmostColumn < 0 {
+		maxLeftmostColumn = 0
+	}
 
-	// If we have line numbers and disable them, do any new hits appear?
-	if rendered.numberPrefixWidth > 0 {
-		// If the number prefix width is 4, and the screen width is 10, then 6 should be
-		// the first newly revealed column index (10-4):
-		//
-		// Screen column: 0123456789
-		// New cells:     ______1234
-		//
-		// But since the rightmost column can be covered by scroll-right we need to subtract
-		// one more and get to 5.
-		firstJustRevealedColumn := screenWidth - rendered.numberPrefixWidth - 1
-		if firstJustRevealedColumn <= 0 {
-			log.Info("Screen too narrow ({}) to disable line numbers for search hits, skipping", screenWidth)
-			return false
-		}
+	firstNotVisibleColumn := p.leftColumnZeroBased + screenWidth - rendered.numberPrefixWidth - 1
+	if firstNotVisibleColumn < 1 {
+		firstNotVisibleColumn = 1
+	}
 
-		p.showLineNumbers = false
-		for _, row := range p.renderLines().lines {
-			for column := firstJustRevealedColumn; column < len(row.cells); column++ {
-				if row.cells[column].StartsSearchHit {
-					// Found a search hit on screen!
-					return true
+	// Find the leftmost search hit column that is not visible yet. If there are
+	// no more hits to the right, minHitCol will stay -1.
+	minHitCol := -1
+	for _, inputLine := range rendered.inputLines {
+		matches := p.search.GetMatchRanges(inputLine.Plain())
+		if matches != nil {
+			runes := []rune(inputLine.Plain())
+			for _, hit := range matches.Matches {
+				hitCol := uniseg.StringWidth(string(runes[:hit[0]]))
+				if hitCol >= firstNotVisibleColumn {
+					if minHitCol == -1 || hitCol < minHitCol {
+						minHitCol = hitCol
+					}
 				}
 			}
 		}
+	}
+
+	if minHitCol == -1 {
+		// Can't scroll right, pretend nothing happened
 		p.showLineNumbers = restoreShowLineNumbers
+		p.leftColumnZeroBased = restoreLeftColumn
+		return false
 	}
 
-	for p.leftColumnZeroBased < maxLeftmostColumn {
-		// FIXME: Rather than scrolling right one screen at a time, we should
-		// consider scanning all lines for search hits and scrolling directly to the
-		// first one that is off-screen to the right.
-
-		// If the screen width is 1, and we have no line numbers, the answer
-		// could be 1. But since the last column could be covered by scroll-right
-		// markers, we'll say 0.
-		firstNotVisibleColumn := p.leftColumnZeroBased + screenWidth - rendered.numberPrefixWidth - 1
-		if firstNotVisibleColumn < 1 {
-			log.Info("Screen is narrower than number prefix length, not scrolling right for search hits")
-			p.showLineNumbers = restoreShowLineNumbers
-			p.leftColumnZeroBased = restoreLeftColumn
-			return false
-		}
-
-		// Minus one to account for the scroll-left marker that will cover the
-		// first column after scrolling.
-		scrollToColumn := firstNotVisibleColumn - 1
-
-		p.showLineNumbers = false
-		p.leftColumnZeroBased = scrollToColumn
-
-		if p.searchHitIsVisible() {
-			// A new hit showed up!
-			if p.leftColumnZeroBased > maxLeftmostColumn {
-				// Scrolled beyond max, adjust
-				p.leftColumnZeroBased = maxLeftmostColumn
-			}
-			return true
-		}
+	p.showLineNumbers = false
+	scrollToColumn := minHitCol - 1
+	if scrollToColumn < 0 {
+		scrollToColumn = 0
 	}
 
-	// Can't scroll right, pretend nothing happened
-	p.showLineNumbers = restoreShowLineNumbers
-	p.leftColumnZeroBased = restoreLeftColumn
-	return false
+	if p.leftColumnZeroBased == scrollToColumn && p.showLineNumbers == restoreShowLineNumbers {
+		// Nothing changed, done!
+		return false
+	}
+
+	p.leftColumnZeroBased = scrollToColumn
+
+	// A new hit showed up!
+	if p.leftColumnZeroBased > maxLeftmostColumn {
+		// Scrolled beyond max, adjust
+		p.leftColumnZeroBased = maxLeftmostColumn
+	}
+	return true
 }
 
 // Scroll left looking for search hits. Return true if we found any.
