@@ -4,6 +4,7 @@ import (
 	"regexp"
 	"strings"
 	"unicode"
+	"unicode/utf8"
 
 	"github.com/charlievieth/strcase"
 )
@@ -137,22 +138,23 @@ func toRunePositions(byteIndices [][]int, matchedString string) [][2]int {
 		return returnMe
 	}
 
-	runeIndex := 0
-	byteIndicesToRuneIndices := make(map[int]int, 0)
-	for byteIndex := range matchedString {
-		byteIndicesToRuneIndices[byteIndex] = runeIndex
-
-		runeIndex++
-	}
-
-	// If a match touches the end of the string, that will be encoded as one
-	// byte past the end of the string. Therefore we must add a mapping for
-	// first-index-after-the-end.
-	byteIndicesToRuneIndices[len(matchedString)] = runeIndex
+	currentByteIndex := 0
+	currentRuneIndex := 0
 
 	for _, bytePair := range byteIndices {
-		fromRuneIndex := byteIndicesToRuneIndices[bytePair[0]]
-		toRuneIndex := byteIndicesToRuneIndices[bytePair[1]]
+		fromByteIndex := bytePair[0]
+		toByteIndex := bytePair[1]
+
+		// Advance to the start of the match
+		currentRuneIndex += utf8.RuneCountInString(matchedString[currentByteIndex:fromByteIndex])
+		fromRuneIndex := currentRuneIndex
+
+		// Advance to the end of the match
+		currentRuneIndex += utf8.RuneCountInString(matchedString[fromByteIndex:toByteIndex])
+		toRuneIndex := currentRuneIndex
+
+		currentByteIndex = toByteIndex
+
 		returnMe = append(returnMe, [2]int{fromRuneIndex, toRuneIndex})
 	}
 
