@@ -414,7 +414,10 @@ func (p *Pager) scrollRightToSearchHits() bool {
 	}
 
 	p.showLineNumbers = false
-	scrollToColumn := minHitCol - 1
+
+	// Scroll horizontally so that the search hit is centered on the
+	// screen. This provides some context both before and after the hit.
+	scrollToColumn := minHitCol - screenWidth/2
 	if scrollToColumn < 0 {
 		scrollToColumn = 0
 	}

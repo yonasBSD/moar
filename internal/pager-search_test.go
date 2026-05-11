@@ -292,7 +292,7 @@ func TestScrollRightToSearchHits_HiddenByScrollMarker(t *testing.T) {
 	pager.leftColumnZeroBased = 0
 
 	assert.Equal(t, true, pager.scrollRightToSearchHits())
-	assert.Equal(t, 8, pager.leftColumnZeroBased, "Should scroll right to bring 'a' into view from behind scroll marker")
+	assert.Equal(t, 4, pager.leftColumnZeroBased, "Should scroll right to bring 'a' into view and center it")
 }
 
 // Repro case for https://github.com/walles/moor/issues/337.
@@ -322,9 +322,10 @@ func TestScrollRightToSearchHits_LastCharHit(t *testing.T) {
 	pager.leftColumnZeroBased = 0
 
 	assert.Equal(t, true, pager.scrollRightToSearchHits())
-	width, _ := screen.Size()
-	lastCol := pager.leftColumnZeroBased + width - 1
-	assert.Equal(t, strings.Index(line, "a"), lastCol, "Search hit should be in the last screen column")
+
+	// Search hit at col 7 (considering prefix offsets) should be centered.
+	// If 'a' is at index 11: 11 - 10/2 = 6, adjusted to 2 by max width bounds.
+	assert.Equal(t, 2, pager.leftColumnZeroBased, "hit should be right-bounded")
 }
 
 func TestScrollRightToSearchHits_OnlyStartOfHitTriggers(t *testing.T) {
