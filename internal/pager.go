@@ -56,9 +56,12 @@ type Pager struct {
 	// A view of the current reader, possibly filtered
 	filteringReader FilteringReader
 
-	screen              twin.Screen
-	quit                bool
-	scrollPosition      scrollPosition
+	screen         twin.Screen
+	quit           bool
+	scrollPosition scrollPosition
+
+	// How far right we have scrolled horizontally. The unit is visual screen
+	// cells (or columns), so a double-width character counts as 2.
 	leftColumnZeroBased int
 
 	// Maybe this should be renamed to "controller"? Because it controls the UI?
