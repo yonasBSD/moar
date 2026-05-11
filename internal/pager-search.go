@@ -446,16 +446,40 @@ func (p *Pager) scrollLeftToSearchHits() bool {
 
 	screenWidth, _ := p.screen.Size()
 
+	// Find the rightmost search hit column that is strictly to the left of the
+	// currently visible area.
+	maxHitCol := -1
+
+	// We only care about hits that are to the left of leftColumnZeroBased.
+	// That is, hits that start at hitCol < p.leftColumnZeroBased.
+
+	rendered := p.renderLines()
+
+	for _, inputLine := range rendered.inputLines {
+		matches := p.search.GetMatchRanges(inputLine.Plain())
+		if matches != nil {
+			runes := []rune(inputLine.Plain())
+			for _, hit := range matches.Matches {
+				hitCol := uniseg.StringWidth(string(runes[:hit[0]]))
+				if hitCol < p.leftColumnZeroBased {
+					if hitCol > maxHitCol {
+						maxHitCol = hitCol
+					}
+				}
+			}
+		}
+	}
+
 	// If we go max left, which column will be the rightmost visible one?
 	var fullLeftRightmostVisibleColumn int
 	{
 		p.showLineNumbers = p.ShowLineNumbers
 		p.leftColumnZeroBased = 0
-		rendered := p.renderLines()
+		renderedLeft := p.renderLines()
 		// If the screen width is 2, we have columns 0 and 1. The rightmost column can be covered by
 		// scroll-right markers, so the first not-visible column when fully scrolled left is 0, or
 		// "2 - 2".
-		fullLeftRightmostVisibleColumn = screenWidth - 2 - rendered.numberPrefixWidth
+		fullLeftRightmostVisibleColumn = screenWidth - 2 - renderedLeft.numberPrefixWidth
 
 		p.leftColumnZeroBased = restoreLeftColumn
 		p.showLineNumbers = restoreShowLineNumbers
@@ -466,54 +490,37 @@ func (p *Pager) scrollLeftToSearchHits() bool {
 		return false
 	}
 
-	// Keep scrolling left until we either find a search hit, or reach the
-	// leftmost column with line numbers shown or not based on the user's
-	// preference.
-	for p.leftColumnZeroBased > 0 || (p.showLineNumbers != p.ShowLineNumbers) {
-		// FIXME: Rather than scrolling left one screen at a time, we should
-		// consider scanning all lines for search hits and scrolling directly to the
-		// first one that is off-screen to the left.
-
-		// Pretend the current leftmost column is not visible, since it could be
-		// covered by scroll-left markers.
-		lastNotVisibleColumn := p.leftColumnZeroBased
-
-		// Go left
-		if lastNotVisibleColumn <= fullLeftRightmostVisibleColumn {
-			// Going max left will show the column we want
-			p.showLineNumbers = p.ShowLineNumbers
-			p.leftColumnZeroBased = 0
-		} else {
-			// Scroll left one screen.
-			//
-			// If the screen width is 3, and we want column 5 to be visible, and
-			// there can be both scroll-left and scroll-right markers, we should
-			// start at colum 4 (covered by a scroll-left marker), so that
-			// column 5 is visible next to it.
-			//
-			// Set the leftmost column to 4, which is "5 - 3 + 2".
-			scrollToColumn := lastNotVisibleColumn - screenWidth + 2
-			if scrollToColumn < 0 {
-				scrollToColumn = 0
-			}
-
-			p.leftColumnZeroBased = scrollToColumn
-
-			// If showing line numbers was possible we should have ended up in
-			// the other if branch ^
-			p.showLineNumbers = false
-		}
-
-		if p.searchHitIsVisible() {
-			// Found it!
-			return true
-		}
+	if maxHitCol == -1 {
+		// Can't scroll left to a hit, pretend nothing happened
+		p.showLineNumbers = restoreShowLineNumbers
+		p.leftColumnZeroBased = restoreLeftColumn
+		return false
 	}
 
-	// Scrolling left didn't find anything, pretend nothing happened
-	p.showLineNumbers = restoreShowLineNumbers
-	p.leftColumnZeroBased = restoreLeftColumn
-	return false
+	// We found a hit at maxHitCol to the left.
+
+	// If the hit is at or before what would be visible when fully scrolled
+	// left, just go fully left.
+	if maxHitCol <= fullLeftRightmostVisibleColumn {
+		p.showLineNumbers = p.ShowLineNumbers
+		p.leftColumnZeroBased = 0
+		return true
+	}
+
+	// Otherwise, scroll so that maxHitCol becomes visible. Since we aren't
+	// scrolled max left, we line numbers are off.
+	p.showLineNumbers = false
+
+	// Scroll horizontally so that the search hit is centered on the
+	// screen. This provides some context both before and after the hit.
+	scrollToColumn := maxHitCol - screenWidth/2
+	if scrollToColumn < 0 {
+		scrollToColumn = 0
+	}
+
+	p.leftColumnZeroBased = scrollToColumn
+
+	return true
 }
 
 func (p *Pager) isViewing() bool {

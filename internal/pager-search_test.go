@@ -231,8 +231,8 @@ func TestScrollLeftToSearchHits_JumpsDirectlyToHit(t *testing.T) {
 	pager.leftColumnZeroBased = 20
 
 	assert.Equal(t, true, pager.scrollLeftToSearchHits())
-	assert.Equal(t, 3, pager.leftColumnZeroBased,
-		"We started at 20. The search hit 'a' is at column 11. Screen width 10. The start column is placed so 'a' is right before the right scroll marker: 11 - 10 + 2 = 3")
+	assert.Equal(t, 6, pager.leftColumnZeroBased,
+		"We started at 20. The search hit 'a' is at column 11. Screen width 10. The start column is placed so 'a' is centered: 11 - 10 / 2 = 6")
 	assert.Equal(t, false, pager.showLineNumbers)
 }
 
@@ -443,6 +443,6 @@ func TestScrollLeftToSearchHits_WideRunes(t *testing.T) {
 
 	scrolled := pager.scrollLeftToSearchHits()
 	assert.Assert(t, scrolled, "Should have scrolled left")
-	assert.Equal(t, 17, pager.leftColumnZeroBased, "The hit starts at visual column 20. Screen width is 5. Target is 20 - 5 + 2 = 17")
+	assert.Equal(t, 18, pager.leftColumnZeroBased, "The hit starts at visual column 20. Screen width is 5. Target is centered: 20 - 5 / 2 = 18")
 	assert.Equal(t, true, pager.searchHitIsVisible(), "The hit should be visible")
 }
