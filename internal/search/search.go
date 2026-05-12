@@ -58,12 +58,9 @@ func (search *Search) For(s string) *Search {
 	}
 
 	if search.isSubstringSearch {
-		// Pattern still needed for GetMatchRanges()
-		search.pattern, err = regexp.Compile(regexp.QuoteMeta(s))
-		if err != nil {
-			panic(err)
-		}
-
+		// No need to compile a regexp pattern since GetMatchRanges and Matches
+		// use fast paths for substring searches.
+		search.pattern = nil
 		return search
 	}
 
@@ -125,8 +122,45 @@ func (search Search) GetMatchRanges(String string) *MatchRanges {
 		String = strings.ToLower(String)
 	}
 
+	regexpSearch := !search.isSubstringSearch
+	if regexpSearch {
+		return &MatchRanges{
+			Matches: toRunePositions(search.pattern.FindAllStringIndex(String, -1), String),
+		}
+	}
+
+	// Faster code for non-regexp search follows
+
+	offset := 0
+	currentByteIndex := 0
+	currentRuneIndex := 0
+
+	var matches [][2]int
+
+	for {
+		idx := strings.Index(String[offset:], search.findMe)
+		if idx == -1 {
+			break
+		}
+
+		matchStart := offset + idx
+		matchEnd := matchStart + len(search.findMe)
+
+		// Advance to the start of the match
+		currentRuneIndex += utf8.RuneCountInString(String[currentByteIndex:matchStart])
+		fromRuneIndex := currentRuneIndex
+
+		// Advance to the end of the match
+		currentRuneIndex += utf8.RuneCountInString(String[matchStart:matchEnd])
+		toRuneIndex := currentRuneIndex
+
+		currentByteIndex = matchEnd
+
+		matches = append(matches, [2]int{fromRuneIndex, toRuneIndex})
+		offset = matchEnd
+	}
 	return &MatchRanges{
-		Matches: toRunePositions(search.pattern.FindAllStringIndex(String, -1), String),
+		Matches: matches,
 	}
 }
 
