@@ -121,7 +121,11 @@ func StyledRunesFromString(plainTextStyle twin.Style, s string, lineIndex *linem
 		return *manPageHeading
 	}
 
-	cells := make([]CellWithMetadata, 0, len(s))
+	capacity := len(s)
+	if maxTokensCount > 0 && maxTokensCount < capacity {
+		capacity = maxTokensCount
+	}
+	cells := make([]CellWithMetadata, 0, capacity)
 
 	// Specs: https://en.wikipedia.org/wiki/ANSI_escape_code#3-bit_and_4-bit
 	styleUnprintable := twin.StyleDefault.WithBackground(twin.NewColor16(1)).WithForeground(twin.NewColor16(7))
