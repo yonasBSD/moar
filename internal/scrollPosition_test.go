@@ -192,3 +192,49 @@ func TestIssue399(t *testing.T) {
 
 	pager.redraw("")
 }
+
+// A mock reader that mimics a concurrent filtering out of all lines.
+// It returns >0 lines initially, but then returns 0 lines later.
+type shrinkingReader struct {
+	reader.Reader
+	calls int
+}
+
+func (s *shrinkingReader) GetLineCount() int {
+	s.calls++
+	// Simulate a file that initially has lines, so the pager begins to process them...
+	if s.calls <= 2 {
+		return 10
+	}
+	// ...but is then truncated concurrently down to 0 lines.
+	return 0
+}
+
+func (s *shrinkingReader) GetLine(index linemetadata.Index) *reader.NumberedLine {
+	return nil
+}
+
+func TestIssue415Panic(t *testing.T) {
+	r := reader.NewFromTextForTesting("test", "A\nB\nC\nD\nE\nF\nG\nH\nI\n")
+
+	pager := NewPager(r)
+	pager.filteringReader.BackingReader = &shrinkingReader{Reader: r}
+	spci := scrollPositionInternal{
+		lineIndex: func(i int) *linemetadata.Index {
+			idx := linemetadata.IndexFromZeroBased(i)
+			return &idx
+		}(10), // start out of bounds (past what the reader claims it has)
+		delta: 0,
+		name:  "test415",
+	}
+
+	pager.scrollPosition = scrollPosition{
+		internalDontTouch: spci,
+	}
+
+	pager.WrapLongLines = true
+	pager.ShowLineNumbers = true
+	pager.screen = twin.NewFakeScreen(80, 24)
+
+	pager.redraw("")
+}

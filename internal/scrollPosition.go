@@ -150,6 +150,10 @@ func NewScrollPositionFromIndex(index linemetadata.Index, name string) scrollPos
 
 // Move towards the top until deltaScreenLines is not negative any more
 func (si *scrollPositionInternal) handleNegativeDelta(pager *Pager) {
+	if si.lineIndex == nil {
+		si.delta = 0
+		return
+	}
 	for !si.lineIndex.IsZero() && si.delta < 0 {
 		// Render the previous line
 		previousLineIndex := si.lineIndex.NonWrappingAdd(-1)
@@ -186,10 +190,21 @@ func (si *scrollPositionInternal) handlePositiveDelta(pager *Pager) {
 		if line == nil {
 			// Out of bounds downwards, get the last line...
 			si.lineIndex = linemetadata.IndexFromLength(pager.Reader().GetLineCount())
+			if si.lineIndex == nil {
+				// Can happen if the line count shrunk to 0 while processing.
+				// Filtering readers can do this, for example.
+				si.delta = 0
+				return
+			}
+
 			line = pager.Reader().GetLine(*si.lineIndex)
 			if line == nil {
-				panic(fmt.Errorf("Last line is nil"))
+				// Can happen if the line count shrunk to 0 while processing.
+				// Filtering readers can do this, for example.
+				si.delta = 0
+				return
 			}
+
 			subLines := pager.renderLine(*line, maxPrefixLength, true)
 
 			// ... and go to the bottom of that.
@@ -429,7 +444,11 @@ func (p *Pager) getLastVisibleLineIndex() *linemetadata.Index {
 // This function breaks the cycle by providing a fast, worst-case bounded
 // approximation, assuming 1 logical line = 1 screen line.
 func (si *scrollPositionInternal) getMaxNumberPrefixLength(pager *Pager) int {
-	maxPossibleIndex := *linemetadata.IndexFromLength(pager.Reader().GetLineCount())
+	maxPossibleIndexPtr := linemetadata.IndexFromLength(pager.Reader().GetLineCount())
+	if maxPossibleIndexPtr == nil {
+		return 0
+	}
+	maxPossibleIndex := *maxPossibleIndexPtr
 
 	// This is an approximation assuming we don't do any wrapping. Finding the
 	// real answer while wrapping requires rendering, which requires the real
