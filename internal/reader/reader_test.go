@@ -360,6 +360,56 @@ func BenchmarkReadLargeFile(b *testing.B) {
 	}
 }
 
+// Try loading a file with a long line
+func BenchmarkReadLongLine(b *testing.B) {
+	// Try loading a line this long
+	const longLineBytes = 3_000_000
+
+	// First, create it from something...
+	lineBytes := []byte(strings.Repeat("x", longLineBytes-1) + "\n")
+	testdir := b.TempDir()
+	largeFileName := testdir + "/long-line-file.txt"
+	largeFile, err := os.Create(largeFileName)
+	assert.NilError(b, err)
+
+	totalBytesWritten := 0
+	for totalBytesWritten < longLineBytes {
+		written, err := largeFile.Write(lineBytes)
+		assert.NilError(b, err)
+
+		totalBytesWritten += written
+	}
+	err = largeFile.Close()
+	assert.NilError(b, err)
+
+	// Make sure we don't pause during the benchmark
+	targetLineCount := longLineBytes * 2
+
+	b.SetBytes(int64(totalBytesWritten))
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for b.Loop() {
+		b.StopTimer()
+		runtime.GC()
+		b.StartTimer()
+
+		readMe, err := NewFromFilename(
+			largeFileName,
+			formatters.TTY16m,
+			ReaderOptions{
+				Style:           styles.Get("native"),
+				PauseAfterLines: &targetLineCount,
+			})
+		assert.NilError(b, err)
+
+		<-readMe.MaybeDone
+		assert.NilError(b, readMe.Wait())
+		assert.NilError(b, readMe.Err)
+	}
+}
+
 // Count lines in pager.go
 func BenchmarkCountLines(b *testing.B) {
 	// First, get some sample lines...
