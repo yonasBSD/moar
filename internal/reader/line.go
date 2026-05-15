@@ -22,11 +22,20 @@ type Line struct {
 func (line *Line) HighlightedTokens(
 	plainTextStyle twin.Style,
 	searchHitStyle twin.Style,
-	search search.Search,
+	activeSearch search.Search,
 	lineIndex linemetadata.Index,
 	maxTokensCount int,
 ) textstyles.StyledRunesWithTrailer {
-	matchRanges := search.GetMatchRanges(line.Plain(lineIndex))
+	var matchRanges *search.MatchRanges
+	if activeSearch.Active() {
+		// Only look for matches if there is an active search, since if a line
+		// is 250M characters long, line.Plain() can be slow.
+		//
+		// This makes the UI responsive when showing a huge line.
+		plain := line.Plain(lineIndex)
+
+		matchRanges = activeSearch.GetMatchRanges(plain)
+	}
 
 	fromString := textstyles.StyledRunesFromString(plainTextStyle, string(line.raw), &lineIndex, maxTokensCount)
 	returnRunes := make([]textstyles.CellWithMetadata, 0, len(fromString.StyledRunes))
@@ -59,8 +68,8 @@ func (line *Line) HasManPageFormatting() bool {
 	return textstyles.HasManPageFormatting(string(line.raw))
 }
 
-// The index is for error reporting. Set withCache to false to simulate a cache
-// miss for benchmarking.
+// The index is for error reporting. Set DisablePlainCachingForBenchmarking to
+// false to simulate a cache miss for benchmarking.
 func (line *Line) Plain(index linemetadata.Index) string {
 	fromCache := line.plainTextCache.Load()
 	if DisablePlainCachingForBenchmarking {
