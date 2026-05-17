@@ -49,6 +49,21 @@ Doing the right thing includes:
 - **Mouse Scrolling** works out of the box (but
   [look here for tradeoffs](https://github.com/walles/moor/blob/master/MOUSE.md))
 
+Moor is used as the default pager by:
+
+- [`riff`](https://github.com/walles/riff), a diff filter highlighting which line parts have changed
+- [`px` / `ptop`](https://github.com/walles/px), `ps` and `top` for human beings
+- [`ftop`](https://github.com/walles/ftop), a `top` implementation that [embeds
+  `moor`](https://github.com/walles/ftop/blob/3786217a5923d8248f54bb747ff6bea55bd1354f/internal/ftop/pageprocessinfo.go#L93)
+  using [the embedding API](#embedding-moor-in-your-app)
+
+## Environment
+
+`MOOR`: `moor` will read extra command line options from here.
+
+`PAGER_LABEL`: Other programs can set this to tell moor what name to show for
+standard input.
+
 [For compatibility reasons](https://github.com/walles/moor/issues/14), `moor`
 uses the formats declared in these environment variables if present:
 
@@ -63,17 +78,6 @@ Setting `LESSSECURE` to `1` will prevent `moor` from launching external programs
 or opening new files [as required by `systemctl(1)`][systemctlLessSecure]. In
 secure mode, the <kbd>v</kbd> command for opening the current file in an editor
 is disabled.
-
-For configurability reasons, `moor` reads extra command line options from the
-`MOOR` environment variable.
-
-Moor is used as the default pager by:
-
-- [`riff`](https://github.com/walles/riff), a diff filter highlighting which line parts have changed
-- [`px` / `ptop`](https://github.com/walles/px), `ps` and `top` for human beings
-- [`ftop`](https://github.com/walles/ftop), a `top` implementation which actually [embeds
-  `moor`](https://github.com/walles/ftop/blob/3786217a5923d8248f54bb747ff6bea55bd1354f/internal/ftop/pageprocessinfo.go#L93)
-  using [the embedding API](#embedding-moor-in-your-app)
 
 # Installing
 
