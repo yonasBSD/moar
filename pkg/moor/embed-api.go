@@ -44,6 +44,10 @@ type Options struct {
 	// The default is to always start the pager. If this is set to true, short
 	// input will just be printed, and no paging will happen.
 	QuitIfOneScreen bool
+
+	// The default is to use the alternate screen buffer. Set this to true to
+	// disable the alternate screen buffer.
+	NoAlternateScreen bool
 }
 
 // PageFromStream reads the contents of the given reader and presents it in a pager.
@@ -161,7 +165,11 @@ func pageFromReader(reader *internalReader.ReaderImpl, options Options) error {
 	pager.ShowLineNumbers = !options.NoLineNumbers
 	pager.QuitIfOneScreen = options.QuitIfOneScreen
 
-	screen, e := twin.NewScreen()
+	screen, e := twin.NewScreenWithOptions(twin.ScreenOptions{
+		MouseMode:          twin.MouseModeAuto,
+		ColorCount:         twin.DefaultColorCount(),
+		UseAlternateScreen: !options.NoAlternateScreen,
+	})
 	if e != nil {
 		// Screen setup failed
 		return e

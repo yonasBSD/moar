@@ -84,6 +84,12 @@ type lastRendered struct {
 	cells  [][]StyledRune
 }
 
+type ScreenOptions struct {
+	MouseMode          MouseMode
+	ColorCount         ColorCount
+	UseAlternateScreen bool
+}
+
 type UnixScreen struct {
 	widthAccessFromSizeOnly  int // Access from Size() method only
 	heightAccessFromSizeOnly int // Access from Size() method only
@@ -116,6 +122,7 @@ type UnixScreen struct {
 
 	terminalColorCount ColorCount
 	mouseMode          MouseMode
+	useAlternateScreen bool
 }
 
 // Example event: "\x1b[<65;127;41M"
@@ -135,22 +142,34 @@ func NewScreen() (Screen, error) {
 }
 
 func NewScreenWithMouseMode(mouseMode MouseMode) (Screen, error) {
-	terminalColorCount := ColorCount24bit
+	return NewScreenWithMouseModeAndColorCount(mouseMode, DefaultColorCount())
+}
+
+func DefaultColorCount() ColorCount {
 	if os.Getenv("COLORTERM") != "truecolor" && strings.Contains(os.Getenv("TERM"), "256") {
 		// Covers "xterm-256color" as used by the macOS Terminal
-		terminalColorCount = ColorCount256
+		return ColorCount256
 	}
-	return NewScreenWithMouseModeAndColorCount(mouseMode, terminalColorCount)
+	return ColorCount24bit
 }
 
 func NewScreenWithMouseModeAndColorCount(mouseMode MouseMode, terminalColorCount ColorCount) (Screen, error) {
+	return NewScreenWithOptions(ScreenOptions{
+		MouseMode:          mouseMode,
+		ColorCount:         terminalColorCount,
+		UseAlternateScreen: true,
+	})
+}
+
+func NewScreenWithOptions(options ScreenOptions) (Screen, error) {
 	if !term.IsTerminal(int(os.Stdout.Fd())) {
 		return nil, fmt.Errorf("stdout (fd=%d) must be a terminal for paging to work", os.Stdout.Fd())
 	}
 
 	screen := UnixScreen{
-		terminalColorCount: terminalColorCount,
-		mouseMode:          mouseMode,
+		terminalColorCount: options.ColorCount,
+		mouseMode:          options.MouseMode,
+		useAlternateScreen: options.UseAlternateScreen,
 	}
 
 	// The number "80" here is from manual testing on my MacBook:
@@ -177,7 +196,7 @@ func NewScreenWithMouseModeAndColorCount(mouseMode MouseMode, terminalColorCount
 
 	go func() {
 		defer func() {
-			panicHandler("NewScreenWithMouseModeAndColorCount()/mainLoop()", recover(), debug.Stack())
+			panicHandler("NewScreenWithOptions()/mainLoop()", recover(), debug.Stack())
 		}()
 
 		screen.mainLoop()
@@ -271,7 +290,9 @@ func (screen *UnixScreen) enterAlternateScreenSession() {
 	screen.renderLock.Lock()
 	defer screen.renderLock.Unlock()
 
-	screen.setAlternateScreenModeLocked(true)
+	if screen.useAlternateScreen {
+		screen.setAlternateScreenModeLocked(true)
+	}
 	screen.enableMouseTrackingLocked(screen.shouldEnableMouseTracking())
 	screen.hideCursorLocked(true)
 
@@ -288,7 +309,9 @@ func (screen *UnixScreen) leaveAlternateScreenSession() {
 	screen.writeLocked("\x1b[m")
 	screen.hideCursorLocked(false)
 	screen.enableMouseTrackingLocked(false)
-	screen.setAlternateScreenModeLocked(false)
+	if screen.useAlternateScreen {
+		screen.setAlternateScreenModeLocked(false)
+	}
 }
 
 func (screen *UnixScreen) shouldEnableMouseTracking() bool {
