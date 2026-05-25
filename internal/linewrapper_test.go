@@ -89,7 +89,7 @@ func TestLeadingSpaceNoWrap(t *testing.T) {
 }
 
 func TestLeadingSpaceWithWrap(t *testing.T) {
-	assertWrap(t, " abc", 2, " a", "bc")
+	assertWrap(t, " abc", 2, " a", " b", " c")
 }
 
 func TestLeadingWrappedSpace(t *testing.T) {
