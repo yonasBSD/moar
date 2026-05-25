@@ -150,8 +150,12 @@ func TestGetWrapCountWideChars(t *testing.T) {
 
 func TestGetHangingIndentWidth(t *testing.T) {
 	assert.Equal(t, 0, getHangingIndentWidth(tokenize("")))
-	assert.Equal(t, 3, getHangingIndentWidth(tokenize("   hello")))
 	assert.Equal(t, 0, getHangingIndentWidth(tokenize("hello")))
+	assert.Equal(t, 3, getHangingIndentWidth(tokenize("   hello")))
+	assert.Equal(t, 6, getHangingIndentWidth(tokenize("   1. numbered list")))
+
+	// Can be found on man pages
+	assert.Equal(t, 7, getHangingIndentWidth(tokenize("   -D  after the double (more-than-one) space")))
 }
 
 func BenchmarkWrapLine(b *testing.B) {

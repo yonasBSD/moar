@@ -87,9 +87,74 @@ func getScreenCellCount(runes []textstyles.CellWithMetadata) int {
 	return cellCount
 }
 
+// matchListMarker checks if the given left-trimmed line starts with a list
+// marker like "*", "1.", "-", or a command-line flag like "--foo". It returns
+// the length of the marker in runes, or 0 if no marker is found.
+func matchListMarker(line textstyles.CellWithMetadataSlice) int {
+	if len(line) == 0 {
+		return 0
+	}
+
+	r := line[0].Rune
+
+	if r == '*' {
+		return 1
+	}
+
+	if unicode.IsDigit(r) {
+		i := 1
+		for i < len(line) && unicode.IsDigit(line[i].Rune) {
+			i++
+		}
+		if i < len(line) && line[i].Rune == '.' {
+			return i + 1
+		}
+		return 0
+	}
+
+	if r == '-' {
+		if len(line) > 1 && unicode.IsSpace(line[1].Rune) {
+			return 1 // Matches a single "-"
+		}
+
+		i := 1
+		if i < len(line) && line[i].Rune == '-' {
+			i++ // Matches optional second "-"
+		}
+
+		if i < len(line) && !unicode.IsSpace(line[i].Rune) {
+			// Matches 1+ non-whitespace characters
+			for i < len(line) && !unicode.IsSpace(line[i].Rune) {
+				i++
+			}
+			return i
+		}
+	}
+
+	return 0
+}
+
 func getHangingIndentWidth(line textstyles.CellWithMetadataSlice) int {
 	trimmed := line.WithoutSpaceLeft()
-	return len(line) - len(trimmed)
+	leadingSpaces := len(line) - len(trimmed)
+	if len(trimmed) == 0 {
+		return leadingSpaces
+	}
+
+	markerLen := matchListMarker(trimmed)
+	if markerLen <= 0 {
+		return leadingSpaces
+	}
+
+	afterMarker := trimmed[markerLen:]
+	withoutSpace := afterMarker.WithoutSpaceLeft()
+	trailingSpaces := len(afterMarker) - len(withoutSpace)
+	// We only trigger hanging indent if there's trailing space after the marker
+	if trailingSpaces > 0 {
+		return leadingSpaces + markerLen + trailingSpaces
+	}
+
+	return leadingSpaces
 }
 
 // Wrap one line of text to a maximum width.
