@@ -33,6 +33,11 @@ func rowsToString(cellLines []textstyles.CellWithMetadataSlice) string {
 }
 
 func assertWrap(t *testing.T, input string, widthInScreenCells int, wrappedLines ...string) {
+	// Temporarily disable the minimum wrap width for tests
+	originalMinWrapWidth := minWrapWidth
+	minWrapWidth = 0
+	t.Cleanup(func() { minWrapWidth = originalMinWrapWidth })
+
 	toWrap := tokenize(input)
 	wrapped := wrapLine(widthInScreenCells, toWrap)
 	actual := make([]textstyles.CellWithMetadataSlice, len(wrapped))

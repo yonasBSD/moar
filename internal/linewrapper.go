@@ -11,7 +11,7 @@ import (
 //revive:disable-next-line:var-naming
 const NO_BREAK_SPACE = '\xa0'
 
-const minWrapWidth = 10
+var minWrapWidth = 10
 
 // Given some text and a maximum width in screen cells, find the best point at
 // which to wrap the text. Return value is in number of runes.
