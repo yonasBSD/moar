@@ -162,16 +162,16 @@ func getHangingIndentWidth(line textstyles.CellWithMetadataSlice) int {
 // The return value will not contain any trailers, but the ContainsSearchHit
 // field will be correctly set for sub-lines with search hits.
 func wrapLine(width int, line textstyles.CellWithMetadataSlice) []textstyles.StyledRunesWithTrailer {
+	// Trailing space risks showing up by itself on a line, which would just
+	// look weird.
+	line = line.WithoutSpaceRight()
+
 	if width < minWrapWidth {
 		return []textstyles.StyledRunesWithTrailer{{
 			StyledRunes:       line,
 			ContainsSearchHit: line.ContainsSearchHit(),
 		}}
 	}
-
-	// Trailing space risks showing up by itself on a line, which would just
-	// look weird.
-	line = line.WithoutSpaceRight()
 
 	whitespaceLen := getHangingIndentWidth(line)
 	// Don't use hanging indent if it leaves less than minWrapWidth characters for text.
