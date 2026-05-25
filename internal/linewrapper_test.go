@@ -148,6 +148,12 @@ func TestGetWrapCountWideChars(t *testing.T) {
 	assert.Equal(t, getWrapCount(line, 1), 1)
 }
 
+func TestGetHangingIndentWidth(t *testing.T) {
+	assert.Equal(t, 0, getHangingIndentWidth(tokenize("")))
+	assert.Equal(t, 3, getHangingIndentWidth(tokenize("   hello")))
+	assert.Equal(t, 0, getHangingIndentWidth(tokenize("hello")))
+}
+
 func BenchmarkWrapLine(b *testing.B) {
 	log.SetLevel(log.WarnLevel) // Stop info logs from polluting benchmark output
 
