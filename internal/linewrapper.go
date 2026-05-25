@@ -119,7 +119,7 @@ func wrapLine(width int, line textstyles.CellWithMetadataSlice) []textstyles.Sty
 		if !isOnFirstLine {
 			// Leading whitespace on wrapped lines would just look like
 			// indentation, which would be weird for wrapped text.
-			withoutLeadingWhitespace := line.WithoutSpaceLeft()
+			withoutLeadingWhitespace := firstPart.WithoutSpaceLeft()
 			firstPart = append(append(textstyles.CellWithMetadataSlice{}, leadingWhitespace...), withoutLeadingWhitespace...)
 		}
 
