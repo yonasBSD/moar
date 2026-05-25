@@ -85,6 +85,11 @@ func getScreenCellCount(runes []textstyles.CellWithMetadata) int {
 	return cellCount
 }
 
+func getHangingIndentWidth(line textstyles.CellWithMetadataSlice) int {
+	trimmed := line.WithoutSpaceLeft()
+	return len(line) - len(trimmed)
+}
+
 // Wrap one line of text to a maximum width.
 //
 // The return value will not contain any trailers, but the ContainsSearchHit
@@ -94,9 +99,11 @@ func wrapLine(width int, line textstyles.CellWithMetadataSlice) []textstyles.Sty
 	// look weird.
 	line = line.WithoutSpaceRight()
 
-	trimmed := line.WithoutSpaceLeft()
-	whitespaceLen := len(line) - len(trimmed)
-	leadingWhitespace := line[:whitespaceLen]
+	whitespaceLen := getHangingIndentWidth(line)
+	leadingWhitespace := make(textstyles.CellWithMetadataSlice, whitespaceLen)
+	for i := range whitespaceLen {
+		leadingWhitespace[i] = textstyles.CellWithMetadata{Rune: ' '}
+	}
 	width = width - whitespaceLen
 
 	screenCellCount := getScreenCellCount(line)
@@ -112,10 +119,8 @@ func wrapLine(width int, line textstyles.CellWithMetadataSlice) []textstyles.Sty
 		if !isOnFirstLine {
 			// Leading whitespace on wrapped lines would just look like
 			// indentation, which would be weird for wrapped text.
-
-			indent := make(textstyles.CellWithMetadataSlice, len(leadingWhitespace))
-			copy(indent, leadingWhitespace)
-			firstPart = append(indent, firstPart.WithoutSpaceLeft()...)
+			withoutLeadingWhitespace := line.WithoutSpaceLeft()
+			firstPart = append(append(textstyles.CellWithMetadataSlice{}, leadingWhitespace...), withoutLeadingWhitespace...)
 		}
 
 		wrapped = append(wrapped,
@@ -140,10 +145,8 @@ func wrapLine(width int, line textstyles.CellWithMetadataSlice) []textstyles.Sty
 	if !isOnFirstLine {
 		// Leading whitespace on wrapped lines would just look like
 		// indentation, which would be weird for wrapped text.
-
-		indent := make(textstyles.CellWithMetadataSlice, len(leadingWhitespace))
-		copy(indent, leadingWhitespace)
-		line = append(indent, line.WithoutSpaceLeft()...)
+		withoutLeadingWhitespace := line.WithoutSpaceLeft()
+		line = append(append(textstyles.CellWithMetadataSlice{}, leadingWhitespace...), withoutLeadingWhitespace...)
 	}
 	line = line.WithoutSpaceRight()
 
