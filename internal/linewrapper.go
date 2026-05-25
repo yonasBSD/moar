@@ -94,6 +94,11 @@ func wrapLine(width int, line textstyles.CellWithMetadataSlice) []textstyles.Sty
 	// look weird.
 	line = line.WithoutSpaceRight()
 
+	trimmed := line.WithoutSpaceLeft()
+	whitespaceLen := len(line) - len(trimmed)
+	leadingWhitespace := line[:whitespaceLen]
+	width = width - whitespaceLen
+
 	screenCellCount := getScreenCellCount(line)
 	if screenCellCount == 0 {
 		return []textstyles.StyledRunesWithTrailer{{}}
@@ -107,7 +112,10 @@ func wrapLine(width int, line textstyles.CellWithMetadataSlice) []textstyles.Sty
 		if !isOnFirstLine {
 			// Leading whitespace on wrapped lines would just look like
 			// indentation, which would be weird for wrapped text.
-			firstPart = firstPart.WithoutSpaceLeft()
+
+			indent := make(textstyles.CellWithMetadataSlice, len(leadingWhitespace))
+			copy(indent, leadingWhitespace)
+			firstPart = append(indent, firstPart.WithoutSpaceLeft()...)
 		}
 
 		wrapped = append(wrapped,
@@ -132,7 +140,10 @@ func wrapLine(width int, line textstyles.CellWithMetadataSlice) []textstyles.Sty
 	if !isOnFirstLine {
 		// Leading whitespace on wrapped lines would just look like
 		// indentation, which would be weird for wrapped text.
-		line = line.WithoutSpaceLeft()
+
+		indent := make(textstyles.CellWithMetadataSlice, len(leadingWhitespace))
+		copy(indent, leadingWhitespace)
+		line = append(indent, line.WithoutSpaceLeft()...)
 	}
 	line = line.WithoutSpaceRight()
 
