@@ -11,6 +11,8 @@ import (
 //revive:disable-next-line:var-naming
 const NO_BREAK_SPACE = '\xa0'
 
+const minWrapWidth = 10
+
 // Given some text and a maximum width in screen cells, find the best point at
 // which to wrap the text. Return value is in number of runes.
 func getWrapCount(line []textstyles.CellWithMetadata, maxScreenCellsCount int) int {
@@ -95,27 +97,52 @@ func getHangingIndentWidth(line textstyles.CellWithMetadataSlice) int {
 // The return value will not contain any trailers, but the ContainsSearchHit
 // field will be correctly set for sub-lines with search hits.
 func wrapLine(width int, line textstyles.CellWithMetadataSlice) []textstyles.StyledRunesWithTrailer {
+	if width < minWrapWidth {
+		return []textstyles.StyledRunesWithTrailer{{
+			StyledRunes:       line,
+			ContainsSearchHit: line.ContainsSearchHit(),
+		}}
+	}
+
 	// Trailing space risks showing up by itself on a line, which would just
 	// look weird.
 	line = line.WithoutSpaceRight()
 
 	whitespaceLen := getHangingIndentWidth(line)
+	// Don't use hanging indent if it leaves less than minWrapWidth characters for text.
+	if width-whitespaceLen < minWrapWidth {
+		whitespaceLen = 0
+	}
+
 	leadingWhitespace := make(textstyles.CellWithMetadataSlice, whitespaceLen)
 	for i := range whitespaceLen {
 		leadingWhitespace[i] = textstyles.CellWithMetadata{Rune: ' '}
 	}
-	width = width - whitespaceLen
 
 	screenCellCount := getScreenCellCount(line)
 	if screenCellCount == 0 {
 		return []textstyles.StyledRunesWithTrailer{{}}
 	}
 
-	wrapped := make([]textstyles.StyledRunesWithTrailer, 0, len(line)/width)
-	for screenCellCount > width {
-		wrapWidth := getWrapCount(line, width)
-		firstPart := line[:wrapWidth]
+	capacity := len(line) / width
+	if capacity == 0 {
+		capacity = 1
+	}
+	wrapped := make([]textstyles.StyledRunesWithTrailer, 0, capacity)
+
+	for {
+		availableWidth := width
 		isOnFirstLine := len(wrapped) == 0
+		if !isOnFirstLine {
+			availableWidth = width - whitespaceLen
+		}
+
+		if screenCellCount <= availableWidth {
+			break
+		}
+
+		wrapWidth := getWrapCount(line, availableWidth)
+		firstPart := line[:wrapWidth]
 		if !isOnFirstLine {
 			// Leading whitespace on wrapped lines would just look like
 			// indentation, which would be weird for wrapped text.
