@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/signal"
 	"runtime"
 	"runtime/debug"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/alecthomas/chroma/v2"
@@ -737,6 +739,28 @@ func flagSetFunc[T any](flagSet *flag.FlagSet, name string, defaultValue T, usag
 }
 
 func startPaging(pager *internal.Pager, screen twin.Screen, chromaStyle *chroma.Style, chromaFormatter *chroma.Formatter) {
+	// Handle SIGINT and SIGTERM
+	signals := make(chan os.Signal, 1)
+	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		defer func() {
+			internal.PanicHandler("startPaging()/signals", recover(), debug.Stack())
+		}()
+
+		sig := <-signals
+		log.Infof("Got signal %v, exiting...", sig)
+		screen.Close()
+
+		exitCode := 1
+		syscallSignal, ok := sig.(syscall.Signal)
+		if ok {
+			// Ref: https://hypothesis.sh/references/exit-codes?grp=signal
+			exitCode = 128 + int(syscallSignal)
+		}
+
+		os.Exit(exitCode)
+	}()
+
 	defer func() {
 		panicMessage := recover()
 		if panicMessage != nil {
