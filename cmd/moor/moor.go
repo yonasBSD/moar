@@ -750,7 +750,15 @@ func startPaging(pager *internal.Pager, screen twin.Screen, chromaStyle *chroma.
 		sig := <-signals
 		log.Infof("Got signal %v, exiting...", sig)
 		screen.Close()
-		os.Exit(0)
+
+		exitCode := 1
+		syscallSignal, ok := sig.(syscall.Signal)
+		if ok {
+			// Ref: https://hypothesis.sh/references/exit-codes?grp=signal
+			exitCode = 128 + int(syscallSignal)
+		}
+
+		os.Exit(exitCode)
 	}()
 
 	defer func() {
