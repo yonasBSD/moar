@@ -455,6 +455,7 @@ func pagerFromArgs(
 		"Mouse `mode`: auto, select or scroll: https://github.com/walles/moor/blob/master/MOUSE.md",
 		parseMouseMode,
 	)
+	width := flagSet.Int("width", 0, "Set maximum output width")
 
 	// Combine flags from environment and from command line
 	flags := args[1:]
@@ -653,6 +654,7 @@ func pagerFromArgs(
 	pager.SideScrollAmount = int(*shift)
 	pager.TabSize = int(*tabSize)
 	pager.WithSearchHitLineBackground = !*noSearchLineHighlight
+	pager.Width = *width
 
 	pager.TargetLine = targetLine
 	if *follow && pager.TargetLine == nil {
