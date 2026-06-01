@@ -6,4 +6,9 @@ Release messages go into annotated tags. Please look at the ten most recent
 annotated tags for style guidance. The basis for all those messages are user
 visible changes since last release.
 
+# PR Best Practices
+
 Always run `./test.sh` before making any PRs.
+
+When fixing bugs, making one commit for the regression test and another one (or
+more) for the fix makes the PR easier to review.
