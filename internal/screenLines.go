@@ -215,7 +215,7 @@ func (p *Pager) internalRenderLines(highlightSearchHitLines bool) renderedScreen
 // indent, and to (optionally) render the line number.
 func (p *Pager) renderLine(line reader.NumberedLine, numberPrefixLength int, highlightSearchHitLines bool) []renderedLine {
 	width, _ := p.screen.Size()
-	if p.Width > 0 && p.Width < width {
+	if p.WrapLongLines && p.Width > 0 && p.Width < width {
 		width = p.Width
 	}
 	var wrapped []textstyles.StyledRunesWithTrailer
@@ -291,7 +291,7 @@ func (p *Pager) renderLine(line reader.NumberedLine, numberPrefixLength int, hig
 //   - Scroll right indicator
 func (p *Pager) decorateLine(lineNumberToShow *linemetadata.Number, numberPrefixLength int, contents []textstyles.CellWithMetadata) []textstyles.CellWithMetadata {
 	width, _ := p.screen.Size()
-	if p.Width > 0 && p.Width < width {
+	if p.WrapLongLines && p.Width > 0 && p.Width < width {
 		width = p.Width
 	}
 	newLine := make([]textstyles.CellWithMetadata, 0, width)

@@ -61,6 +61,9 @@ Moor is used as the default pager by:
 
 `MOOR`: `moor` will read extra command line options from here.
 
+`PAGER_COLUMNS`: If set to a positive number, this limits the maximum
+width for wrapping long lines.
+
 `PAGER_LABEL`: Other programs can set this to tell moor what name to show for
 standard input.
 
