@@ -65,6 +65,8 @@ func NewFromFilename(filename string, formatter chroma.Formatter, options Reader
 					} else if strings.HasPrefix(s, "wish") {
 						// wish is the interpreter for Tk, which has the same syntax as Tcl
 						s = "tcl"
+					} else if strings.HasPrefix(s, "deno") || strings.HasPrefix(s, "node") {
+						s = "javascript"
 					}
 					options.Lexer = lexers.Get(s)
 				}
