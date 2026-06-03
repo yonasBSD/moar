@@ -135,6 +135,9 @@ type Pager struct {
 	//
 	// Ref: https://github.com/walles/moor/issues/175
 	bookmarks map[rune]scrollPosition
+
+	// Maximum width instead of reported screen width
+	Width int
 }
 
 type _PreHelpState struct {
@@ -240,6 +243,7 @@ func NewPager(readers ...*reader.ReaderImpl) *Pager {
 		ScrollRightHint:             textstyles.CellWithMetadata{Rune: '>', Style: twin.StyleDefault.WithAttr(twin.AttrReverse)},
 		scrollPosition:              newScrollPosition(name),
 		WithSearchHitLineBackground: true,
+		Width:                       0,
 	}
 
 	pager.mode = PagerModeViewing{pager: &pager}

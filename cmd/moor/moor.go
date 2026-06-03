@@ -56,11 +56,15 @@ func printProblemsHeader() {
 	fmt.Fprintln(os.Stderr, "Please post the following report at <https://github.com/walles/moor/issues>,")
 	fmt.Fprintln(os.Stderr, "or e-mail it to johan.walles@gmail.com.")
 	fmt.Fprintln(os.Stderr)
-	fmt.Fprintln(os.Stderr, "Version      :", getVersion())
-	fmt.Fprintln(os.Stderr, "LANG         :", os.Getenv("LANG"))
-	fmt.Fprintln(os.Stderr, "TERM         :", os.Getenv("TERM"))
-	fmt.Fprintln(os.Stderr, "EDITOR       :", os.Getenv("EDITOR"))
-	fmt.Fprintln(os.Stderr, "TERM_PROGRAM :", os.Getenv("TERM_PROGRAM"))
+	fmt.Fprintln(os.Stderr, "Version       :", getVersion())
+	fmt.Fprintln(os.Stderr, "LANG          :", os.Getenv("LANG"))
+	fmt.Fprintln(os.Stderr, "TERM          :", os.Getenv("TERM"))
+	fmt.Fprintln(os.Stderr, "EDITOR        :", os.Getenv("EDITOR"))
+	fmt.Fprintln(os.Stderr, "TERM_PROGRAM  :", os.Getenv("TERM_PROGRAM"))
+	if value := os.Getenv("PAGER_WRAP_COLUMNS"); value != "" {
+		fmt.Fprintln(os.Stderr, "PAGER_WRAP_COLUMNS :", value)
+	}
+
 	fmt.Fprintln(os.Stderr)
 
 	lessenv_section := ""
@@ -653,6 +657,10 @@ func pagerFromArgs(
 	pager.SideScrollAmount = int(*shift)
 	pager.TabSize = int(*tabSize)
 	pager.WithSearchHitLineBackground = !*noSearchLineHighlight
+
+	if value, err := strconv.Atoi(os.Getenv("PAGER_WRAP_COLUMNS")); err == nil {
+		pager.Width = value
+	}
 
 	pager.TargetLine = targetLine
 	if *follow && pager.TargetLine == nil {
