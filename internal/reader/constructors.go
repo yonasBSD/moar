@@ -6,12 +6,17 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime/debug"
 	"strings"
 	"sync/atomic"
 
 	"github.com/alecthomas/chroma/v2"
 	"github.com/alecthomas/chroma/v2/lexers"
+)
+
+var (
+	reShebang = regexp.MustCompile(`\A#!\S*/(?:env[ \t]+)?(\S+)`)
 )
 
 // NewFromFilename creates a new file reader.
@@ -42,6 +47,29 @@ func NewFromFilename(filename string, formatter chroma.Formatter, options Reader
 
 	if options.Lexer == nil {
 		options.Lexer = lexers.Match(highlightingFilename)
+	}
+	if options.Lexer == nil {
+		if seekable, ok := stream.(io.ReadSeeker); ok {
+			p := make([]byte, 256)
+			_, err := seekable.Read(p)
+			seekable.Seek(0, io.SeekStart)
+			if err == nil {
+				m := reShebang.FindSubmatch(p)
+				if m != nil {
+					s := string(m[1])
+					if strings.HasPrefix(s, "python2") {
+						// Lexer knows about python2 and python3, but not about python2.x
+						s = "python2"
+					} else if strings.HasPrefix(s, "python3") {
+						s = "python3"
+					} else if strings.HasPrefix(s, "wish") {
+						// wish is the interpreter for Tk, which has the same syntax as Tcl
+						s = "tcl"
+					}
+					options.Lexer = lexers.Get(s)
+				}
+			}
+		}
 	}
 
 	returnMe := newReaderFromStream(stream, &filename, formatter, options)
