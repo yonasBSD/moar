@@ -61,8 +61,8 @@ func printProblemsHeader() {
 	fmt.Fprintln(os.Stderr, "TERM          :", os.Getenv("TERM"))
 	fmt.Fprintln(os.Stderr, "EDITOR        :", os.Getenv("EDITOR"))
 	fmt.Fprintln(os.Stderr, "TERM_PROGRAM  :", os.Getenv("TERM_PROGRAM"))
-	if value := os.Getenv("PAGER_COLUMNS"); value != "" {
-		fmt.Fprintln(os.Stderr, "PAGER_COLUMNS :", value)
+	if value := os.Getenv("PAGER_WRAP_COLUMNS"); value != "" {
+		fmt.Fprintln(os.Stderr, "PAGER_WRAP_COLUMNS :", value)
 	}
 
 	fmt.Fprintln(os.Stderr)
@@ -658,7 +658,7 @@ func pagerFromArgs(
 	pager.TabSize = int(*tabSize)
 	pager.WithSearchHitLineBackground = !*noSearchLineHighlight
 
-	if value, err := strconv.Atoi(os.Getenv("PAGER_COLUMNS")); err == nil {
+	if value, err := strconv.Atoi(os.Getenv("PAGER_WRAP_COLUMNS")); err == nil {
 		pager.Width = value
 	}
 
