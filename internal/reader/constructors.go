@@ -52,7 +52,7 @@ func NewFromFilename(filename string, formatter chroma.Formatter, options Reader
 		if seekable, ok := stream.(io.ReadSeeker); ok {
 			p := make([]byte, 256)
 			_, err := seekable.Read(p)
-			seekable.Seek(0, io.SeekStart)
+			_, _ = seekable.Seek(0, io.SeekStart)
 			if err == nil {
 				m := reShebang.FindSubmatch(p)
 				if m != nil {
