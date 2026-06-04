@@ -3,20 +3,17 @@ package reader
 // This file contains factory functions for creating Readers from various inputs.
 
 import (
+	"bytes"
 	"io"
 	"os"
 	"path/filepath"
-	"regexp"
 	"runtime/debug"
 	"strings"
 	"sync/atomic"
 
 	"github.com/alecthomas/chroma/v2"
 	"github.com/alecthomas/chroma/v2/lexers"
-)
-
-var (
-	reShebang = regexp.MustCompile(`\A#!\S*/(?:env[ \t]+)?(\S+)`)
+	"github.com/go-enry/go-enry/v2"
 )
 
 // NewFromFilename creates a new file reader.
@@ -50,25 +47,17 @@ func NewFromFilename(filename string, formatter chroma.Formatter, options Reader
 	}
 	if options.Lexer == nil {
 		if seekable, ok := stream.(io.ReadSeeker); ok {
-			p := make([]byte, 256)
-			_, err := seekable.Read(p)
+			p := make([]byte, 1000)
+			n, err := seekable.Read(p)
 			_, _ = seekable.Seek(0, io.SeekStart)
 			if err == nil {
-				m := reShebang.FindSubmatch(p)
-				if m != nil {
-					s := string(m[1])
-					if strings.HasPrefix(s, "python2") {
-						// Lexer knows about python2 and python3, but not about python2.x
-						s = "python2"
-					} else if strings.HasPrefix(s, "python3") {
-						s = "python3"
-					} else if strings.HasPrefix(s, "wish") {
-						// wish is the interpreter for Tk, which has the same syntax as Tcl
-						s = "tcl"
-					} else if strings.HasPrefix(s, "deno") || strings.HasPrefix(s, "node") {
-						s = "javascript"
-					}
-					options.Lexer = lexers.Get(s)
+				p = p[:n]
+				language := enry.GetLanguage(highlightingFilename, p)
+				if language == "" && bytes.HasPrefix(p, []byte("%!PS")) {
+					language = "postscript"
+				}
+				if language != "" {
+					options.Lexer = lexers.Get(language)
 				}
 			}
 		}

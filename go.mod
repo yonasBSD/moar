@@ -7,6 +7,7 @@ require (
 	github.com/alecthomas/chroma/v2 v2.22.0
 	github.com/charlievieth/strcase v0.0.5
 	github.com/davecgh/go-spew v1.1.1
+	github.com/go-enry/go-enry/v2 v2.9.6
 	github.com/google/go-cmp v0.5.9
 	github.com/klauspost/compress v1.17.4
 	github.com/rivo/uniseg v0.4.7
@@ -17,6 +18,8 @@ require (
 	golang.org/x/term v0.0.0-20210503060354-a79de5458b56
 	gotest.tools/v3 v3.3.0
 )
+
+require github.com/go-enry/go-oniguruma v1.2.1 // indirect
 
 require (
 	github.com/dlclark/regexp2 v1.11.5 // indirect
