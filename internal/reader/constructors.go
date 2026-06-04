@@ -3,7 +3,6 @@ package reader
 // This file contains factory functions for creating Readers from various inputs.
 
 import (
-	"bytes"
 	"io"
 	"os"
 	"path/filepath"
@@ -13,7 +12,6 @@ import (
 
 	"github.com/alecthomas/chroma/v2"
 	"github.com/alecthomas/chroma/v2/lexers"
-	"github.com/go-enry/go-enry/v2"
 )
 
 // NewFromFilename creates a new file reader.
@@ -44,23 +42,6 @@ func NewFromFilename(filename string, formatter chroma.Formatter, options Reader
 
 	if options.Lexer == nil {
 		options.Lexer = lexers.Match(highlightingFilename)
-	}
-	if options.Lexer == nil {
-		if seekable, ok := stream.(io.ReadSeeker); ok {
-			p := make([]byte, 1000)
-			n, err := seekable.Read(p)
-			_, _ = seekable.Seek(0, io.SeekStart)
-			if err == nil {
-				p = p[:n]
-				language := enry.GetLanguage(highlightingFilename, p)
-				if language == "" && bytes.HasPrefix(p, []byte("%!PS")) {
-					language = "postscript"
-				}
-				if language != "" {
-					options.Lexer = lexers.Get(language)
-				}
-			}
-		}
 	}
 
 	returnMe := newReaderFromStream(stream, &filename, formatter, options)

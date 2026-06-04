@@ -8,6 +8,7 @@ import (
 
 	"github.com/alecthomas/chroma/v2"
 	"github.com/alecthomas/chroma/v2/lexers"
+	"github.com/go-enry/go-enry/v2"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -94,6 +95,17 @@ func highlightFromMemory(reader *ReaderImpl, formatter chroma.Formatter, options
 	} else if options.Lexer == nil && isXml(text) {
 		log.Info("Buffer is valid XML, highlighting as XML")
 		options.Lexer = lexers.Get("xml")
+	} else if options.Lexer == nil && isPostScript(text) {
+		log.Info("Buffer has PostScript marker, highlighting as PostScript")
+		options.Lexer = lexers.Get("postscript")
+	}
+
+	if options.Lexer == nil {
+		language := enry.GetLanguage("", []byte(text))
+		if language != "" {
+			log.Info("Buffer language detected as " + language)
+			options.Lexer = lexers.Get(language)
+		}
 	}
 
 	if options.Lexer == nil {
@@ -161,6 +173,10 @@ func textAsString(reader *ReaderImpl, shouldFormat bool) string {
 func isXml(text string) bool {
 	err := xml.Unmarshal([]byte(text), new(any))
 	return err == nil
+}
+
+func isPostScript(text string) bool {
+	return strings.HasPrefix(text, "%!PS")
 }
 
 func isJsonOrJsonl(text string) bool {
