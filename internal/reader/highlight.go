@@ -3,11 +3,11 @@ package reader
 import (
 	"bytes"
 	"encoding/json"
-	"encoding/xml"
 	"strings"
 
 	"github.com/alecthomas/chroma/v2"
 	"github.com/alecthomas/chroma/v2/lexers"
+	"github.com/go-enry/go-enry/v2"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -91,9 +91,14 @@ func highlightFromMemory(reader *ReaderImpl, formatter chroma.Formatter, options
 		// The Chroma JSON lexer natively supports JSONL as well:
 		// https://github.com/alecthomas/chroma/pull/1262
 		options.Lexer = lexers.Get("json")
-	} else if options.Lexer == nil && isXml(text) {
-		log.Info("Buffer is valid XML, highlighting as XML")
-		options.Lexer = lexers.Get("xml")
+	}
+
+	if options.Lexer == nil {
+		language := enry.GetLanguage("", []byte(text))
+		if language != "" {
+			log.Info("Buffer language detected as " + language)
+			options.Lexer = lexers.Get(language)
+		}
 	}
 
 	if options.Lexer == nil {
@@ -156,11 +161,6 @@ func textAsString(reader *ReaderImpl, shouldFormat bool) string {
 
 	log.Debug("Got the --reformat flag, reformatted JSON input")
 	return string(prettyJSON)
-}
-
-func isXml(text string) bool {
-	err := xml.Unmarshal([]byte(text), new(any))
-	return err == nil
 }
 
 func isJsonOrJsonl(text string) bool {
