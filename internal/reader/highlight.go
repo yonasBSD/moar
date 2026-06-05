@@ -91,9 +91,6 @@ func highlightFromMemory(reader *ReaderImpl, formatter chroma.Formatter, options
 		// The Chroma JSON lexer natively supports JSONL as well:
 		// https://github.com/alecthomas/chroma/pull/1262
 		options.Lexer = lexers.Get("json")
-	} else if options.Lexer == nil && isPostScript(text) {
-		log.Info("Buffer has PostScript marker, highlighting as PostScript")
-		options.Lexer = lexers.Get("postscript")
 	}
 
 	if options.Lexer == nil {
@@ -164,10 +161,6 @@ func textAsString(reader *ReaderImpl, shouldFormat bool) string {
 
 	log.Debug("Got the --reformat flag, reformatted JSON input")
 	return string(prettyJSON)
-}
-
-func isPostScript(text string) bool {
-	return strings.HasPrefix(text, "%!PS")
 }
 
 func isJsonOrJsonl(text string) bool {
