@@ -4,12 +4,16 @@ Use `MOOR_SKIP_INTERACTIVE_TESTS=1 ./test.sh` to run all tests. In addition to
 just running all tests, that script will do linting, some cross compiling and
 more.
 
+# Fixing Bugs
+
+1. Create a new branch with a sensible name, e.g. `fix-crash-on-search-backwards`.
+2. Reproduce the bug with a failing test. Commit this test once it reproduces
+   the bug properly.
+3. Fix the bug until your new test passes.
+
 # PR Best Practices
 
-Always run `./test.sh` before making any PRs.
-
-When fixing bugs, making one commit for the regression test and another one (or
-more) for the fix makes the PR easier to review.
+Always run `./test.sh` locally before making any PRs.
 
 # Releases
 
