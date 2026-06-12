@@ -11,7 +11,7 @@ import (
 //
 // - +1234 sets the initial line number to 1234 (one-based)
 // - +/pattern starts at the first line matching the pattern
-func parsePlusArgs(args []string) (*linemetadata.Index, []string, *string) {
+func parsePlusArgs(args []string) (*linemetadata.Index, *string, []string) {
 	remainingArgs := make([]string, 0)
 	var targetIndex *linemetadata.Index
 	var searchPattern *string
@@ -41,7 +41,7 @@ func parsePlusArgs(args []string) (*linemetadata.Index, []string, *string) {
 		remainingArgs = append(remainingArgs, arg)
 	}
 
-	return targetIndex, remainingArgs, searchPattern
+	return targetIndex, searchPattern, remainingArgs
 }
 
 func parseLineNumber(withoutPlus string) *linemetadata.Index {

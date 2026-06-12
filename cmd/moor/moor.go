@@ -429,7 +429,7 @@ func pagerFromArgs(
 		flags = append(strings.Fields(moorEnv), flags...)
 	}
 
-	targetLine, remainingArgs, initialSearch := parsePlusArgs(flags)
+	targetLine, initialSearch, remainingArgs := parsePlusArgs(flags)
 
 	err = flagSet.Parse(remainingArgs)
 

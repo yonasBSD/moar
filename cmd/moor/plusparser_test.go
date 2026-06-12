@@ -8,11 +8,11 @@ import (
 )
 
 func TestParsePlusArgs_base(t *testing.T) {
-	index, remaining, _ := parsePlusArgs([]string{})
+	index, _, remaining := parsePlusArgs([]string{})
 	assert.Assert(t, index == nil)
 	assert.DeepEqual(t, remaining, []string{})
 
-	index, remaining, _ = parsePlusArgs([]string{"+"})
+	index, _, remaining = parsePlusArgs([]string{"+"})
 	assert.Assert(t, index == nil)
 	assert.DeepEqual(t, remaining, []string{"+"})
 }
@@ -29,11 +29,11 @@ func TestParsePlusArgs_targetLine(t *testing.T) {
 }
 
 func TestParsePlusArgs_initialSearch(t *testing.T) {
-	_, remaining, pattern := parsePlusArgs([]string{"+/"})
+	_, pattern, remaining := parsePlusArgs([]string{"+/"})
 	assert.Equal(t, *pattern, "")
 	assert.DeepEqual(t, remaining, []string{})
 
-	_, remaining, pattern = parsePlusArgs([]string{"+/hej"})
+	_, pattern, remaining = parsePlusArgs([]string{"+/hej"})
 	assert.Equal(t, *pattern, "hej")
 	assert.DeepEqual(t, remaining, []string{})
 }
