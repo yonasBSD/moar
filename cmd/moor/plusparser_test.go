@@ -19,11 +19,11 @@ func TestParsePlusArgs_base(t *testing.T) {
 
 func TestParsePlusArgs_targetLine(t *testing.T) {
 	// Ref: https://github.com/walles/moor/issues/316
-	index, remaining, _ := parsePlusArgs([]string{"+0"})
+	index, _, remaining := parsePlusArgs([]string{"+0"})
 	assert.Equal(t, *index, linemetadata.IndexFromOneBased(1))
 	assert.DeepEqual(t, remaining, []string{})
 
-	index, remaining, _ = parsePlusArgs([]string{"+1"})
+	index, _, remaining = parsePlusArgs([]string{"+1"})
 	assert.Equal(t, *index, linemetadata.IndexFromOneBased(1))
 	assert.DeepEqual(t, remaining, []string{})
 }
