@@ -11,28 +11,29 @@ import (
 //
 // - +1234 sets the initial line number to 1234 (one-based)
 func parsePlusArgs(args []string) (*linemetadata.Index, []string) {
-	for i, arg := range args {
+	remainingArgs := make([]string, 0)
+	var targetIndex *linemetadata.Index
+
+	for _, arg := range args {
 		if !strings.HasPrefix(arg, "+") {
+			// Not a valid plus argument, keep it
+			remainingArgs = append(remainingArgs, arg)
 			continue
 		}
 
-		targetIndex := parseLineNumber(arg[1:])
-		if targetIndex == nil {
-			// Let's pretend this is a file name
+		withoutPlus := arg[1:]
+
+		parsedIndex := parseLineNumber(withoutPlus)
+		if parsedIndex != nil {
+			targetIndex = parsedIndex
 			continue
 		}
 
-		// Remove the target line number from the args
-		//
-		// Ref: https://stackoverflow.com/a/57213476/473672
-		remainingArgs := make([]string, 0)
-		remainingArgs = append(remainingArgs, args[:i]...)
-		remainingArgs = append(remainingArgs, args[i+1:]...)
-
-		return targetIndex, remainingArgs
+		// Not a valid plus argument, keep it
+		remainingArgs = append(remainingArgs, arg)
 	}
 
-	return nil, args
+	return targetIndex, remainingArgs
 }
 
 func parseLineNumber(withoutPlus string) *linemetadata.Index {
