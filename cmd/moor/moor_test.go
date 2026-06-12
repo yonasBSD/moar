@@ -45,21 +45,21 @@ func TestPageOneInputFile(t *testing.T) {
 	assert.Assert(t, formatter != nil)
 }
 
-func TestGetTargetLine(t *testing.T) {
-	index, remaining := getTargetLine([]string{})
+func TestParsePlusArgs_targetLine(t *testing.T) {
+	index, remaining := parsePlusArgs([]string{})
 	assert.Assert(t, index == nil)
 	assert.DeepEqual(t, remaining, []string{})
 
-	index, remaining = getTargetLine([]string{"+"})
+	index, remaining = parsePlusArgs([]string{"+"})
 	assert.Assert(t, index == nil)
 	assert.DeepEqual(t, remaining, []string{"+"})
 
 	// Ref: https://github.com/walles/moor/issues/316
-	index, remaining = getTargetLine([]string{"+0"})
+	index, remaining = parsePlusArgs([]string{"+0"})
 	assert.Assert(t, index == nil)
 	assert.DeepEqual(t, remaining, []string{})
 
-	index, remaining = getTargetLine([]string{"+1"})
+	index, remaining = parsePlusArgs([]string{"+1"})
 	assert.Equal(t, *index, linemetadata.IndexFromOneBased(1))
 	assert.DeepEqual(t, remaining, []string{})
 }
