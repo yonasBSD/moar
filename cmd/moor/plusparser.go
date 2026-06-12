@@ -16,13 +16,9 @@ func parsePlusArgs(args []string) (*linemetadata.Index, []string) {
 			continue
 		}
 
-		lineNumber, err := strconv.ParseInt(arg[1:], 10, 32)
-		if err != nil {
+		targetIndex := parseLineNumber(arg[1:])
+		if targetIndex == nil {
 			// Let's pretend this is a file name
-			continue
-		}
-		if lineNumber < 0 {
-			// Pretend this is a file name
 			continue
 		}
 
@@ -33,15 +29,27 @@ func parsePlusArgs(args []string) (*linemetadata.Index, []string) {
 		remainingArgs = append(remainingArgs, args[:i]...)
 		remainingArgs = append(remainingArgs, args[i+1:]...)
 
-		if lineNumber == 0 {
-			// Ignore +0 because that's what less does:
-			// https://github.com/walles/moor/issues/316
-			return nil, remainingArgs
-		}
-
-		returnMe := linemetadata.IndexFromOneBased(int(lineNumber))
-		return &returnMe, remainingArgs
+		return targetIndex, remainingArgs
 	}
 
 	return nil, args
+}
+
+func parseLineNumber(withoutPlus string) *linemetadata.Index {
+	lineNumber, err := strconv.ParseInt(withoutPlus, 10, 32)
+	if err != nil {
+		return nil
+	}
+	if lineNumber < 0 {
+		return nil
+	}
+
+	if lineNumber == 0 {
+		// Special case +0 because that's what less does:
+		// https://github.com/walles/moor/issues/316
+		lineNumber = 1
+	}
+
+	targetIndex := linemetadata.IndexFromOneBased(int(lineNumber))
+	return &targetIndex
 }
