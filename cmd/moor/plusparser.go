@@ -10,9 +10,11 @@ import (
 // Parses arguments starting with '+':
 //
 // - +1234 sets the initial line number to 1234 (one-based)
-func parsePlusArgs(args []string) (*linemetadata.Index, []string) {
+// - +/pattern starts at the first line matching the pattern
+func parsePlusArgs(args []string) (*linemetadata.Index, []string, *string) {
 	remainingArgs := make([]string, 0)
 	var targetIndex *linemetadata.Index
+	var searchPattern *string
 
 	for _, arg := range args {
 		if !strings.HasPrefix(arg, "+") {
@@ -29,11 +31,17 @@ func parsePlusArgs(args []string) (*linemetadata.Index, []string) {
 			continue
 		}
 
+		parsedSearchPattern := parseSearchPattern(withoutPlus)
+		if parsedSearchPattern != nil {
+			searchPattern = parsedSearchPattern
+			continue
+		}
+
 		// Not a valid plus argument, keep it
 		remainingArgs = append(remainingArgs, arg)
 	}
 
-	return targetIndex, remainingArgs
+	return targetIndex, remainingArgs, searchPattern
 }
 
 func parseLineNumber(withoutPlus string) *linemetadata.Index {
@@ -53,4 +61,13 @@ func parseLineNumber(withoutPlus string) *linemetadata.Index {
 
 	targetIndex := linemetadata.IndexFromOneBased(int(lineNumber))
 	return &targetIndex
+}
+
+func parseSearchPattern(withoutPlus string) *string {
+	if !strings.HasPrefix(withoutPlus, "/") {
+		return nil
+	}
+
+	pattern := withoutPlus[1:]
+	return &pattern
 }

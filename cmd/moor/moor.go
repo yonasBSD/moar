@@ -429,7 +429,7 @@ func pagerFromArgs(
 		flags = append(strings.Fields(moorEnv), flags...)
 	}
 
-	targetLine, remainingArgs := parsePlusArgs(flags)
+	targetLine, remainingArgs, initialSearch := parsePlusArgs(flags)
 
 	err = flagSet.Parse(remainingArgs)
 
@@ -620,6 +620,10 @@ func pagerFromArgs(
 
 	if value, err := strconv.Atoi(os.Getenv("PAGER_WRAP_COLUMNS")); err == nil {
 		pager.Width = value
+	}
+
+	if initialSearch != nil {
+		pager.InitialSearch = *initialSearch
 	}
 
 	pager.TargetLine = targetLine

@@ -7,21 +7,33 @@ import (
 	"gotest.tools/v3/assert"
 )
 
-func TestParsePlusArgs_targetLine(t *testing.T) {
-	index, remaining := parsePlusArgs([]string{})
+func TestParsePlusArgs_base(t *testing.T) {
+	index, remaining, _ := parsePlusArgs([]string{})
 	assert.Assert(t, index == nil)
 	assert.DeepEqual(t, remaining, []string{})
 
-	index, remaining = parsePlusArgs([]string{"+"})
+	index, remaining, _ = parsePlusArgs([]string{"+"})
 	assert.Assert(t, index == nil)
 	assert.DeepEqual(t, remaining, []string{"+"})
+}
 
+func TestParsePlusArgs_targetLine(t *testing.T) {
 	// Ref: https://github.com/walles/moor/issues/316
-	index, remaining = parsePlusArgs([]string{"+0"})
+	index, remaining, _ := parsePlusArgs([]string{"+0"})
 	assert.Equal(t, *index, linemetadata.IndexFromOneBased(1))
 	assert.DeepEqual(t, remaining, []string{})
 
-	index, remaining = parsePlusArgs([]string{"+1"})
+	index, remaining, _ = parsePlusArgs([]string{"+1"})
 	assert.Equal(t, *index, linemetadata.IndexFromOneBased(1))
+	assert.DeepEqual(t, remaining, []string{})
+}
+
+func TestParsePlusArgs_initialSearch(t *testing.T) {
+	_, remaining, pattern := parsePlusArgs([]string{"+/"})
+	assert.Equal(t, *pattern, "")
+	assert.DeepEqual(t, remaining, []string{})
+
+	_, remaining, pattern = parsePlusArgs([]string{"+/hej"})
+	assert.Equal(t, *pattern, "hej")
 	assert.DeepEqual(t, remaining, []string{})
 }
