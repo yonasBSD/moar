@@ -543,7 +543,7 @@ func (reader *ReaderImpl) PumpToStdout() {
 // HighlightingDone and signalling the MaybeDone channel afterwards.
 func (reader *ReaderImpl) setText(text string) {
 	lines := []*Line{}
-	for _, lineString := range strings.Split(text, "\n") {
+	for lineString := range strings.SplitSeq(text, "\n") {
 		line := Line{raw: []byte(lineString)}
 		lines = append(lines, &line)
 	}

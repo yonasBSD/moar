@@ -1,7 +1,7 @@
 package internal
 
 import (
-	"sort"
+	"slices"
 
 	"github.com/walles/moor/v2/twin"
 	"golang.org/x/exp/maps"
@@ -37,9 +37,7 @@ func (m PagerModeJumpToMark) getMarkPrompt() string {
 
 	// Multiple marks, list them
 	marks := maps.Keys(m.pager.bookmarks)
-	sort.Slice(marks, func(i, j int) bool {
-		return marks[i] < marks[j]
-	})
+	slices.Sort(marks)
 
 	prompt := "Jump to one of these marks: "
 	for i, mark := range marks {

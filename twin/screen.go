@@ -852,8 +852,8 @@ func (screen *UnixScreen) Clear() {
 	empty := NewStyledRune(' ', StyleDefault)
 
 	width, height := screen.Size()
-	for row := 0; row < height; row++ {
-		for column := 0; column < width; column++ {
+	for row := range height {
+		for column := range width {
 			screen.cells[row][column] = empty
 		}
 	}
@@ -864,7 +864,7 @@ func (screen *UnixScreen) Clear() {
 func withoutHiddenRunes(runes []StyledRune) []StyledRune {
 	result := make([]StyledRune, 0, len(runes))
 
-	for i := 0; i < len(runes); i++ {
+	for i := range runes {
 		if i > 0 && runes[i-1].Width() == 2 {
 			// This is a hidden rune
 			continue

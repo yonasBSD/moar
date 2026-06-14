@@ -416,8 +416,8 @@ func BenchmarkStripFormattingUnformattedInput(b *testing.B) {
 
 	// Remove formatting before benchmarking
 	var unformatted strings.Builder
-	formattedLines := strings.Split(string(data), "\n")
-	for _, line := range formattedLines {
+	formattedLines := strings.SplitSeq(string(data), "\n")
+	for line := range formattedLines {
 		unformatted.WriteString(StripFormatting(line, linemetadata.Index{}))
 		unformatted.WriteString("\n")
 	}

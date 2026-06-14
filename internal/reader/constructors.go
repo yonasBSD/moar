@@ -174,7 +174,7 @@ func NewFromTextForTesting(name string, text string) *ReaderImpl {
 	noExternalNewlines := strings.Trim(text, "\n")
 	lines := []*Line{}
 	if len(noExternalNewlines) > 0 {
-		for _, lineString := range strings.Split(noExternalNewlines, "\n") {
+		for lineString := range strings.SplitSeq(noExternalNewlines, "\n") {
 			line := Line{raw: []byte(lineString)}
 			lines = append(lines, &line)
 		}
