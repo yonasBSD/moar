@@ -560,8 +560,6 @@ func (p *Pager) StartPaging(screen twin.Screen, chromaStyle *chroma.Style, chrom
 		p.search.For(p.InitialSearch)
 		p.searchHistory.addEntry(p.InitialSearch)
 
-		reallyHigh := linemetadata.IndexMax()
-		p.setTargetLine(&reallyHigh)
 		p.scrollToSearchHits()
 	}
 
